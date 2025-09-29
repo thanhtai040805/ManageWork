@@ -1,3 +1,11 @@
+import {
+  LockIcon,
+  LockKeyhole,
+  MailCheckIcon,
+  MailIcon,
+  User,
+  User2,
+} from "lucide-react";
 import React from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
@@ -21,14 +29,14 @@ const SignUp = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center background-primary bg-cover bg-center relative"
+      className="min-h-screen flex items-center justify-center min-h-[90%] background-primary bg-cover bg-center relative"
       style={{ backgroundImage: `url(/BackgroundImage.png)` }}
     >
       {/* Overlay để làm tối nền cho dễ nhìn */}
-      <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+      <div className="absolute inset-0 bg-primary bg-opacity-40"></div>
 
       {/* Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full flex overflow-hidden animate-fade-in">
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full flex overflow-hidden">
         {/* Left Image */}
         <div className="hidden md:flex w-1/2 items-center justify-center bg-white">
           <img
@@ -46,7 +54,9 @@ const SignUp = () => {
             {/* Full Name */}
             <div>
               <div className="flex items-center border rounded-lg px-3 py-2 bg-gray-50">
-                <span className="text-gray-500 mr-2">👤</span>
+                <span className="text-gray-500 mr-2">
+                  <User />
+                </span>
                 <input
                   type="text"
                   placeholder="Enter Full Name"
@@ -65,14 +75,18 @@ const SignUp = () => {
                 />
               </div>
               {errors.fullName && (
-                <p className="text-red-500 text-sm mt-1">{errors.fullName.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.fullName.message}
+                </p>
               )}
             </div>
 
             {/* Username */}
             <div>
               <div className="flex items-center border rounded-lg px-3 py-2 bg-gray-50">
-                <span className="text-gray-500 mr-2">👤</span>
+                <span className="text-gray-500 mr-2">
+                  <User2 />
+                </span>
                 <input
                   type="text"
                   placeholder="Enter Username"
@@ -85,20 +99,25 @@ const SignUp = () => {
                     },
                     pattern: {
                       value: /^[a-zA-Z0-9_]+$/,
-                      message: "Username can only contain letters, numbers, and underscores",
+                      message:
+                        "Username can only contain letters, numbers, and underscores",
                     },
                   })}
                 />
               </div>
               {errors.username && (
-                <p className="text-red-500 text-sm mt-1">{errors.username.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.username.message}
+                </p>
               )}
             </div>
 
             {/* Email */}
             <div>
               <div className="flex items-center border rounded-lg px-3 py-2 bg-gray-50">
-                <span className="text-gray-500 mr-2">📧</span>
+                <span className="text-gray-500 mr-2">
+                  <MailIcon />
+                </span>
                 <input
                   type="email"
                   placeholder="Enter Email"
@@ -113,14 +132,18 @@ const SignUp = () => {
                 />
               </div>
               {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
             {/* Password */}
             <div>
               <div className="flex items-center border rounded-lg px-3 py-2 bg-gray-50">
-                <span className="text-gray-500 mr-2">🔒</span>
+                <span className="text-gray-500 mr-2">
+                  <LockIcon />
+                </span>
                 <input
                   type="password"
                   placeholder="Enter Password"
@@ -132,21 +155,27 @@ const SignUp = () => {
                       message: "Password must be at least 8 characters",
                     },
                     pattern: {
-                      value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-                      message: "Password must contain uppercase, lowercase, number, and special character",
+                      value:
+                        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+                      message:
+                        "Password must contain uppercase, lowercase, number, and special character",
                     },
                   })}
                 />
               </div>
               {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
             {/* Confirm Password */}
             <div>
               <div className="flex items-center border rounded-lg px-3 py-2 bg-gray-50">
-                <span className="text-gray-500 mr-2">🔒</span>
+                <span className="text-gray-500 mr-2">
+                  <LockKeyhole />
+                </span>
                 <input
                   type="password"
                   placeholder="Confirm Password"
@@ -159,16 +188,18 @@ const SignUp = () => {
                 />
               </div>
               {errors.confirmPassword && (
-                <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.confirmPassword.message}
+                </p>
               )}
             </div>
 
             {/* Terms Checkbox */}
             <div className="flex items-center">
-              <input 
-                type="checkbox" 
-                id="terms" 
-                className="mr-2" 
+              <input
+                type="checkbox"
+                id="terms"
+                className="mr-2"
                 {...register("terms", {
                   required: "You must accept the terms and conditions",
                 })}
@@ -178,14 +209,16 @@ const SignUp = () => {
               </label>
             </div>
             {errors.terms && (
-              <p className="text-red-500 text-sm mt-1">{errors.terms.message}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {errors.terms.message}
+              </p>
             )}
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-red-500 text-white py-2 rounded-lg shadow-md hover:bg-red-600 transition-transform transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full bg-red-300 text-white py-2 rounded-lg shadow-md hover:bg-red-600 transition-transform transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isSubmitting ? "Registering..." : "Register"}
             </button>

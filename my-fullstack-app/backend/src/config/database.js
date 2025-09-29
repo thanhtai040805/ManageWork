@@ -10,13 +10,4 @@ const pool = new Pool({
   database: process.env.DB_NAME || "ManageWork",
 });
 
-pool
-  .connect()
-  .then(() => {
-    console.log("✅ Connected to PostgreSQL successfully!");
-  })
-  .catch((err) => {
-    console.error("❌ Error connecting to PostgreSQL:", err);
-  });
-
 module.exports = pool;

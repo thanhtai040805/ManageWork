@@ -3,12 +3,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========== TAILWIND THEME CONFIG ========== */
+@theme {
+  --color-primary: #f87171;      /* đỏ nhạt */
+  --color-primary-dark: #ef4444; /* đỏ đậm */
+  --color-secondary: #60a5fa;    /* xanh */
+  --color-gray-light: #f1f5f9;
+  --color-gray-dark: #475569;
+  --color-border: hsl(214 32% 91%);
+
+  --shadow-custom: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --shadow-custom-lg: 0 20px 40px rgba(0, 0, 0, 0.15);
+
+  --animate-fade-in: fadeIn 0.5s ease-in-out forwards;
+}
 
 /* ========== GLOBAL STYLES ========== */
 body {
-  background-color: #f8fafc; /* nền xám nhạt */
-  color: #1e293b; /* text slate-800 */
-  line-height: 1.5;
+  @apply bg-gray-50 text-slate-800 leading-relaxed;
 }
 
 html, body {
@@ -17,110 +29,39 @@ html, body {
   overflow-x: hidden;
 }
 
-/* ========== MÀU CHỦ ĐẠO ========== */
-:root {
-  --primary: #f87171; /* đỏ nhạt */
-  --primary-dark: #ef4444; /* đỏ đậm */
-  --secondary: #60a5fa; /* xanh */
-  --gray-light: #f1f5f9;
-  --gray-dark: #475569;
-  --border: 214 32% 91%;
-}
-
-.background-primary {
-  background: var(--primary);
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center;
-  background-blend-mode: multiply;
-  height: 100vh;
-  width: 100%;
-}
-
 /* ========== BUTTON STYLE ========== */
 .btn {
-  display: inline-block;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  @apply inline-block px-4 py-2 rounded-md font-medium text-center cursor-pointer transition-all;
 }
 
 .btn-primary {
-  background: var(--primary);
-  color: white;
+  @apply bg-primary text-white;
 }
 
 .btn-primary:hover {
-  background: var(--primary-dark);
+  background: var(--color-primary-dark);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 /* ========== INPUT STYLE ========== */
 .input {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  outline: none;
-  transition: border 0.2s ease;
+  @apply w-full px-4 py-3 border border-slate-300 rounded-md outline-none transition;
 }
 
 .input:focus {
-  border-color: var(--primary);
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.3);
 }
 
-/* Override any conflicting styles */
+/* Override thêm cho input mặc định */
 input[type="text"], input[type="email"], input[type="password"] {
-  border: 1px solid #d1d5db !important;
-  border-radius: 0.5rem !important;
-  padding: 0.75rem !important;
+  padding: 0.5rem !important;
   background-color: #f9fafb !important;
   outline: none !important;
 }
 
-input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
-  border-color: #f87171 !important;
-  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.1) !important;
-}
-
-/* ========== RESPONSIVE BREAKPOINTS ========== */
-@media (max-width: 768px) {
-  .container {
-    padding: 16px;
-  }
-  h2 {
-    font-size: 1.5rem;
-  }
-}
-
-@media (min-width: 769px) and (max-width: 1200px) {
-  .container {
-    padding: 24px;
-  }
-  h2 {
-    font-size: 1.75rem;
-  }
-}
-
-@media (min-width: 1201px) {
-  .container {
-    padding: 32px;
-  }
-  h2 {
-    font-size: 2rem;
-  }
-}
-
-/* ========== HIỆU ỨNG DÙNG CHUNG ========== */
-.fade-in {
-  animation: fadeIn 0.5s ease-in-out forwards;
-}
-
+/* ========== ANIMATION ========== */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -132,58 +73,31 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
   }
 }
 
-/* ========== UTILITY CLASSES ========== */
+.fade-in {
+  animation: var(--animate-fade-in);
+}
+
+/* ========== UTILITY EXTRA ========== */
 .text-gradient {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.shadow-custom {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-}
-
-.shadow-custom-lg {
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-/* ========== SCROLLBAR STYLING ========== */
+/* ========== SCROLLBAR ========== */
 ::-webkit-scrollbar {
   width: 8px;
 }
-
 ::-webkit-scrollbar-track {
   background: #f1f5f9;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-dark);
-}
-
-/* ========== FOCUS STYLES ========== */
-*:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-/* ========== SELECTION STYLES ========== */
-::selection {
-  background: var(--primary);
-  color: white;
-}
-
-/* ========== LOADING STATES ========== */
+/* ========== LOADING EFFECT ========== */
 .loading {
   position: relative;
   overflow: hidden;
 }
-
 .loading::after {
   content: '';
   position: absolute;
@@ -194,12 +108,7 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   animation: loading 1.5s infinite;
 }
-
 @keyframes loading {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
