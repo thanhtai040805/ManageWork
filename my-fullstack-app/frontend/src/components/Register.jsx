@@ -9,6 +9,8 @@ import {
 import React from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
+import { createUserAPI } from "../util/api";
+import { notificationService } from "../services/notificationService";
 
 const SignUp = () => {
   const {
@@ -23,8 +25,28 @@ const SignUp = () => {
   const password = watch("password");
 
   const onSubmit = async (data) => {
-    console.log("Form submitted:", data);
-    // TODO: Implement registration logic
+    try {
+      console.log("Form submitted:", data);
+      const { username, email, password, fullName } = data;
+
+      const response = await createUserAPI(username, email, password, fullName);
+      console.log("Response:", response);
+
+      // Update loading to success
+      notificationService.updateLoading(
+        loadingToast,
+        "Tạo tài khoản thành công!",
+        "success"
+      );
+
+      reset();
+    } catch (error) {
+      console.error("Registration error:", error);
+
+      notificationService.error(
+        error.response?.data?.message || "Có lỗi xảy ra khi tạo tài khoản"
+      );
+    }
   };
 
   return (
