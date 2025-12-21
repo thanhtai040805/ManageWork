@@ -1,7 +1,7 @@
 import { BellIcon, Calendar, SearchIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useContext } from "react";
-import { ThemeContext } from "../context/theme.context";
+import { ThemeContext } from "../../context/themeContext";
 
 export const Header = () => {
     const date = new Date();
@@ -54,3 +54,4 @@ export const Header = () => {
     </div>
   );
 };
+

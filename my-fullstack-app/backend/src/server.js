@@ -6,6 +6,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const pool = require("./config/database");
 const errorHandler = require("./middlewares/errorHandler");
+const { swaggerDocs } = require("./config/swagger");
 
 const app = express();
 
@@ -13,12 +14,14 @@ const app = express();
 app.use(helmet());
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Logging
 if (process.env.NODE_ENV === "development") {
@@ -29,7 +32,14 @@ if (process.env.NODE_ENV === "development") {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Health check endpoint
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     tags: [Health]
+ *     summary: Health check
+ *     security: []
+ */
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -37,6 +47,9 @@ app.get("/health", (req, res) => {
     uptime: process.uptime(),
   });
 });
+
+// Swagger documentation
+swaggerDocs(app);
 
 // Routes
 app.use("/v1/api", apiRoutes);
@@ -60,6 +73,9 @@ const port = process.env.PORT || 8888;
 
     app.listen(port, () => {
       console.log(`🚀 Backend running on http://localhost:${port}`);
+      console.log(
+        `� Swagger docs available at http://localhost:${port}/api-docs`
+      );
       console.log(`📊 Health check: http://localhost:${port}/health`);
     });
   } catch (error) {

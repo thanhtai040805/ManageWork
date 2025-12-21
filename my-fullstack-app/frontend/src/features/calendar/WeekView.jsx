@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import { X } from "lucide-react";
-import { getWeekDays, isSameDay } from "../utils/dateHelpers";
-import { updateTaskStatusAPI } from "../util/taskAPI";
-import { deleteTaskByIDAPI } from "../util/taskAPI";
+import { getWeekDays, isSameDay } from "../../utils/dateHelpers";
+import { updateTaskStatusAPI } from "../../services/task.service";
+import { deleteTaskByIDAPI } from "../../services/task.service";
 
 export const WeekView = ({
   currentDate,

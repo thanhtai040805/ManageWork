@@ -8,10 +8,21 @@ import {
   getProjectMembersAPI, 
   addProjectMemberAPI, 
   removeProjectMemberAPI 
-} from "../util/projectAPI";
-import { getUsersAPI } from "../util/api";
-import { notificationService } from "../services/notificationService";
+} from "../../services/project.service";
+import { getUsersAPI } from "../../services/auth.service";
+import { notificationService } from "../../services/notificationService";
 
+/**
+ * ProjectSettings Component
+ * 
+ * Manages settings for a SPECIFIC PROJECT:
+ * - Project name and description
+ * - Project members (add/remove)
+ * - Member roles (viewer, editor, admin)
+ * - Delete project
+ * 
+ * Note: This is different from Settings.jsx which manages USER account settings
+ */
 export const ProjectSettings = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();

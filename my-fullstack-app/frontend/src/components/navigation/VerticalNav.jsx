@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useContext } from "react";
-import { AuthContext } from "../context/auth.context";
-import { ThemeContext } from "../context/theme.context";
+import { AuthContext } from "../../context/authContext";
+import { ThemeContext } from "../../context/themeContext";
 
 export const VerticalNav = () => {
   const navigate = useNavigate();
@@ -102,3 +102,4 @@ export const VerticalNav = () => {
     </nav>
   );
 };
+

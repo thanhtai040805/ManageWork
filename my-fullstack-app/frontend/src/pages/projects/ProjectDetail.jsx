@@ -11,10 +11,9 @@ import {
   Clock,
   Flag
 } from "lucide-react";
-import { getProjectAPI } from "../util/projectAPI";
-import TaskCard from "../components/TaskCard";
-import { AddTask } from "../components/AddTask";
-import { notificationService } from "../services/notificationService";
+import { getProjectAPI } from "../../services/project.service";
+import { TaskCard, AddTask } from "../../features/tasks";
+import { notificationService } from "../../services/notificationService";
 
 export const ProjectDetail = () => {
   const { projectId } = useParams();

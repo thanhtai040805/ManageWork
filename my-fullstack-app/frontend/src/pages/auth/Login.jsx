@@ -2,10 +2,10 @@ import { FacebookIcon, LockIcon, TwitchIcon, User, XIcon } from "lucide-react";
 import { React, useContext, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { notificationService } from "../services/notificationService";
-import { loginAPI } from "../util/api";
-import { AuthContext } from "../context/auth.context";
-import { ThemeContext } from "../context/theme.context";
+import { notificationService } from "../../services/notificationService";
+import { loginAPI } from "../../services/auth.service";
+import { AuthContext } from "../../context/authContext";
+import { ThemeContext } from "../../context/themeContext";
 
 
 export const Login = () => {
@@ -164,7 +164,7 @@ export const Login = () => {
 
             {/* Registor Link */}
             <p className="text-sm text-gray-600 mt-4">
-              Don’t have an account?{" "}
+              Don't have an account?{" "}
               <Link to="/register" className="text-blue-600 hover:underline">
                 Create One
               </Link>
@@ -179,3 +179,4 @@ export const Login = () => {
     </div>
   );
 };
+

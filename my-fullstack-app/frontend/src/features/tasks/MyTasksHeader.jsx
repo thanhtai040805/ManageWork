@@ -1,6 +1,6 @@
 import React from "react";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { formatDateRange } from "../utils/dateHelpers";
+import { formatDateRange } from "../../utils/dateHelpers";
 
 export const MyTasksHeader = ({
   viewType,

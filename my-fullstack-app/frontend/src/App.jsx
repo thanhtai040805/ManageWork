@@ -1,18 +1,18 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import SignUp from "./pages/Register";
-import { Login } from "./pages/Login";
-import { Home } from "./pages/Home";
+import SignUp from "./pages/auth/Register";
+import { Login } from "./pages/auth/Login";
+import { Home } from "./pages/home/Home";
 import { useContext, useEffect } from "react";
-import { AuthContext } from "./context/auth.context";
-import { ThemeContext } from "./context/theme.context";
-import axios from "./util/axios.customize";
-import { MyTasks } from "./pages/MyTasks";
-import { Settings } from "./pages/Settings";
-import { Projects } from "./pages/Projects";
-import { ProjectDetail } from "./pages/ProjectDetail";
-import { ProjectSettings } from "./pages/ProjectSettings";
+import { AuthContext } from "./context/authContext";
+import { ThemeContext } from "./context/themeContext";
+import apiClient from "./services/apiClient";
+import { MyTasks } from "./pages/tasks/MyTasks";
+import { Settings } from "./pages/settings/Settings";
+import { Projects } from "./pages/projects/Projects";
+import { ProjectDetail } from "./pages/projects/ProjectDetail";
+import { ProjectSettings } from "./pages/projects/ProjectSettings";
 import { Layout } from "./layouts/Layout";
 
 function App() {
@@ -23,7 +23,7 @@ function App() {
     const fetchAccount = async () => {
       setAppLoading(true);
       try {
-        const res = await axios.get(`/v1/api/account`);
+        const res = await apiClient.get(`/v1/api/account`);
         if (res) {
           // Get theme color from response (middleware already fetches it)
           const userThemeColor = res.theme_color || "#f87171";

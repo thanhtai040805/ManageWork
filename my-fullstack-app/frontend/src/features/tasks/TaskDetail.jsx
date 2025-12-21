@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { editTaskByIDAPI } from "../util/taskAPI";
+import { editTaskByIDAPI } from "../../services/task.service";
 import { 
   X, 
   Calendar, 
@@ -527,3 +527,4 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
     </>
   );
 };
+

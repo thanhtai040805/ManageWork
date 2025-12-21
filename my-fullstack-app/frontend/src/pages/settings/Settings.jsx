@@ -1,9 +1,19 @@
 import React, { useContext, useState, useEffect } from "react";
-import { AuthContext } from "../context/auth.context";
-import { ThemeContext } from "../context/theme.context";
-import axios from "../util/axios.customize";
+import { AuthContext } from "../../context/authContext";
+import { ThemeContext } from "../../context/themeContext";
+import apiClient from "../../services/apiClient";
 import { User, Palette, Save } from "lucide-react";
 
+/**
+ * Settings Component
+ * 
+ * Manages USER ACCOUNT settings:
+ * - User full name
+ * - Avatar URL
+ * - Theme color preference
+ * 
+ * Note: This is different from ProjectSettings.jsx which manages settings for a specific project
+ */
 export const Settings = () => {
   const { auth, setAuth } = useContext(AuthContext);
   const { primaryColor, setPrimaryColor } = useContext(ThemeContext);
@@ -32,7 +42,7 @@ export const Settings = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userData = await axios.get("/v1/api/account");
+        const userData = await apiClient.get("/v1/api/account");
         if (userData) {
           setForm({
             full_name: userData.full_name || "",
@@ -92,7 +102,7 @@ export const Settings = () => {
     setMessage({ type: "", text: "" });
 
     try {
-      const response = await axios.put("/v1/api/account/profile", {
+      const response = await apiClient.put("/v1/api/account/profile", {
         full_name: form.full_name,
         avatar_url: form.avatar_url,
         theme_color: form.theme_color,
@@ -100,7 +110,7 @@ export const Settings = () => {
 
       if (response) {
         // Fetch fresh user data from server to ensure we have the latest
-        const userData = await axios.get("/v1/api/account");
+        const userData = await apiClient.get("/v1/api/account");
         if (userData) {
           const updatedThemeColor = userData.theme_color || "#f87171";
           

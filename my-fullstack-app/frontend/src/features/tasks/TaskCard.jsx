@@ -1,7 +1,7 @@
 import { Clock3, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { TaskDetail } from "./TaskDetail";
-import { deleteTaskByIDAPI, updateTaskStatusAPI } from "../util/taskAPI";
+import { deleteTaskByIDAPI, updateTaskStatusAPI } from "../../services/task.service";
 
 const STATUS_META = {
   todo: {
@@ -188,3 +188,4 @@ const TaskCard = ({ task, onDelete, onEditSuccess, onStatusChange }) => {
 };
 
 export default TaskCard;
+

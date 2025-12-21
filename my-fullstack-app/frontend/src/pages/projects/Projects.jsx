@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Grid3x3, List, Search, Calendar, MoreVertical } from "lucide-react";
-import { getProjectsAPI, createProjectAPI, deleteProjectAPI } from "../util/projectAPI";
-import { notificationService } from "../services/notificationService";
+import { getProjectsAPI, createProjectAPI, deleteProjectAPI } from "../../services/project.service";
+import { notificationService } from "../../services/notificationService";
 
 export const Projects = () => {
   const [projects, setProjects] = useState([]);

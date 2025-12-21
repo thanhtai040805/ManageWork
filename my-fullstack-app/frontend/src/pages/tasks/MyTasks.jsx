@@ -1,11 +1,8 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { TaskDetail } from "../components/TaskDetail";
-import { AddTask } from "../components/AddTask";
-import { MyTasksHeader } from "../components/MyTasksHeader";
-import { WeekView } from "../components/WeekView";
-import { MonthView } from "../components/MonthView";
-import { getTasksAPI } from "../util/taskAPI";
-import { getWeekRange, getMonthRange, isDateInRange } from "../utils/dateHelpers";
+import { TaskDetail, AddTask, MyTasksHeader } from "../../features/tasks";
+import { WeekView, MonthView } from "../../features/calendar";
+import { getTasksAPI } from "../../services/task.service";
+import { getWeekRange, getMonthRange, isDateInRange } from "../../utils/dateHelpers";
 
 export const MyTasks = () => {
   const [tasks, setTasks] = useState([]);
@@ -180,3 +177,4 @@ export const MyTasks = () => {
     </div>
   );
 };
+

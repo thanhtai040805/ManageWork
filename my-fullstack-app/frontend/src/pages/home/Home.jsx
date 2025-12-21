@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Calendar as CalendarIcon, Plus } from "lucide-react";
-import TaskCard from "./TaskCard";
-import CompletedTaskCard from "./CompletedTaskCard";
-import { TaskStatus } from "./TaskStatus";
-import { AddTask } from "./AddTask";
-import { getTasksAPI } from "../util/taskAPI";
-import { useEffect } from "react";
+import {
+  TaskCard,
+  CompletedTaskCard,
+  TaskStatus,
+  AddTask,
+} from "../../features/tasks";
+import { getTasksAPI } from "../../services/task.service";
 
 const getStatusCounts = (tasks) =>
   tasks.reduce(
@@ -54,7 +55,7 @@ const isTaskInToday = (task) => {
   return false;
 };
 
-export const MyTasks = () => {
+export const Home = () => {
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
 
@@ -215,3 +216,4 @@ export const MyTasks = () => {
     </>
   );
 };
+

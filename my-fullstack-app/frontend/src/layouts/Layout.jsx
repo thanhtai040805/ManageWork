@@ -1,6 +1,6 @@
 // src/layouts/Layout.jsx
-import { Header } from "../components/Header";
-import { VerticalNav } from "../components/VerticleNav";
+import { Header } from "../components/common";
+import { VerticalNav } from "../components/navigation";
 import { Outlet } from "react-router-dom";
 
 export const Layout = () => {

@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
-import { AuthContext } from "../context/auth.context";
-import { createToDoTaskAPI, editTaskByIDAPI } from "../util/taskAPI";
+import { AuthContext } from "../../context/authContext";
+import { createToDoTaskAPI, editTaskByIDAPI } from "../../services/task.service";
 
 // Helper function to convert ISO string to datetime-local format
 const formatDateTimeLocal = (isoString) => {
@@ -580,3 +580,4 @@ export const AddTask = ({
     </div>
   );
 };
+

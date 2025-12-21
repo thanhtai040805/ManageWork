@@ -1,0 +1,2 @@
+export { VerticalNav } from "./VerticalNav";
+

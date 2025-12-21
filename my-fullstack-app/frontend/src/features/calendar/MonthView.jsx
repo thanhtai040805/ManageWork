@@ -1,5 +1,5 @@
 import React from "react";
-import { getMonthDays, isSameDay } from "../utils/dateHelpers";
+import { getMonthDays, isSameDay } from "../../utils/dateHelpers";
 
 export const MonthView = ({ currentDate, tasks, onTaskClick }) => {
   const monthDays = getMonthDays(currentDate);

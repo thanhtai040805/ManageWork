@@ -1,4 +1,4 @@
-import axios from "./axios.customize";
+import apiClient from "./apiClient";
 
 const createToDoTaskAPI = (
   title,
@@ -27,27 +27,28 @@ const createToDoTaskAPI = (
     repeatUntil,
     projectId,
   };
-  return axios.post(URL_API, data);
+  return apiClient.post(URL_API, data);
 };
 
 const getTasksAPI = () => {
   const URL_API = "/v1/api/tasks";
-  return axios.get(URL_API);
+  return apiClient.get(URL_API);
 }
 
 const deleteTaskByIDAPI = (taskId) => {
   const URL_API = `/v1/api/task/delete/${taskId}`;
-  return axios.post(URL_API);
+  return apiClient.post(URL_API);
 }
 
 const editTaskByIDAPI = (taskId, updateData) => {
   const URL_API = `/v1/api/task/edit/${taskId}`;
-  return axios.post(URL_API, { ...updateData });
+  return apiClient.post(URL_API, { ...updateData });
 };
 
 const updateTaskStatusAPI = (taskId, status) => {
   const URL_API = `/v1/api/task/status/${taskId}`;
-  return axios.patch(URL_API, { status });
+  return apiClient.patch(URL_API, { status });
 };
 
 export { createToDoTaskAPI, getTasksAPI, deleteTaskByIDAPI, editTaskByIDAPI, updateTaskStatusAPI };
+

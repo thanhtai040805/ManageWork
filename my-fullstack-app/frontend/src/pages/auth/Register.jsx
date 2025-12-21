@@ -9,8 +9,8 @@ import {
 import React from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { createUserAPI } from "../util/api";
-import { notificationService } from "../services/notificationService";
+import { createUserAPI } from "../../services/auth.service";
+import { notificationService } from "../../services/notificationService";
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -270,3 +270,4 @@ const SignUp = () => {
 };
 
 export default SignUp;
+
