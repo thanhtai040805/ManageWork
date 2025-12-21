@@ -2,19 +2,47 @@ require("dotenv").config();
 const express = require("express");
 const apiRoutes = require("./routes/api");
 const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
 const pool = require("./config/database");
+const errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
 
-//config cors
-app.use(cors());
+// Security middleware
+app.use(helmet());
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+// Logging
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
 
 // Routes
 app.use("/v1/api", apiRoutes);
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 const port = process.env.PORT || 8888;
 
@@ -32,6 +60,7 @@ const port = process.env.PORT || 8888;
 
     app.listen(port, () => {
       console.log(`🚀 Backend running on http://localhost:${port}`);
+      console.log(`📊 Health check: http://localhost:${port}/health`);
     });
   } catch (error) {
     console.error("❌ Error connect to DB:", error);

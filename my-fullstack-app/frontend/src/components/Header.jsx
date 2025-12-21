@@ -1,8 +1,11 @@
 import { BellIcon, Calendar, SearchIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useContext } from "react";
+import { ThemeContext } from "../context/theme.context";
 
 export const Header = () => {
     const date = new Date();
+    const { primaryColor } = useContext(ThemeContext);
 
     const formatted = date.toLocaleDateString("vi-VN"); 
     const weekday = date.toLocaleDateString("en", { weekday: "long" });
@@ -12,17 +15,29 @@ export const Header = () => {
       <div className="container flex items-center justify-between">
         <Link to="/">
           <span className="text-3xl font-bold">
-            Dash<span className="text-primary">Board</span>
+            Dash<span style={{ color: primaryColor }}>Board</span>
           </span>
         </Link>
         <div className="flex w-[60%] items-center shadow-md rounded bg-white">
           <input
             name="search"
-            className="px-3 py-5 w-full rounded focus:outline-none focus:border-primary"
+            className="px-3 py-5 w-full rounded focus:outline-none transition-colors"
+            style={{
+              "--tw-ring-color": primaryColor,
+            }}
             type="text"
             placeholder="Search your task here..."
+            onFocus={(e) => {
+              e.target.style.borderColor = primaryColor;
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = "";
+            }}
           />
-          <div className="p-3 bg-primary rounded text-white">
+          <div 
+            className="p-3 rounded text-white cursor-pointer transition-colors"
+            style={{ backgroundColor: primaryColor }}
+          >
             <SearchIcon size={22} />
           </div>
         </div>

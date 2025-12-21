@@ -2,15 +2,15 @@ const pool = require("../config/database");
 
 class Project {
   static async create(projectData) {
-    const { name, description, ownerId, teamId } = projectData;
+    const { name, description, ownerId } = projectData;
     const query = `
-      INSERT INTO projects (name, description, owner_id, team_id, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, NOW(), NOW())
-      RETURNING project_id, name, description, owner_id, team_id, created_at, updated_at
+      INSERT INTO projects (name, description, owner_id, created_at, updated_at)
+      VALUES ($1, $2, $3, NOW(), NOW())
+      RETURNING project_id, name, description, owner_id, created_at, updated_at
     `;
     
     try {
-      const result = await pool.query(query, [name, description, ownerId, teamId]);
+      const result = await pool.query(query, [name, description, ownerId]);
       return result.rows[0];
     } catch (error) {
       console.error("Error creating project:", error);
@@ -20,12 +20,10 @@ class Project {
 
   static async findById(projectId) {
     const query = `
-      SELECT p.project_id, p.name, p.description, p.owner_id, p.team_id, p.created_at, p.updated_at,
-             u.username as owner_username, u.full_name as owner_name,
-             t.name as team_name
+      SELECT p.project_id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
+             u.username as owner_username, u.full_name as owner_name
       FROM projects p
       LEFT JOIN users u ON p.owner_id = u.user_id
-      LEFT JOIN teams t ON p.team_id = t.team_id
       WHERE p.project_id = $1
     `;
     
@@ -40,12 +38,10 @@ class Project {
 
   static async getAll() {
     const query = `
-      SELECT p.project_id, p.name, p.description, p.owner_id, p.team_id, p.created_at, p.updated_at,
-             u.username as owner_username, u.full_name as owner_name,
-             t.name as team_name
+      SELECT p.project_id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
+             u.username as owner_username, u.full_name as owner_name
       FROM projects p
       LEFT JOIN users u ON p.owner_id = u.user_id
-      LEFT JOIN teams t ON p.team_id = t.team_id
       ORDER BY p.created_at DESC
     `;
     
@@ -60,12 +56,11 @@ class Project {
 
   static async getUserProjects(userId) {
     const query = `
-      SELECT DISTINCT p.project_id, p.name, p.description, p.owner_id, p.team_id, p.created_at, p.updated_at,
+      SELECT DISTINCT p.project_id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
              u.username as owner_username, u.full_name as owner_name,
-             t.name as team_name, pm.role as user_role
+             pm.role as user_role
       FROM projects p
       LEFT JOIN users u ON p.owner_id = u.user_id
-      LEFT JOIN teams t ON p.team_id = t.team_id
       LEFT JOIN project_members pm ON p.project_id = pm.project_id
       WHERE p.owner_id = $1 OR pm.user_id = $1
       ORDER BY p.created_at DESC
@@ -80,36 +75,17 @@ class Project {
     }
   }
 
-  static async getTeamProjects(teamId) {
-    const query = `
-      SELECT p.project_id, p.name, p.description, p.owner_id, p.team_id, p.created_at, p.updated_at,
-             u.username as owner_username, u.full_name as owner_name
-      FROM projects p
-      LEFT JOIN users u ON p.owner_id = u.user_id
-      WHERE p.team_id = $1
-      ORDER BY p.created_at DESC
-    `;
-    
-    try {
-      const result = await pool.query(query, [teamId]);
-      return result.rows;
-    } catch (error) {
-      console.error("Error getting team projects:", error);
-      throw error;
-    }
-  }
-
   static async update(projectId, updateData) {
-    const { name, description, teamId } = updateData;
+    const { name, description } = updateData;
     const query = `
       UPDATE projects 
-      SET name = $1, description = $2, team_id = $3, updated_at = NOW()
-      WHERE project_id = $4
-      RETURNING project_id, name, description, owner_id, team_id, updated_at
+      SET name = $1, description = $2, updated_at = NOW()
+      WHERE project_id = $3
+      RETURNING project_id, name, description, owner_id, updated_at
     `;
     
     try {
-      const result = await pool.query(query, [name, description, teamId, projectId]);
+      const result = await pool.query(query, [name, description, projectId]);
       return result.rows[0];
     } catch (error) {
       console.error("Error updating project:", error);

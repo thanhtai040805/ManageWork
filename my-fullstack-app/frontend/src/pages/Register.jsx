@@ -8,15 +8,18 @@ import {
 } from "lucide-react";
 import React from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createUserAPI } from "../util/api";
 import { notificationService } from "../services/notificationService";
 
 const SignUp = () => {
+  const navigate = useNavigate();
+
   const {
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm({
     mode: "onChange",
@@ -25,6 +28,9 @@ const SignUp = () => {
   const password = watch("password");
 
   const onSubmit = async (data) => {
+    // Show loading notification
+    const loadingToast = notificationService.loading("Đang tạo tài khoản...");
+
     try {
       console.log("Form submitted:", data);
       const { username, email, password, fullName } = data;
@@ -39,12 +45,16 @@ const SignUp = () => {
         "success"
       );
 
-      reset();
+      // Reset form after successful registration
+      navigate("/login");
     } catch (error) {
       console.error("Registration error:", error);
-
-      notificationService.error(
-        error.response?.data?.message || "Có lỗi xảy ra khi tạo tài khoản"
+      reset();
+      // Update loading to error
+      notificationService.updateLoading(
+        loadingToast,
+        error.response?.data?.message || "Có lỗi xảy ra khi tạo tài khoản",
+        "error"
       );
     }
   };
