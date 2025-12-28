@@ -40,9 +40,9 @@ const deleteTaskByIDAPI = (taskId) => {
   return apiClient.post(URL_API);
 }
 
-const editTaskByIDAPI = (taskId, updateData) => {
+const editTaskByIDAPI = (taskId, updateData, applyTo = 'this') => {
   const URL_API = `/v1/api/task/edit/${taskId}`;
-  return apiClient.post(URL_API, { ...updateData });
+  return apiClient.post(URL_API, { ...updateData, applyTo });
 };
 
 const updateTaskStatusAPI = (taskId, status) => {

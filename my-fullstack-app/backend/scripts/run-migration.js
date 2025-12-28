@@ -29,7 +29,7 @@ async function runMigration(migrationFile) {
 async function runMigrations() {
   try {
     // Run migration 002
-    await runMigration("002_add_start_date_to_tasks.sql");
+    await runMigration("002_add_recurring_tasks.sql");
     
     console.log("🎉 All migrations completed successfully!");
   } catch (error) {

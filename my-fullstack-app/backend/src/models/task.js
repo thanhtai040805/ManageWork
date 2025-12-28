@@ -12,6 +12,7 @@ class Task {
       dueDate,
       createdBy,
       assignedTo,
+      recurringTaskId, // ← Thêm field mới
     } = taskData;
 
     const query = `
@@ -25,6 +26,7 @@ class Task {
       order_index,
       created_by,
       assigned_to,
+      recurring_task_id,
       created_at,
       updated_at
     )
@@ -46,11 +48,11 @@ class Task {
         ),
         0
       ),
-      $8, $9, NOW(), NOW()
+      $8, $9, $10, NOW(), NOW()
     )
     RETURNING task_id, project_id, title, description, status, priority, 
               start_date::text as start_date, due_date::text as due_date, 
-              order_index, created_by, assigned_to, 
+              order_index, created_by, assigned_to, recurring_task_id,
               created_at::text as created_at, updated_at::text as updated_at;
   `;
 
@@ -65,6 +67,7 @@ class Task {
         dueDate,
         createdBy,
         assignedTo,
+        recurringTaskId || null, // ← Thêm vào params
       ]);
 
       const task = result.rows[0];
@@ -107,7 +110,7 @@ class Task {
     const query = `
       SELECT t.task_id, t.project_id, t.title, t.description, t.status, t.priority, 
              t.start_date::text as start_date, t.due_date::text as due_date, 
-             t.order_index, t.created_by, t.assigned_to, 
+             t.order_index, t.created_by, t.assigned_to, t.recurring_task_id,
              t.created_at::text as created_at, t.updated_at::text as updated_at,
              u1.username as creator_username, u1.full_name as creator_name,
              u2.username as assignee_username, u2.full_name as assignee_name,
@@ -360,6 +363,43 @@ class Task {
       return result.rows[0];
     } catch (error) {
       console.error("Error getting task stats:", error);
+      throw error;
+    }
+  }
+
+  // Update future tasks' recurring_task_id (for "this and future" logic)
+  static async updateRecurringTaskId(oldRecurringTaskId, newRecurringTaskId, fromDate) {
+    const query = `
+      UPDATE tasks
+      SET recurring_task_id = $1, updated_at = NOW()
+      WHERE recurring_task_id = $2
+        AND due_date >= $3::timestamp
+        AND status != 'done'
+      RETURNING task_id
+    `;
+
+    try {
+      const result = await pool.query(query, [newRecurringTaskId, oldRecurringTaskId, fromDate]);
+      return result.rows.map(row => row.task_id);
+    } catch (error) {
+      console.error("Error updating recurring task id:", error);
+      throw error;
+    }
+  }
+
+  // Delete future tasks for a recurring task (before regenerate)
+  static async deleteFutureTasks(recurringTaskId, fromDate) {
+    const query = `
+      DELETE FROM tasks
+      WHERE recurring_task_id = $1
+        AND due_date >= $2::timestamp
+        AND status != 'done'
+    `;
+
+    try {
+      await pool.query(query, [recurringTaskId, fromDate]);
+    } catch (error) {
+      console.error("Error deleting future tasks:", error);
       throw error;
     }
   }

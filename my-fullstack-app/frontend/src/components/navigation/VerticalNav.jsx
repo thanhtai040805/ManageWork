@@ -41,11 +41,11 @@ export const VerticalNav = () => {
         {/* user info */}
         <div className="mb-8 flex items-center justify-center flex-col">
           <img
-            src={auth.user?.avatarUrl || "/logo192.png"}
+            src={auth.user?.avatarUrl || ""}
             alt="User avatar"
             className="h-12 w-12 rounded-full mb-2 object-cover border-2 border-white/20"
             onError={(e) => {
-              e.target.src = "/logo192.png";
+              e.target.src = "";
             }}
           />
           <span className="text-white text-lg font-medium">

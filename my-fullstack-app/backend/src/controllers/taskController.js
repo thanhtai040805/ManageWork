@@ -5,24 +5,26 @@ const {
   updateTaskByIDService,
   updateTaskStatusService,
   createRecurringTasksService,
+  updateTaskWithRecurringOptionService,
 } = require("../services/taskService");
+const taskModel = require("../models/task");
 
 const createTask = async (req, res) => {
   try {
-    const { 
-      title, 
-      description, 
-      status, 
-      priority, 
-      startDate, 
-      dueDate, 
+    const {
+      title,
+      description,
+      status,
+      priority,
+      startDate,
+      dueDate,
       assignedUserId,
       repeatType = null,
       repeatDays = [],
       repeatUntil = null,
-      projectId = null
+      projectId = null,
     } = req.body;
-    
+
     const tasks = await createRecurringTasksService(
       title,
       description,
@@ -36,22 +38,15 @@ const createTask = async (req, res) => {
       repeatUntil,
       projectId
     );
-    
-    if (tasks.length === 1) {
-      // Nếu chỉ có 1 task, trả về như cũ
-      res.status(201).json(tasks[0]);
-    } else {
-      // Nếu có nhiều tasks, trả về array
-      res.status(201).json({
-        message: `Created ${tasks.length} task(s) successfully`,
-        tasks: tasks,
-        count: tasks.length
-      });
-    }
+
+    res.status(201).json({
+      tasks: tasks,
+      count: tasks.length,
+    });
   } catch (error) {
     console.error("Error creating task:", error);
-    res.status(500).json({ 
-      error: error.message || "Internal Server Error" 
+    res.status(500).json({
+      error: error.message || "Internal Server Error",
     });
   }
 };
@@ -83,12 +78,27 @@ const deleteTaskByID = async (req, res) => {
 const updateTaskByID = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const updateData = req.body;
+    const { applyTo, ...updateData } = req.body; // ← Extract applyTo từ body
+
+    // Check nếu task có recurring_task_id và applyTo được set
+    const currentTask = await taskModel.findById(taskId);
+    
+    if (currentTask?.recurring_task_id && applyTo === 'future') {
+      // Sử dụng logic "this and future"
+      const updatedTask = await updateTaskWithRecurringOptionService(
+        taskId,
+        updateData,
+        'future'
+      );
+      return res.status(200).json(updatedTask);
+    }
+
+    // Mặc định: chỉ update task này (applyTo === 'this' hoặc không có recurring)
     const updatedTask = await updateTaskByIDService(taskId, updateData);
     res.status(200).json(updatedTask);
   } catch (error) {
     console.error("Error updating task by ID:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: error.message || "Internal Server Error" });
   }
 };
 

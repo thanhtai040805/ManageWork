@@ -1,20 +1,23 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useMemo } from "react";
 import { AuthContext } from "../../context/authContext";
-import { createToDoTaskAPI, editTaskByIDAPI } from "../../services/task.service";
+import {
+  createToDoTaskAPI,
+  editTaskByIDAPI,
+} from "../../services/task.service";
 
 // Helper function to convert ISO string to datetime-local format
 const formatDateTimeLocal = (isoString) => {
   if (!isoString) return "";
   const date = new Date(isoString);
   if (Number.isNaN(date.getTime())) return "";
-  
+
   // Format: YYYY-MM-DDTHH:mm (datetime-local format)
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
-  
+
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
@@ -23,22 +26,17 @@ const formatDateTimeLocal = (isoString) => {
 const parseDateTimeLocal = (dateTimeLocal) => {
   if (!dateTimeLocal) return null;
   // datetime-local format: YYYY-MM-DDTHH:mm
-  // Parse manual để đảm bảo interpret như local time (không phải UTC)
-  const [datePart, timePart] = dateTimeLocal.split('T');
+  const [datePart, timePart] = dateTimeLocal.split("T");
   if (!datePart || !timePart) return null;
-  
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hours, minutes] = timePart.split(':').map(Number);
-  
+
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes] = timePart.split(":").map(Number);
+
   // Tạo Date object với local timezone constructor (không dùng UTC)
-  // Constructor: new Date(year, monthIndex, day, hours, minutes)
-  // Điều này đảm bảo giá trị được interpret như local time của user's browser
   const localDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
   if (Number.isNaN(localDate.getTime())) return null;
-  
+
   // toISOString() sẽ convert từ local time sang UTC
-  // Ví dụ: User ở UTC+7 nhập 12:22 → localDate là 12:22 local → ISO là 05:22 UTC
-  // Khi hiển thị lại: Database trả về 05:22 UTC → JavaScript parse → hiển thị 12:22 local
   return localDate.toISOString();
 };
 
@@ -71,12 +69,16 @@ export const AddTask = ({
     description: task?.description || "",
     priority: task?.priority || "medium",
     start_date: task?.start_date ? formatDateTimeLocal(task.start_date) : "",
-    due_date: task?.due_date ? formatDateTimeLocal(task.due_date) : (isEditMode ? "" : getTodayDateTimeLocal()),
+    due_date: task?.due_date
+      ? formatDateTimeLocal(task.due_date)
+      : isEditMode
+      ? ""
+      : getTodayDateTimeLocal(),
     status: task?.status || "todo",
     // Recurrence fields (chỉ weekly)
-    repeat_type: 'none', // 'none', 'weekly', 'custom'
+    repeat_type: "none", // 'none', 'weekly', 'custom'
     repeat_days: [], // [0,1,2,3,4,5,6] for custom (0=Sun, 1=Mon, ..., 6=Sat)
-    repeat_until: '', // date format (YYYY-MM-DD) - ngày kết thúc
+    repeat_until: "", // date format (YYYY-MM-DD) - ngày kết thúc
   });
 
   const handleOnChange = (event) => {
@@ -86,56 +88,50 @@ export const AddTask = ({
         ...prev,
         [name]: value,
       };
-      
+
       // Nếu due_date thay đổi và repeat_until nhỏ hơn due_date mới, reset repeat_until
-      if (name === 'due_date' && value && updated.repeat_until) {
+      if (name === "due_date" && value && updated.repeat_until) {
         const dueDate = new Date(value);
-        const repeatUntil = new Date(updated.repeat_until + 'T23:59:59');
+        const repeatUntil = new Date(updated.repeat_until + "T23:59:59");
         if (repeatUntil < dueDate) {
-          updated.repeat_until = '';
+          updated.repeat_until = "";
         }
       }
-      
+
       return updated;
     });
   };
 
   // Helper để toggle day selection
   const toggleRepeatDay = (day) => {
-    setForm(prev => {
+    setForm((prev) => {
       const days = prev.repeat_days || [];
       const newDays = days.includes(day)
-        ? days.filter(d => d !== day)
+        ? days.filter((d) => d !== day)
         : [...days, day].sort();
       return { ...prev, repeat_days: newDays };
     });
   };
 
   // Helper function để kiểm tra start và due có cùng ngày không
-  const isSameDay = (dateStr1, dateStr2) => {
-    if (!dateStr1 || !dateStr2) return false;
-    const date1 = new Date(dateStr1);
-    const date2 = new Date(dateStr2);
-    return (
-      date1.getDate() === date2.getDate() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getFullYear() === date2.getFullYear()
-    );
+  const isSameDay = (d1, d2) => {
+    if (!d1 || !d2) return false;
+    return d1.split("T")[0] === d2.split("T")[0];
   };
 
   // Helper function để tính số lượng tasks sẽ được tạo
   const calculateTaskCount = () => {
     if (!form.due_date || !form.repeat_until) return 0;
     if (!isSameDay(form.start_date, form.due_date)) return 0; // Chỉ tính nếu cùng ngày
-    
+
     const start = new Date(form.due_date);
-    const end = new Date(form.repeat_until + 'T23:59:59');
+    const end = new Date(form.repeat_until + "T23:59:59");
     if (end < start) return 0;
-    
+
     let count = 0;
     const current = new Date(start);
-    
-    if (form.repeat_type === 'weekly') {
+
+    if (form.repeat_type === "weekly") {
       // Lặp lại vào cùng ngày trong tuần với due_date
       const targetDayOfWeek = start.getDay();
       while (current <= end && count < 100) {
@@ -144,7 +140,7 @@ export const AddTask = ({
         }
         current.setDate(current.getDate() + 1);
       }
-    } else if (form.repeat_type === 'custom') {
+    } else if (form.repeat_type === "custom") {
       const days = form.repeat_days || [];
       if (days.length === 0) return 0;
       while (current <= end && count < 100) {
@@ -154,70 +150,83 @@ export const AddTask = ({
         current.setDate(current.getDate() + 1);
       }
     }
-    
+
     return count;
   };
 
+  const taskCount = useMemo(
+    () => calculateTaskCount(),
+    [
+      form.repeat_type,
+      form.repeat_days,
+      form.due_date,
+      form.repeat_until,
+      form.start_date,
+    ]
+  );
+
   // Helper để get max date (tối đa 12 tuần từ due_date)
   const getMaxRepeatUntilDate = () => {
-    if (!form.due_date) return '';
+    if (!form.due_date) return "";
     const dueDate = new Date(form.due_date);
     const maxDate = new Date(dueDate);
-    maxDate.setDate(maxDate.getDate() + (12 * 7)); // 12 tuần = 84 ngày
-    return maxDate.toISOString().split('T')[0]; // Chỉ lấy date YYYY-MM-DD
+    maxDate.setDate(maxDate.getDate() + 12 * 7); // 12 tuần = 84 ngày
+    return maxDate.toISOString().split("T")[0]; // Chỉ lấy date YYYY-MM-DD
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     // Validation cho recurrence
-    if (form.repeat_type !== 'none' && !isEditMode) {
+    if (form.repeat_type !== "none" && !isEditMode) {
       // Kiểm tra start và due phải cùng ngày
       if (!isSameDay(form.start_date, form.due_date)) {
-        alert('Để sử dụng tính năng lặp lại, Start date và Due date phải trong cùng một ngày');
+        alert(
+          "Để sử dụng tính năng lặp lại, Start date và Due date phải trong cùng một ngày"
+        );
         return;
       }
-      
       if (!form.repeat_until) {
-        alert('Vui lòng chọn ngày kết thúc lặp lại');
+        alert("Vui lòng chọn ngày kết thúc lặp lại");
         return;
       }
-      
-      if (form.repeat_type === 'custom' && form.repeat_days?.length === 0) {
-        alert('Vui lòng chọn ít nhất một ngày trong tuần');
+      if (form.repeat_type === "custom" && form.repeat_days?.length === 0) {
+        alert("Vui lòng chọn ít nhất một ngày trong tuần");
         return;
       }
-      
-      const taskCount = calculateTaskCount();
       if (taskCount === 0) {
-        alert('Không có tasks nào được tạo. Vui lòng kiểm tra lại ngày bắt đầu và kết thúc, đảm bảo Start date và Due date trong cùng một ngày');
+        alert(
+          "Không có tasks nào được tạo. Vui lòng kiểm tra lại ngày bắt đầu và kết thúc, đảm bảo Start date và Due date trong cùng một ngày"
+        );
         return;
       }
       if (taskCount > 100) {
-        alert('Số lượng tasks vượt quá giới hạn (tối đa 100 tasks). Vui lòng chọn khoảng thời gian ngắn hơn');
+        alert(
+          "Số lượng tasks vượt quá giới hạn (tối đa 100 tasks). Vui lòng chọn khoảng thời gian ngắn hơn"
+        );
         return;
       }
-      
       // Validate repeat_until không được quá 12 tuần
       const dueDate = new Date(form.due_date);
-      const repeatUntil = new Date(form.repeat_until + 'T23:59:59');
+      const repeatUntil = new Date(form.repeat_until + "T23:59:59");
       const weeksDiff = (repeatUntil - dueDate) / (1000 * 60 * 60 * 24 * 7);
       if (weeksDiff > 12) {
-        alert('Khoảng thời gian lặp lại không được vượt quá 12 tuần');
+        alert("Khoảng thời gian lặp lại không được vượt quá 12 tuần");
         return;
       }
     }
-
     try {
       // Convert datetime-local to ISO string
-      const startDateISO = form.start_date ? parseDateTimeLocal(form.start_date) : null;
-      const dueDateISO = form.due_date ? parseDateTimeLocal(form.due_date) : null;
-      
-      // repeat_until chỉ cần date, không cần time
-      const repeatUntilISO = form.repeat_until 
-        ? new Date(form.repeat_until + 'T23:59:59').toISOString() 
+      const startDateISO = form.start_date
+        ? parseDateTimeLocal(form.start_date)
         : null;
-
+      const dueDateISO = form.due_date
+        ? parseDateTimeLocal(form.due_date)
+        : null;
+      // repeat_until chỉ cần date, không cần time
+      const repeatUntilISO = form.repeat_until
+        ? new Date(form.repeat_until + "T23:59:59").toISOString()
+        : null;
       let response;
       if (isEditMode) {
         // Edit mode - không hỗ trợ recurrence
@@ -242,8 +251,8 @@ export const AddTask = ({
           startDateISO,
           dueDateISO,
           user.uid,
-          form.repeat_type !== 'none' ? form.repeat_type : null,
-          form.repeat_type !== 'none' ? form.repeat_days : [],
+          form.repeat_type !== "none" ? form.repeat_type : null,
+          form.repeat_type !== "none" ? form.repeat_days : [],
           repeatUntilISO,
           defaultProjectId
         );
@@ -254,32 +263,33 @@ export const AddTask = ({
           start_date: "",
           due_date: "",
           status: "todo",
-          repeat_type: 'none',
+          repeat_type: "none",
           repeat_days: [],
-          repeat_until: '',
+          repeat_until: "",
         });
       }
-      
       // Đóng modal trước, sau đó gọi callback để refresh
       onClose();
-      
       // Gọi callback sau khi đóng modal để refresh tasks list
       if (!isEditMode) {
+        const { tasks } = response;
         // Chờ một chút để modal đóng hoàn toàn trước khi refresh
-        setTimeout(() => {
-          onAddSuccess(response.data);
-        }, 100);
+        console.log("ADD TASK DATA:", response);
+        onAddSuccess(tasks);
       }
     } catch (error) {
       console.error("Error creating task:", error);
-      alert('Có lỗi xảy ra khi tạo tasks: ' + (error.response?.data?.error || error.message));
+      alert(
+        "Có lỗi xảy ra khi tạo tasks: " +
+          (error.response?.data?.error || error.message)
+      );
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-900/40 px-4 py-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-900/40 px-4 py-4 backdrop-blur-sm">
       <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between border-b border-slate-200 px-8 py-6">
+        <div className="flex items-start justify-between border-b border-slate-200 px-8 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
               New task
@@ -298,7 +308,7 @@ export const AddTask = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid gap-6 px-8 py-6">
+        <form onSubmit={handleSubmit} className="grid gap-6 px-8 py-4">
           <div className="grid gap-2">
             <label
               htmlFor="title"
@@ -332,7 +342,7 @@ export const AddTask = ({
               value={form.description}
               placeholder="Add details, action items, or links..."
               rows={4}
-              className="resize-none rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+              className="resize-none h-24 rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
             />
           </div>
 
@@ -398,11 +408,6 @@ export const AddTask = ({
                 value={form.start_date}
                 className="rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
-              {form.repeat_type !== 'none' && !isSameDay(form.start_date, form.due_date) && (
-                <p className="text-xs text-rose-500">
-                  ⚠️ Start date và Due date phải trong cùng một ngày để sử dụng tính năng lặp lại
-                </p>
-              )}
             </div>
 
             <div className="grid gap-2">
@@ -421,6 +426,14 @@ export const AddTask = ({
                 className="rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
+
+            {form.repeat_type !== "none" &&
+              !isSameDay(form.start_date, form.due_date) && (
+                <p className="text-xs text-rose-500">
+                  ⚠️ Start and due dates must be on the same day to use
+                  recurrence
+                </p>
+              )}
           </div>
 
           {/* Recurrence Section - Chỉ hiển thị khi không phải edit mode */}
@@ -431,62 +444,69 @@ export const AddTask = ({
                 <input
                   type="checkbox"
                   id="enable_repeat"
-                  checked={form.repeat_type !== 'none'}
+                  checked={form.repeat_type !== "none"}
                   onChange={(e) => {
-                    setForm(prev => ({
+                    setForm((prev) => ({
                       ...prev,
-                      repeat_type: e.target.checked ? 'weekly' : 'none',
-                      repeat_days: e.target.checked && prev.repeat_type === 'custom' ? prev.repeat_days : [],
-                      repeat_until: e.target.checked ? prev.repeat_until : '',
+                      repeat_type: e.target.checked ? "weekly" : "none",
+                      repeat_days:
+                        e.target.checked && prev.repeat_type === "custom"
+                          ? prev.repeat_days
+                          : [],
+                      repeat_until: e.target.checked ? prev.repeat_until : "",
                     }));
                   }}
                   className="h-4 w-4 accent-indigo-500"
                 />
-                <label htmlFor="enable_repeat" className="text-sm font-medium text-slate-600">
-                  Lặp lại task này
+                <label
+                  htmlFor="enable_repeat"
+                  className="text-sm font-medium text-slate-600"
+                >
+                  Repeat this task
                 </label>
               </div>
 
               {/* Repeat Options */}
-              {form.repeat_type !== 'none' && (
+              {form.repeat_type !== "none" && (
                 <div className="grid gap-4 pl-7 border-l-2 border-indigo-200">
                   {/* Repeat Type Selection */}
                   <div className="grid gap-2">
                     <label className="text-sm font-medium text-slate-600">
-                      Tần suất lặp lại
+                      Repeat frequency
                     </label>
                     <select
                       name="repeat_type"
                       value={form.repeat_type}
                       onChange={(e) => {
-                        setForm(prev => ({
+                        setForm((prev) => ({
                           ...prev,
                           repeat_type: e.target.value,
-                          repeat_days: e.target.value === 'custom' ? prev.repeat_days : [],
+                          repeat_days:
+                            e.target.value === "custom" ? prev.repeat_days : [],
                         }));
                       }}
                       className="rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     >
-                      <option value="weekly">Hàng tuần (cùng ngày trong tuần)</option>
-                      <option value="custom">Tùy chỉnh (chọn ngày trong tuần)</option>
+                      <option value="weekly">Weekly (same weekday)</option>
+                      <option value="custom">Custom (select weekdays)</option>
                     </select>
                   </div>
 
                   {/* Custom Day Selection */}
-                  {form.repeat_type === 'custom' && (
+                  {form.repeat_type === "custom" && (
                     <div className="grid gap-2">
                       <label className="text-sm font-medium text-slate-600">
-                        Chọn các ngày trong tuần
+                        Select weekdays
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {[
-                          { value: 0, label: 'CN' },
-                          { value: 1, label: 'T2' },
-                          { value: 2, label: 'T3' },
-                          { value: 3, label: 'T4' },
-                          { value: 4, label: 'T5' },
-                          { value: 5, label: 'T6' },
-                          { value: 6, label: 'T7' },
+                          { value: 0, label: "Sun" },
+                          { value: 1, label: "Mon" },
+                          { value: 2, label: "Tue" },
+                          { value: 3, label: "Wed" },
+                          { value: 4, label: "Thu" },
+                          { value: 5, label: "Fri" },
+                          { value: 6, label: "Sat" },
                         ].map((day) => (
                           <button
                             key={day.value}
@@ -494,8 +514,8 @@ export const AddTask = ({
                             onClick={() => toggleRepeatDay(day.value)}
                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                               form.repeat_days?.includes(day.value)
-                                ? 'bg-indigo-500 text-white'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                ? "bg-indigo-500 text-white"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
                           >
                             {day.label}
@@ -504,7 +524,7 @@ export const AddTask = ({
                       </div>
                       {form.repeat_days?.length === 0 && (
                         <p className="text-xs text-rose-500">
-                          Vui lòng chọn ít nhất một ngày
+                          Please select at least one weekday
                         </p>
                       )}
                     </div>
@@ -512,8 +532,11 @@ export const AddTask = ({
 
                   {/* Repeat Until Date */}
                   <div className="grid gap-2">
-                    <label htmlFor="repeat_until" className="text-sm font-medium text-slate-600">
-                      Lặp lại đến ngày <span className="text-rose-500">*</span>
+                    <label
+                      htmlFor="repeat_until"
+                      className="text-sm font-medium text-slate-600"
+                    >
+                      Repeat until <span className="text-rose-500">*</span>
                     </label>
                     <input
                       id="repeat_until"
@@ -521,40 +544,58 @@ export const AddTask = ({
                       name="repeat_until"
                       value={form.repeat_until}
                       onChange={handleOnChange}
-                      min={form.due_date ? form.due_date.split('T')[0] : ''}
+                      min={form.due_date ? form.due_date.split("T")[0] : ""}
                       max={getMaxRepeatUntilDate()}
-                      required={form.repeat_type !== 'none'}
+                      required={form.repeat_type !== "none"}
                       className="rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     />
                     <p className="text-xs text-slate-500">
-                      Task sẽ được tạo từ ngày due date đến ngày kết thúc (tối đa 12 tuần, tối đa 100 tasks)
+                      Tasks will be created from the due date until the end date
+                      (maximum 12 weeks, up to 100 tasks)
                     </p>
                     {form.repeat_until && form.due_date && (
                       <p className="text-xs text-slate-400">
-                        Khoảng cách: {Math.ceil((new Date(form.repeat_until + 'T23:59:59') - new Date(form.due_date)) / (1000 * 60 * 60 * 24))} ngày
+                        Duration:{" "}
+                        {Math.ceil(
+                          (new Date(form.repeat_until + "T23:59:59") -
+                            new Date(form.due_date)) /
+                            (1000 * 60 * 60 * 24)
+                        )}{" "}
+                        days
                       </p>
                     )}
                   </div>
 
-                  {/* Preview số lượng tasks sẽ được tạo */}
-                  {form.repeat_type !== 'none' && form.repeat_until && form.due_date && isSameDay(form.start_date, form.due_date) && (
-                    <div className={`p-3 rounded-lg border ${
-                      calculateTaskCount() > 100 
-                        ? 'bg-rose-50 border-rose-200' 
-                        : 'bg-indigo-50 border-indigo-200'
-                    }`}>
-                      <p className={`text-sm font-medium ${
-                        calculateTaskCount() > 100 ? 'text-rose-900' : 'text-indigo-900'
-                      }`}>
-                        Sẽ tạo khoảng {calculateTaskCount()} tasks
-                        {calculateTaskCount() > 100 && (
-                          <span className="block text-xs text-rose-600 mt-1">
-                            ⚠️ Vượt quá giới hạn 100 tasks. Vui lòng chọn khoảng thời gian ngắn hơn.
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  )}
+                  {/* Preview number of tasks */}
+                  {form.repeat_type !== "none" &&
+                    form.repeat_until &&
+                    form.due_date &&
+                    isSameDay(form.start_date, form.due_date) && (
+                      <div
+                        className={`p-3 rounded-lg border ${
+                          calculateTaskCount() > 100
+                            ? "bg-rose-50 border-rose-200"
+                            : "bg-indigo-50 border-indigo-200"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm font-medium ${
+                            calculateTaskCount() > 100
+                              ? "text-rose-900"
+                              : "text-indigo-900"
+                          }`}
+                        >
+                          Approximately {calculateTaskCount()} tasks will be
+                          created
+                          {calculateTaskCount() > 100 && (
+                            <span className="block text-xs text-rose-600 mt-1">
+                              ⚠️ Exceeds the limit of 100 tasks. Please choose a
+                              shorter time range.
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -580,4 +621,3 @@ export const AddTask = ({
     </div>
   );
 };
-

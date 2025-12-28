@@ -88,13 +88,10 @@ export const Home = () => {
       .catch((error) => console.log(error));
   }, []);
 
-  useEffect(() => {
-    console.log(tasks);
-  }, [tasks]);
+const handleTaskAdded = (newTasks) => {
+  setTasks((prev) => [...newTasks, ...prev]);
+};
 
-  const handleTaskAdded = (newTaskData) => {
-    setTasks((prev) => [...prev, newTaskData]);
-  };
 
   // Filter tasks: only show tasks in today that are not done
   const todoTasks = useMemo(

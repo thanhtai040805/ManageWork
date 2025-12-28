@@ -7,6 +7,7 @@ const morgan = require("morgan");
 const pool = require("./config/database");
 const errorHandler = require("./middlewares/errorHandler");
 const { swaggerDocs } = require("./config/swagger");
+const { initCronJobs } = require("./cron");
 
 const app = express();
 
@@ -77,6 +78,8 @@ const port = process.env.PORT || 8888;
         `� Swagger docs available at http://localhost:${port}/api-docs`
       );
       console.log(`📊 Health check: http://localhost:${port}/health`);
+      initCronJobs();
+      console.log("✅ Cron jobs started successfully!");
     });
   } catch (error) {
     console.error("❌ Error connect to DB:", error);
