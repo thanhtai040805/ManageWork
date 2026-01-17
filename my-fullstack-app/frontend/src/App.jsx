@@ -14,6 +14,7 @@ import { Projects } from "./pages/projects/Projects";
 import { ProjectDetail } from "./pages/projects/ProjectDetail";
 import { ProjectSettings } from "./pages/projects/ProjectSettings";
 import { Layout } from "./layouts/Layout";
+import { Chat } from "./pages/chat/Chat";
 
 function App() {
   const { auth, setAuth, appLoading, setAppLoading } = useContext(AuthContext);
@@ -84,9 +85,13 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
-            <Route path="/projects/:projectId/settings" element={<ProjectSettings />} />
+            <Route
+              path="/projects/:projectId/settings"
+              element={<ProjectSettings />}
+            />
             <Route path="/my-task" element={<MyTasks />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/chat" element={<Chat />} />
           </Route>
 
           <Route path="/register" element={<SignUp />} />

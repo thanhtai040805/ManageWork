@@ -5,6 +5,7 @@ import {
   SettingsIcon,
   WorkflowIcon,
   FolderKanban,
+  MessageCircleIcon,
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useContext } from "react";
@@ -18,8 +19,9 @@ export const VerticalNav = () => {
     { href: "/", label: "Home", icon: HomeIcon },
     { href: "/projects", label: "Projects", icon: FolderKanban },
     { href: "/my-task", label: "My Tasks", icon: WorkflowIcon },
-    { href: "/settings", label: "Settings", icon: SettingsIcon },
+    { href: "/chat", label: "DMs", icon: MessageCircleIcon },
     { href: "/help", label: "Help", icon: HelpCircleIcon },
+    { href: "/settings", label: "Settings", icon: SettingsIcon },
   ];
 
   const { auth } = useContext(AuthContext);
@@ -34,49 +36,34 @@ export const VerticalNav = () => {
 
   return (
     <nav
-      className="flex flex-col justify-between w-56 shadow-lg py-6 px-3 h-full transition-colors duration-300"
+      className="group flex flex-col justify-between h-full bg-primary w-16"
       style={{ backgroundColor: primaryColor }}
     >
       <div className="flex-1 flex flex-col">
         {/* user info */}
-        <div className="mb-8 flex items-center justify-center flex-col">
+        <div className="flex flex-col items-center mt-4 mb-6">
           <img
             src={auth.user?.avatarUrl || ""}
-            alt="User avatar"
-            className="h-12 w-12 rounded-full mb-2 object-cover border-2 border-white/20"
-            onError={(e) => {
-              e.target.src = "";
-            }}
+            className="h-10 w-10 rounded-full object-cover border border-white/30"
           />
-          <span className="text-white text-lg font-medium">
-            {auth.user?.fullName || auth.user?.name || "User"}
-          </span>
-          <span className="text-white text-xs opacity-80">
-            {auth.user?.email || ""}
-          </span>
         </div>
 
         {/* menu */}
-        <ul className="flex flex-col gap-2 flex-1 overflow-y-auto">
+        <ul className="block items-center gap-2 flex-1 overflow-y-auto">
           {menu.map(({ href, label, icon: Icon }) => {
             const active = isActive(href);
             return (
               <li key={href}>
                 <NavLink
                   to={href}
-                  className={`group flex text-base items-center px-4 py-3 rounded-lg transition-all duration-200 ${
-                    active
-                      ? "bg-white shadow-sm"
-                      : "text-white hover:bg-white/10 hover:text-white"
-                  }`}
-                  style={{ color: active ? primaryColor : "white" }}
+                  className={`flex flex-col items-center justify-center py-3 rounded-lg
+                        ${active ? "bg-white/20" : "hover:bg-white/10"}`}
                 >
-                  <Icon
-                    size={20}
-                    className="mr-3"
-                    style={{ color: active ? primaryColor : "white" }}
-                  />
-                  <span>{label}</span>
+                  <Icon size={20} className="text-white mb-1" />
+
+                  <span className="text-white text-[11px] leading-tight whitespace-nowrap">
+                    {label}
+                  </span>
                 </NavLink>
               </li>
             );
@@ -85,19 +72,21 @@ export const VerticalNav = () => {
       </div>
 
       {/* logout luôn nằm cuối */}
-      <div className="group flex text-base items-center px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 cursor-pointer border-t border-white/10 pt-4">
-        <LogOutIcon size={20} stroke="currentColor" className="mr-3" />
-        <span
-          onClick={() => {
-            // Clear all user-related data from localStorage
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("user");
-            localStorage.removeItem("theme_color"); // Clear theme color when logout
-            navigate("/login");
-          }}
-        >
-          Logout
-        </span>
+      <div
+        onClick={() => {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          localStorage.removeItem("theme_color");
+          navigate("/login");
+        }}
+        className="
+    flex flex-col items-center justify-center
+    py-4 cursor-pointer
+    text-white hover:bg-white/10
+  "
+      >
+        <LogOutIcon size={20} />
+        <span className="text-[11px] mt-1">Logout</span>
       </div>
     </nav>
   );

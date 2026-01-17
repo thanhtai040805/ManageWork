@@ -18,7 +18,9 @@ const {
   removeProjectMember,
   getProjectStats,
 } = require("../controllers/projectController");
+const { getMessages } = require("../controllers/messageController");
 const auth = require("../middlewares/auth");
+const socketAuth = require("../middlewares/socketAuth");
 
 const router = express.Router();
 
@@ -237,6 +239,17 @@ router.delete("/projects/:projectId/members/:userId", (req, res) => {
  */
 router.get("/projects/:projectId/stats", (req, res) => {
   getProjectStats(req, res);
+});
+
+/**
+ * @openapi
+ * /chat/{chatroomId}:
+ *   get:
+ *     tags: [Chat]
+ *     summary: Get chat messages
+ */
+router.get("/chat/:chatroomId", (req, res) => {
+  getMessages(req, res);
 });
 
 module.exports = router;

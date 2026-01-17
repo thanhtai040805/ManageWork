@@ -28,9 +28,9 @@ async function runMigration(migrationFile) {
 
 async function runMigrations() {
   try {
-    // Run migration 002
-    await runMigration("002_add_recurring_tasks.sql");
-    
+    // Run migration 003
+    await runMigration("003_chat_feature.sql");
+
     console.log("🎉 All migrations completed successfully!");
   } catch (error) {
     console.error("❌ Migration process failed:", error);
