@@ -1,6 +1,8 @@
 require("dotenv").config();
 const express = require("express");
-const apiRoutes = require("./routes/api");
+const http = require("http");
+const { Server } = require("socket.io");
+const rootRouter = require("./routes/index");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
@@ -10,6 +12,23 @@ const { swaggerDocs } = require("./config/swagger");
 const { initCronJobs } = require("./cron");
 
 const app = express();
+const server = http.createServer(app);
+
+// ===== SOCKET.IO INIT =====
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    credentials: true,
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("🟢 Socket connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("🔴 Socket disconnected:", socket.id);
+  });
+});
 
 // Security middleware
 app.use(helmet());
@@ -21,7 +40,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 // Logging
@@ -53,7 +72,7 @@ app.get("/health", (req, res) => {
 swaggerDocs(app);
 
 // Routes
-app.use("/v1/api", apiRoutes);
+app.use("/v1/api", rootRouter);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
@@ -72,12 +91,11 @@ const port = process.env.PORT || 8888;
 
     client.release(); // trả connection về pool
 
-    app.listen(port, () => {
-      console.log(`🚀 Backend running on http://localhost:${port}`);
+    server.listen(port, () => {
       console.log(
-        `� Swagger docs available at http://localhost:${port}/api-docs`
+        `� Swagger docs available at http://localhost:${port}/api-docs`,
       );
-      console.log(`📊 Health check: http://localhost:${port}/health`);
+      console.log(`🚀 Backend + Socket.IO running on http://localhost:${port}`);
       initCronJobs();
       console.log("✅ Cron jobs started successfully!");
     });
@@ -87,4 +105,4 @@ const port = process.env.PORT || 8888;
   }
 })();
 
-module.exports = app;
+module.exports = { app, io };

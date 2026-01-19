@@ -1,7 +1,7 @@
 const { Server } = require('socket.io');
 const { createAdapter } = require("@socket.io/redis-adapter");
 const { pub , sub} = require('../redis/redis');
-const registerSocketEvents = require('./socketEvent')
+const registerSocketEvents = require("./socketEvents");
 const socketAuth = require('../middlewares/socketAuth')
 
 const initSocket = (server) => {

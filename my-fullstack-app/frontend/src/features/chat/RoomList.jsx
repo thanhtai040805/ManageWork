@@ -1,5 +1,5 @@
 import React from 'react'
-export const ChatNav = () => {
+export const RoomList = () => {
     return (
         <div>
             

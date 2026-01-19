@@ -15,6 +15,8 @@ import { ProjectDetail } from "./pages/projects/ProjectDetail";
 import { ProjectSettings } from "./pages/projects/ProjectSettings";
 import { Layout } from "./layouts/Layout";
 import { Chat } from "./pages/chat/Chat";
+import useSocket from "./hooks/useSocket";
+import useSocketEvents from "./hooks/useSocketEvents";
 
 function App() {
   const { auth, setAuth, appLoading, setAppLoading } = useContext(AuthContext);
@@ -76,6 +78,9 @@ function App() {
       localStorage.setItem("theme_color", auth.user.themeColor);
     }
   }, [auth.user.themeColor, auth.isAuthenticated, setPrimaryColor]);
+
+  useSocket();
+  useSocketEvents();
 
   return (
     <BrowserRouter>

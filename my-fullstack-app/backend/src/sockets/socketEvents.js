@@ -6,7 +6,7 @@ const {
   editMessage,
   deleteMessage,
   openRoom,
-} = require("../sockets/socketService");
+} = require("./socketService");
 
 const { redis } = require("../redis/redis");
 
