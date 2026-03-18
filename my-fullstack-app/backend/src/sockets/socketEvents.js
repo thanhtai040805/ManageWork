@@ -35,6 +35,8 @@ module.exports = (io, socket) => {
 
   socket.on("typing", (d) => typing(io, socket, d));
   socket.on("message:send", async (data, ack) => {
+    console.log("STEP 1");
+    console.log("data: ", data);
     try {
       const message = await sendMessage(io, socket, data);
       ack({ ok: true, message });

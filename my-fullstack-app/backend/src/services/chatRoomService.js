@@ -1,41 +1,43 @@
-const chatRoomModel =  require("../models/chatRoom");
+const chatRoomModel = require("../models/chatRoom");
 const chatRoomMemberModel = require("../models/chatRoomMember");
 
-const createChatRoom = async ({name , isGroup, createdBy, members = []}) => {
-    const chatRoom = await chatRoomModel.create({name , isGroup, createdBy});
-
-    // Add the creator as a admin of the chat room
-    await chatRoomMemberModel.addMember(chatRoom.roomId, createdBy, 'admin');
-    
-    // Add other members
-    for (const memberId of members) {
-        if ( memberId === createdBy) continue;
-        await chatRoomMemberModel.addMember(
-            chatRoom.roomId,
-            memberId
-        )
-    }
-    return chatRoom;
-}
+const createChatRoom = async ({ name, isGroup, createdBy, members = [] }) => {
+  const chatRoom = await chatRoomModel.create({ name, isGroup, createdBy });
+  console.log("Created Chat Room:", chatRoom);
+  // Add the creator as a admin of the chat room
+  await chatRoomMemberModel.addMember(chatRoom.room_id, createdBy, "admin");
+  // Add other members
+  for (const memberId of members) {
+    if (memberId === createdBy) continue;
+    await chatRoomMemberModel.addMember(chatRoom.room_id, memberId, "member");
+  }
+  return chatRoom;
+};
 
 const getChatRoomsByUser = async (userId) => {
-    const chatRooms = await chatRoomModel.getRoomsByUser(userId);
-    return chatRooms;
-}
+  const chatRooms = await chatRoomModel.getRoomsByUser(userId);
+  return chatRooms;
+};
 
 const getChatRoomById = async (roomId) => {
-    const chatRoom = await chatRoomModel.getRoomById(roomId);
-    return chatRoom;
-}
+  const chatRoom = await chatRoomModel.getRoomById(roomId);
+  return chatRoom;
+};
 
 const getLastMessageId = async (roomId) => {
-    const lastMessageId = await chatRoomModel.getLastMessageId(roomId);
-    return lastMessageId;
-}
+  const lastMessageId = await chatRoomModel.getLastMessageId(roomId);
+  return lastMessageId;
+};
+
+const searchChatRoomsAndUsers = async (keyword, userId) => {
+  const results = await chatRoomModel.searchChatRoomsAndUsers(keyword, userId);
+  return results;
+};
 
 module.exports = {
   createChatRoom,
   getChatRoomsByUser,
   getChatRoomById,
   getLastMessageId,
+  searchChatRoomsAndUsers,
 };

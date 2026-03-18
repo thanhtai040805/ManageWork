@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const http = require("http");
-const { Server } = require("socket.io");
+const initSocket = require("./sockets/socket");
 const rootRouter = require("./routes/index");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -15,20 +15,7 @@ const app = express();
 const server = http.createServer(app);
 
 // ===== SOCKET.IO INIT =====
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-    credentials: true,
-  },
-});
-
-io.on("connection", (socket) => {
-  console.log("🟢 Socket connected:", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("🔴 Socket disconnected:", socket.id);
-  });
-});
+const io = initSocket(server);
 
 // Security middleware
 app.use(helmet());

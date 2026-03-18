@@ -1,19 +1,21 @@
 import { useEffect } from "react";
 import socket from "../socket/socket";
-import { useChatStore } from "../store/chatStore";
+import { useMessageStore } from "../stores/chat/messageStore";
 
 const useSocketEvents = () => {
   useEffect(() => {
+    const store = useMessageStore.getState();
+
     const onNewMessage = ({ roomId, message }) => {
-      useChatStore.getState().addMessage(roomId, message);
+      store.addMessage(roomId, message);
     };
 
     const onUpdateMessage = ({ roomId, newMessage }) => {
-      useChatStore.getState().editMessage(roomId, newMessage);
+      store.editMessage(roomId, newMessage);
     };
 
     const onDeleteMessage = ({ roomId, messageId }) => {
-      useChatStore.getState().removeMessage(roomId, messageId);
+      store.removeMessage(roomId, messageId);
     };
 
     socket.on("message:new", onNewMessage);

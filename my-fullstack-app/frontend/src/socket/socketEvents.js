@@ -1,43 +1,74 @@
 // socket/socketEvents.js
 import socket from "./socket";
 
-export const registerSocketEvents = ({
-  onNewMessage,
-  onEditMessage,
-  onDeleteMessage,
-  onTyping,
-  onUserOnline,
-  onUserOffline,
-}) => {
-  // clear cũ để tránh bị nhân event
-  socket.off("message:new");
-  socket.off("message:update");
-  socket.off("message:delete");
-  socket.off("room:typing");
-  socket.off("user:online");
-  socket.off("user:offline");
+/**
+ * Debug log toggle
+ */
+const DEBUG = false;
+const log = (...args) => DEBUG && console.log("[socketEvents]", ...args);
 
-  socket.on("message:new", (message) => {
-    onNewMessage?.(message);
+/**
+ * Register socket listeners
+ * @param handlers object callback handlers
+ * @returns cleanup function
+ */
+export const registerSocketEvents = (handlers = {}) => {
+  if (!socket) {
+    console.warn("Socket not initialized");
+    return () => {};
+  }
+
+  const {
+    onNewMessage,
+    onEditMessage,
+    onDeleteMessage,
+    onTyping,
+    onUserOnline,
+    onUserOffline,
+    onConnect,
+    onDisconnect,
+  } = handlers;
+
+  /**
+   * normalize wrapper
+   * đảm bảo handler tồn tại mới gọi
+   */
+  const wrap = (name, fn) => (payload) => {
+    log(name, payload);
+    fn?.(payload);
+  };
+
+  /**
+   * listeners map
+   */
+  const listeners = {
+    "message:new": wrap("message:new", onNewMessage),
+    "message:update": wrap("message:update", onEditMessage),
+    "message:delete": wrap("message:delete", onDeleteMessage),
+    "room:typing": wrap("room:typing", onTyping),
+    "user:online": wrap("user:online", onUserOnline),
+    "user:offline": wrap("user:offline", onUserOffline),
+    connect: wrap("connect", onConnect),
+    disconnect: wrap("disconnect", onDisconnect),
+  };
+
+  /**
+   * register listeners
+   */
+  Object.entries(listeners).forEach(([event, handler]) => {
+    socket.on(event, handler);
   });
 
-  socket.on("message:update", (message) => {
-    onEditMessage?.(message);
-  });
+  log("registered events");
 
-  socket.on("message:delete", ({ messageId }) => {
-    onDeleteMessage?.(messageId);
-  });
+  /**
+   * cleanup function
+   */
+  return () => {
+    Object.entries(listeners).forEach(([event, handler]) => {
+      socket.off(event, handler);
+    });
 
-  socket.on("room:typing", ({ userId }) => {
-    onTyping?.(userId);
-  });
-
-  socket.on("user:online", (userId) => {
-    onUserOnline?.(userId);
-  });
-
-  socket.on("user:offline", (userId) => {
-    onUserOffline?.(userId);
-  });
+    log("cleaned events");
+  };
 };

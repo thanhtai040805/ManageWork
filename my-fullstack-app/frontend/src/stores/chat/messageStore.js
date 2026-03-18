@@ -1,22 +1,20 @@
 import { create } from "zustand";
 
-export const useChatStore = create((set) => ({
-  connected: false,
-  currentRoomId: null,
-
+export const useMessageStore = create((set) => ({
   messagesByRoom: {},
-  typingUsers: {},
+  loadingByRoom: {},
 
-  setConnected: (status) => set({ connected: status }),
-  setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),
+  setLoading: (roomId, value) =>
+    set((s) => ({
+      loadingByRoom: { ...s.loadingByRoom, [roomId]: value },
+    })),
 
   addMessage: (roomId, message) =>
     set((state) => {
       const prev = state.messagesByRoom[roomId] || [];
 
-      if (prev.some((m) => m.message_id === message.message_id)) {
-        return state; // ignore duplicate
-      }
+      if (prev.some((m) => m.message_id === message.message_id)) return state;
+
       return {
         messagesByRoom: {
           ...state.messagesByRoom,
@@ -36,9 +34,8 @@ export const useChatStore = create((set) => ({
   prependMessages: (roomId, messages) =>
     set((state) => {
       const prev = state.messagesByRoom[roomId] || [];
-
-      const existingIds = new Set(prev.map((m) => m.message_id));
-      const filtered = messages.filter((m) => !existingIds.has(m.message_id));
+      const existing = new Set(prev.map((m) => m.message_id));
+      const filtered = messages.filter((m) => !existing.has(m.message_id));
 
       return {
         messagesByRoom: {
@@ -67,19 +64,6 @@ export const useChatStore = create((set) => ({
         ),
       },
     })),
-
-  setTyping: (roomId, userId, isTyping) =>
-    set((state) => {
-      const users = new Set(state.typingUsers[roomId] || []);
-      isTyping ? users.add(userId) : users.delete(userId);
-
-      return {
-        typingUsers: {
-          ...state.typingUsers,
-          [roomId]: Array.from(users),
-        },
-      };
-    }),
 
   clearRoom: (roomId) =>
     set((state) => {
