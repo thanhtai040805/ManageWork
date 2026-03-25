@@ -9,10 +9,10 @@ const chatRoomRoutes = require("./chatRoomRoutes");
 const messageRoutes = require("./messageRouters");
 
 
-router.use("/messages", auth, messageRoutes);
-router.use("/chat-rooms", auth, chatRoomRoutes);
-router.use("/tasks", auth, taskRoutes);
-router.use("/projects", auth, projectRoutes);
+router.use("/message", auth, messageRoutes);
+router.use("/chat-room", auth, chatRoomRoutes);
+router.use("/task", auth, taskRoutes);
+router.use("/project", auth, projectRoutes);
 
 
 router.use("/", userRoutes);

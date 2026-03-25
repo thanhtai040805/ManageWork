@@ -17,6 +17,7 @@ const getMembersOfChatRoom = async(roomId) => {
 
 const isMemberOfChatRoom = async ({roomId, userId}) => {
     const isMember = await chatRoomMemberModel.isMember(roomId, userId);
+    console.log(`Checked membership for user ${userId} in room ${roomId}:`, isMember);
     return isMember;
 }
 

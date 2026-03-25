@@ -8,7 +8,7 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
   user: process.env.DB_USER || "postgres",
   password: process.env.DB_PASSWORD || "your_password_here",
-  database: process.env.DB_NAME || "ManageWork",
+  database: process.env.DB_NAME || "managework",
 });
 
 async function setupDatabase() {
@@ -16,7 +16,10 @@ async function setupDatabase() {
     console.log("🚀 Starting database setup...");
 
     // Read migration file
-    const migrationPath = path.join(__dirname, "../src/migrations/001_create_users_table.sql");
+    const migrationPath = path.join(
+      __dirname,
+      "../src/migrations/001_init_schema.sql"
+    );
     const migrationSQL = fs.readFileSync(migrationPath, "utf8");
 
     // Execute migration
@@ -28,7 +31,19 @@ async function setupDatabase() {
     console.log(`📊 Users table created with ${result.rows[0].count} records`);
     
     // Test other tables
-    const tables = ['teams', 'projects', 'tasks', 'tags', 'comments', 'chat_rooms', 'messages', 'files', 'events', 'notifications', 'activity_logs'];
+    const tables = [
+      'team_members',
+      'projects',
+      'tasks',
+      'tags',
+      'comments',
+      'chat_rooms',
+      'messages',
+      'files',
+      'events',
+      'notifications',
+      'activity_logs'
+    ];
     for (const table of tables) {
       try {
         await pool.query(`SELECT COUNT(*) FROM ${table}`);

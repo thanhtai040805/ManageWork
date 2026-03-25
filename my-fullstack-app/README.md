@@ -2,6 +2,51 @@
 
 A modern full-stack application built with React frontend and Node.js backend, featuring user authentication, form validation, and a beautiful UI.
 
+## ⚙️ Environments (Dockerized)
+
+### 1) DEV LOCAL (Backend local + Docker Redis + Docker Postgres)
+
+Setup:
+1. Start infra (Redis + Postgres) in Docker:
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+2. Backend env:
+```bash
+cd backend
+cp env.development.example .env
+```
+3. Run backend locally with hot reload:
+```bash
+npm run dev
+```
+
+Defaults used:
+- REDIS_ENABLED=true, REDIS_HOST=127.0.0.1, REDIS_PORT=6379
+- DB_HOST=127.0.0.1, DB_PORT=5432, DB_USER=postgres, DB_PASSWORD=postgres, DB_NAME=managework
+
+### 2) PRODUCTION (Full Docker: FE + BE + DB + Redis)
+
+Setup:
+1. Backend env:
+```bash
+cd backend
+cp env.production.example .env
+```
+2. (Optional) Frontend API URL at build time:
+   - By default compose uses `http://localhost:8888`
+   - To change: pass `--build-arg VITE_API_URL=https://your-backend-domain` to the frontend build in compose
+3. Start full stack:
+```bash
+docker compose up -d --build
+```
+
+Services:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8888
+- Postgres: localhost:5432 (exposed for convenience)
+- Redis: localhost:6379 (exposed for convenience)
+
 ## 🚀 Features
 
 - **Frontend**: React 18, React Router, Tailwind CSS, Zustand state management
@@ -49,7 +94,7 @@ npm install
 ```bash
 # Copy the example environment file
 cd backend
-cp env.example .env
+cp env.example .env  # or use the docker-specific examples above
 ```
 
 Edit `.env` file with your database credentials:
@@ -59,7 +104,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_password_here
-DB_NAME=ManageWork
+DB_NAME=managework
 
 # Server Configuration
 PORT=8888
@@ -208,7 +253,7 @@ curl -X POST http://localhost:8888/v1/api/auth/register \
 | `DB_PORT` | PostgreSQL port | 5432 |
 | `DB_USER` | Database username | postgres |
 | `DB_PASSWORD` | Database password | - |
-| `DB_NAME` | Database name | ManageWork |
+| `DB_NAME` | Database name | managework |
 | `PORT` | Server port | 8888 |
 | `JWT_SECRET` | JWT secret key | - |
 | `CORS_ORIGIN` | CORS allowed origin | http://localhost:3000 |

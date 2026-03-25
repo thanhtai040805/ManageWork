@@ -3,6 +3,8 @@ const { createAdapter } = require("@socket.io/redis-adapter");
 const registerSocketEvents = require("./socketEvents");
 const socketAuth = require("../middlewares/socketAuth");
 
+const { pub, sub } = require("../redis/redis");
+
 const initSocket = (server) => {
   const io = new Server(server, {
     cors: { origin: "*" },
@@ -10,9 +12,8 @@ const initSocket = (server) => {
 
   io.use(socketAuth);
 
-  if (process.env.REDIS_ENABLED === "true") {
-    const { createRedisClients } = require("../redis/redis");
-    const { pub, sub } = createRedisClients();
+  // ✅ chỉ dùng adapter nếu Redis bật
+  if (process.env.REDIS_ENABLED === "true" && pub && sub) {
     io.adapter(createAdapter(pub, sub));
   }
 
@@ -25,7 +26,6 @@ const initSocket = (server) => {
       return;
     }
 
-    // chống register nhiều lần
     if (socket._registered) return;
     socket._registered = true;
 

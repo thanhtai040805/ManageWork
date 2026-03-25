@@ -13,7 +13,7 @@ const createToDoTaskAPI = (
   repeatUntil = null,
   projectId = null
 ) => {
-  const URL_API = "/v1/api/createTask";
+  const URL_API = "/v1/api/task/create";
   const data = {
     title,
     description,
@@ -31,7 +31,7 @@ const createToDoTaskAPI = (
 };
 
 const getTasksAPI = () => {
-  const URL_API = "/v1/api/tasks";
+  const URL_API = "/v1/api/task";
   return apiClient.get(URL_API);
 }
 

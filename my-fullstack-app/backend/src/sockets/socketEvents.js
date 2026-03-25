@@ -1,4 +1,4 @@
-const chatRoomService = require('../services/chatRoomService')
+const chatRoomService = require('../services/chatRoomService');
 const {
   sendMessage,
   typing,
@@ -11,34 +11,38 @@ const {
 const { redis } = require("../redis/redis");
 
 module.exports = (io, socket) => {
-
   const userId = socket.user.uid;
 
   (async () => {
     try {
-      await redis.sadd(`user:${userId}:sockets`, socket.id)
+      if (!redis) return;
 
-      const socketCount = await redis.scard(`user:${userId}:sockets`)
-      if(socketCount === 1){
-        await redis.sadd("online_users",userId);
+      await redis.sadd(`user:${userId}:sockets`, socket.id);
+
+      const socketCount = await redis.scard(`user:${userId}:sockets`);
+
+      if (socketCount === 1) {
+        await redis.sadd("online_users", userId);
         socket.broadcast.emit("user:online", userId);
       }
 
       const rooms = await chatRoomService.getChatRoomsByUser(userId);
-      rooms.forEach( room => {
+
+      rooms.forEach((room) => {
         socket.join(room.roomId);
-      })
+      });
+
     } catch (error) {
-      console.log("Socket init error:", error)
+      console.log("Socket init error:", error);
     }
   })();
 
   socket.on("typing", (d) => typing(io, socket, d));
+
   socket.on("message:send", async (data, ack) => {
-    console.log("STEP 1");
-    console.log("data: ", data);
     try {
       const message = await sendMessage(io, socket, data);
+      console.log("Message sent:", data);
       ack({ ok: true, message });
     } catch (err) {
       ack({ ok: false, error: err.message });
@@ -51,11 +55,20 @@ module.exports = (io, socket) => {
   socket.on("room:open", (payload) => openRoom(io, socket, payload));
 
   socket.on("disconnect", async () => {
-    await redis.srem(`user:${userId}:sockets`, socket.id);
-    const remain = await redis.scard(`user:${userId}:sockets`)
-    if(remain === 0) {
-      await redis.srem("online_users", userId);
-      socket.broadcast.emit("user:offline", userId);
+    try {
+      if (!redis) return;
+
+      await redis.srem(`user:${userId}:sockets`, socket.id);
+
+      const remain = await redis.scard(`user:${userId}:sockets`);
+
+      if (remain === 0) {
+        await redis.srem("online_users", userId);
+        socket.broadcast.emit("user:offline", userId);
+      }
+
+    } catch (err) {
+      console.error("Disconnect error:", err);
     }
   });
 };

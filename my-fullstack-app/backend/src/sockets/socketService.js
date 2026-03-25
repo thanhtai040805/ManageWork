@@ -5,16 +5,16 @@ const { redis} = require('../redis/redis')
 
 const sendMessage = async (io, socket, data) => {
     const { roomId,  content} = data;
-
-    const isMember = await chatRoomMemberService.isMember(
+    console.log("sendMessage called with data:", socket.user.uid);
+    const isMember = await chatRoomMemberService.isMemberOfChatRoom({
         roomId,
-        socket.user.uid
-    );
+        userId: socket.user.uid
+    });
     if (!isMember) return;
-
+    console.log("User is member of the room, sending message...");
     const senderId = socket.user.uid
     if(!roomId || !content) return;
-
+    console.log("Sending message to room:", roomId, "Content:", content);
     try {
         const message = await messageService.sendMessage({
           roomId,
@@ -33,25 +33,27 @@ const sendMessage = async (io, socket, data) => {
     }
 }
 
-const typing = async (io , socket , { roomId }) => {
-    const userId = socket.user.uid;
-    if(!roomId) return;
+const typing = async (io, socket, { roomId }) => {
+  if (!redis) return;
 
-    const isMember = await chatRoomMemberService.isMember(roomId, userId);
-    if (!isMember) return;
+  const userId = socket.user.uid;
+  if (!roomId) return;
 
-    const key = `typing_${roomId}:${userId}`;
+  const isMember = await chatRoomMemberService.isMemberOfChatRoom({roomId, userId});
+  if (!isMember) return;
 
-    const exists = await redis.exists(key);
-    if (exists) return;
+  const key = `typing_${roomId}:${userId}`;
 
-    await redis.set(key, 1 ,"EX", 2);
+  const exists = await redis.exists(key);
+  if (exists) return;
 
-    socket.to(roomId).emit("room:typing", {
-      roomId,
-      userId,
-    });
-}
+  await redis.set(key, 1, "EX", 2);
+
+  socket.to(roomId).emit("room:typing", {
+    roomId,
+    userId,
+  });
+};
 
 const getMessages = async (io, socket, payload) => {
     const {
@@ -61,10 +63,10 @@ const getMessages = async (io, socket, payload) => {
         cursorMessageId,
     } = payload;
 
-    const isMember = await chatRoomMemberService.isMember(
+    const isMember = await chatRoomMemberService.isMemberOfChatRoom({
         roomId,
-        socket.user.uid
-    );
+        userId: socket.user.uid
+    });
     if (!isMember) return;
 
     try {
@@ -99,10 +101,10 @@ const editMessage = async (io , socket, payload) => {
     const userId = socket.user.uid;
     const { messageId, newContent, roomId } = payload;
 
-    const isMember = await chatRoomMemberService.isMember(
+    const isMember = await chatRoomMemberService.isMemberOfChatRoom({
         roomId,
-        socket.user.uid
-    );
+        userId: socket.user.uid
+    });
     if (!isMember) return;
 
     try {
@@ -123,10 +125,10 @@ const editMessage = async (io , socket, payload) => {
 const deleteMessage = async (io, socket, payload) => {
     const { messageId,  roomId } = payload;
 
-    const isMember = await chatRoomMemberService.isMember(
+    const isMember = await chatRoomMemberService.isMemberOfChatRoom({
         roomId,
-        socket.user.uid
-    );
+        userId: socket.user.uid
+    });
     if (!isMember) return;
 
     try {
@@ -144,15 +146,19 @@ const deleteMessage = async (io, socket, payload) => {
 const openRoom = async (io, socket, payload) => {
     const { roomId } = payload;
 
-    const isMember = await chatRoomMemberService.isMember(
-      roomId,
-      socket.user.uid
-    );
+    const isMember = await chatRoomMemberService.isMemberOfChatRoom({
+        roomId,
+        userId: socket.user.uid
+    });
     if (!isMember) return;
 
     const lastMessageId = await chatRoomService.getLastMessageId(roomId);
 
-    await chatRoomMemberService.markMessagesAsRead(roomId ,socket.user.uid ,lastMessageId);
+    await chatRoomMemberService.markMessagesAsRead({
+        roomId,
+        userId: socket.user.uid,
+        messagesId: lastMessageId
+    });
 
     socket.to(roomId).emit("room:read", {
       roomId,

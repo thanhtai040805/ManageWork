@@ -1,6 +1,6 @@
 import apiClient from "./apiClient";
 
-const BASE_URL = "/v1/api/chat-rooms";
+const BASE_URL = "/v1/api/chat-room";
 
 export const getMyChatRoomsAPI = () => apiClient.get(`${BASE_URL}/my-rooms`);
 

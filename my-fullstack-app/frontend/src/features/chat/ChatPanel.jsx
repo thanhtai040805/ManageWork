@@ -45,7 +45,7 @@ export const ChatPanel = () => {
       </div>
 
       {/* Messages */}
-      <MessageList messages={selectedRoom.messages || []} />
+      <MessageList roomId={selectedRoom.room_id} />
 
       {/* Typing */}
       <TypingIndicator />
