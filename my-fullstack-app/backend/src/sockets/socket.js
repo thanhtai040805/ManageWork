@@ -2,15 +2,21 @@ const { Server } = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
 const registerSocketEvents = require("./socketEvents");
 const socketAuth = require("../middlewares/socketAuth");
-
 const { pub, sub } = require("../redis/redis");
+const initRealtimeSubscriber = require("./presenceSubscriber");
+
 
 const initSocket = (server) => {
   const io = new Server(server, {
+    pingInterval: 5000,
+    pingTimeout: 5000,
     cors: { origin: "*" },
   });
 
   io.use(socketAuth);
+
+  initRealtimeSubscriber(io);
+
 
   // ✅ chỉ dùng adapter nếu Redis bật
   if (process.env.REDIS_ENABLED === "true" && pub && sub) {
@@ -25,6 +31,8 @@ const initSocket = (server) => {
       socket.disconnect();
       return;
     }
+
+    socket.join(`user:${socket.user.uid}`);
 
     if (socket._registered) return;
     socket._registered = true;

@@ -11,10 +11,8 @@ const sendMessage = async (io, socket, data) => {
         userId: socket.user.uid
     });
     if (!isMember) return;
-    console.log("User is member of the room, sending message...");
     const senderId = socket.user.uid
     if(!roomId || !content) return;
-    console.log("Sending message to room:", roomId, "Content:", content);
     try {
         const message = await messageService.sendMessage({
           roomId,
@@ -23,7 +21,7 @@ const sendMessage = async (io, socket, data) => {
           messageType: "text",
           attachments: [],
         });
-        io.to(roomId).emit("message:new", message);
+        io.to(roomId).emit("message:new", { roomId, message });
         return message
     } catch (error) {
         socket.emit("message:error", {
@@ -39,7 +37,10 @@ const typing = async (io, socket, { roomId }) => {
   const userId = socket.user.uid;
   if (!roomId) return;
 
-  const isMember = await chatRoomMemberService.isMemberOfChatRoom({roomId, userId});
+  const isMember = await chatRoomMemberService.isMemberOfChatRoom({
+    roomId,
+    userId,
+  });
   if (!isMember) return;
 
   const key = `typing_${roomId}:${userId}`;
@@ -49,10 +50,14 @@ const typing = async (io, socket, { roomId }) => {
 
   await redis.set(key, 1, "EX", 2);
 
-  socket.to(roomId).emit("room:typing", {
-    roomId,
-    userId,
-  });
+  // 🔥 publish thay vì emit
+  await pub.publish(
+    "typing",
+    JSON.stringify({
+      roomId,
+      userId,
+    })
+  );
 };
 
 const getMessages = async (io, socket, payload) => {

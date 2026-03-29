@@ -5,17 +5,21 @@ import { useChatRooms } from "@/hooks/chat_hook/useChatRooms";
 import { useChatSearch } from "@/hooks/chat_hook/useChatSearch";
 import { usePrivateChat } from "@/hooks/chat_hook/usePrivateChat";
 import { useChatStore } from "@/stores/chat/chatStore";
+import { loadMessagesAPI } from "@/services/message.service";
+import { useMessageStore } from "@/stores/chat/messageStore";
 
 export const RoomList = () => {
   const { rooms, loading, selectRoom } = useChatRooms();
   const { keyword, setKeyword, isSearchMode, roomsResult, usersResult } =
     useChatSearch(rooms);
   const { startPrivateChat, loading: privateChatLoading } = usePrivateChat();
-
   const setCurrentRoom = useChatStore((s) => s.setCurrentRoom);
+  const setMessages = useMessageStore((s) => s.setMessages);
 
-  const handleClick = (room) => {
+  const handleClick = async (room) => {
     setCurrentRoom(room.room_id);
+    const res = await loadMessagesAPI({ roomId: room.room_id });
+    setMessages(room.room_id, res.messages);
   };
 
   return (
@@ -46,7 +50,7 @@ export const RoomList = () => {
             <UserItem
               user={user}
               key={user.user_id}
-              disabled={loading}
+              disabled={loading}  
               onClick={async () => {
                 const room = await startPrivateChat({
                   username: user.full_name,

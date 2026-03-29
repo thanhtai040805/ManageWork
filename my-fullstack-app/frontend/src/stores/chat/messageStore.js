@@ -12,9 +12,7 @@ export const useMessageStore = create((set) => ({
   addMessage: (roomId, message) =>
     set((state) => {
       const prev = state.messagesByRoom[roomId] || [];
-
       if (prev.some((m) => m.message_id === message.message_id)) return state;
-
       return {
         messagesByRoom: {
           ...state.messagesByRoom,
@@ -32,18 +30,34 @@ export const useMessageStore = create((set) => ({
     })),
 
   prependMessages: (roomId, messages) =>
-    set((state) => {
-      const prev = state.messagesByRoom[roomId] || [];
-      const existing = new Set(prev.map((m) => m.message_id));
-      const filtered = messages.filter((m) => !existing.has(m.message_id));
+  set((state) => {
+    const prev = state.messagesByRoom[roomId] || [];
 
+    if (prev.length === 0) {
       return {
         messagesByRoom: {
           ...state.messagesByRoom,
-          [roomId]: [...filtered, ...prev],
+          [roomId]: messages,
         },
       };
-    }),
+    }
+
+    const firstPrevId = prev[0].message_id;
+    const lastNewId = messages[messages.length - 1]?.message_id;
+
+    let safeMessages = messages;
+
+    if (lastNewId === firstPrevId) {
+      safeMessages = messages.slice(0, -1);
+    }
+
+    return {
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: [...safeMessages, ...prev],
+      },
+    };
+  }),
 
   editMessage: (roomId, updatedMessage) =>
     set((state) => ({

@@ -46,6 +46,11 @@ const getUnreadMessagesCount = async ({roomId, userId}) => {
     return count;
 }
 
+const getFriends = async ( {roomId, userId}) => {
+    const friends = await chatRoomMemberModel.getMemberFriends(roomId, userId)
+    return friends;
+}
+
 module.exports = {
   addMemberToChatRoom,
   getMemberRole,
@@ -55,4 +60,5 @@ module.exports = {
   leaveChatRoom,
   updateMemberRole,
   markMessagesAsRead,
+  getFriends,
 };

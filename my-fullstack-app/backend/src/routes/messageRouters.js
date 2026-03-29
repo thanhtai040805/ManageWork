@@ -7,7 +7,7 @@ const {
 } = require("../controllers/messageController");
 
 
-router.post("/load", getMessages);
-router.post("/search", searchMessages);
+router.get("/load", getMessages);
+router.get("/search", searchMessages);
 
 module.exports = router;

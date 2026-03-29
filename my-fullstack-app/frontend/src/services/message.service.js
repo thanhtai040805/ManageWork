@@ -1,9 +1,9 @@
 import apiClient from "./apiClient";
 
-const BASE_URL = "/v1/api/messages";
+const BASE_URL = "/v1/api/message";
 
 export const loadMessagesAPI = ({ roomId, cursorMessageId, cursorCreatedAt }) =>
-  apiClient.get(BASE_URL, {
+  apiClient.get(`${BASE_URL}/load`, {
     params: { roomId, cursorMessageId, cursorCreatedAt },
   });
 

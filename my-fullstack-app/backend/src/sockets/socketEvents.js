@@ -1,4 +1,5 @@
 const chatRoomService = require('../services/chatRoomService');
+const chatRoomMemberService = require('../services/chatRoomMemberService');
 const {
   sendMessage,
   typing,
@@ -8,29 +9,52 @@ const {
   openRoom,
 } = require("./socketService");
 
-const { redis } = require("../redis/redis");
+const { redis, pub } = require("../redis/redis");
 
 module.exports = (io, socket) => {
   const userId = socket.user.uid;
-
   (async () => {
     try {
       if (!redis) return;
 
-      await redis.sadd(`user:${userId}:sockets`, socket.id);
+      // check user đã online chưa
+      const isOnline = await redis.sismember("online_users", userId);
 
-      const socketCount = await redis.scard(`user:${userId}:sockets`);
-
-      if (socketCount === 1) {
+      if (!isOnline) {
         await redis.sadd("online_users", userId);
-        socket.broadcast.emit("user:online", userId);
+
+        // cache friends
+        let friends = await redis.smembers(`user:${userId}:friends`);
+        if (!friends || friends.length === 0) {
+          friends = await chatRoomMemberService.getFriends({ userId });
+
+          if (friends.length > 0) {
+            await redis.sadd(`user:${userId}:friends`, ...friends);
+            await redis.expire(`user:${userId}:friends`, 3600);
+          }
+        }
+
+        // 🔥 publish thay vì emit
+        await pub.publish(
+          "presence",
+          JSON.stringify({
+            type: "online",
+            userId,
+          })
+        );
       }
 
-      const rooms = await chatRoomService.getChatRoomsByUser(userId);
+      console.log(`User ${userId} connected`);
 
+      // join tất cả room chat
+      const rooms = await chatRoomService.getChatRoomsByUser(userId);
       rooms.forEach((room) => {
-        socket.join(room.roomId);
+        socket.join(room.room_id);
       });
+
+      // 🔥 sync online list
+      const onlineUsers = await redis.smembers("online_users");
+      socket.emit("users:online:list", onlineUsers);
 
     } catch (error) {
       console.log("Socket init error:", error);
@@ -42,7 +66,6 @@ module.exports = (io, socket) => {
   socket.on("message:send", async (data, ack) => {
     try {
       const message = await sendMessage(io, socket, data);
-      console.log("Message sent:", data);
       ack({ ok: true, message });
     } catch (err) {
       ack({ ok: false, error: err.message });
@@ -58,14 +81,26 @@ module.exports = (io, socket) => {
     try {
       if (!redis) return;
 
-      await redis.srem(`user:${userId}:sockets`, socket.id);
+      // kiểm tra còn device khác không
+      const sockets = await io.in(`user:${userId}`).fetchSockets();
+      if (sockets.length > 0) return;
 
-      const remain = await redis.scard(`user:${userId}:sockets`);
+      await redis.srem("online_users", userId);
 
-      if (remain === 0) {
-        await redis.srem("online_users", userId);
-        socket.broadcast.emit("user:offline", userId);
-      }
+      const lastSeen = Date.now();
+      await redis.set(`user:${userId}:lastSeen`, lastSeen);
+
+      // 🔥 publish thay vì emit
+      await pub.publish(
+        "presence",
+        JSON.stringify({
+          type: "offline",
+          userId,
+          lastSeen,
+        })
+      );
+
+      console.log(`User ${userId} offline`);
 
     } catch (err) {
       console.error("Disconnect error:", err);

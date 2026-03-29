@@ -11,17 +11,16 @@ export const MessageList = ({ roomId }) => {
 
   // auto scroll
   useEffect(() => {
-    console.log("Messages updated, scrolling to bottom", messages , roomId);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-3 bg-gray-50">
-      {/* {messages.length === 0 && (
+      {messages.length === 0 && (
         <div className="h-full flex items-center justify-center text-gray-400 text-sm">
           No messages yet
         </div>
-      )} */}
+      )}
 
       <div className="flex flex-col">
         {messages.map((msg, index) => (

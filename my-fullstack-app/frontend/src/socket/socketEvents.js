@@ -1,16 +1,43 @@
 // socket/socketEvents.js
 import socket from "./socket";
+import { useTypingStore } from "../stores/chat/typingStore";
 
-/**
- * Debug log toggle
- */
 const DEBUG = false;
 const log = (...args) => DEBUG && console.log("[socketEvents]", ...args);
 
 /**
- * Register socket listeners
- * @param handlers object callback handlers
- * @returns cleanup function
+ * debounce typing clear (auto stop typing)
+ */
+const typingTimeouts = new Map();
+const TYPING_DURATION = 2000;
+
+const handleTyping = (payload) => {
+  const { roomId, userId } = payload || {};
+  if (!roomId || !userId) return;
+
+  log("room:typing", payload);
+
+  const store = useTypingStore.getState();
+
+  // set typing
+  store.setTyping(roomId, userId);
+
+  // clear old timeout
+  if (typingTimeouts.has(userId)) {
+    clearTimeout(typingTimeouts.get(userId));
+  }
+
+  // auto remove typing sau 2s
+  const timeout = setTimeout(() => {
+    store.removeTyping(roomId, userId);
+    typingTimeouts.delete(userId);
+  }, TYPING_DURATION);
+
+  typingTimeouts.set(userId, timeout);
+};
+
+/**
+ * register socket events
  */
 export const registerSocketEvents = (handlers = {}) => {
   if (!socket) {
@@ -22,47 +49,50 @@ export const registerSocketEvents = (handlers = {}) => {
     onNewMessage,
     onEditMessage,
     onDeleteMessage,
-    onTyping,
     onUserOnline,
     onUserOffline,
+    onOnlineList,
     onConnect,
     onDisconnect,
   } = handlers;
 
-  /**
-   * normalize wrapper
-   * đảm bảo handler tồn tại mới gọi
-   */
   const wrap = (name, fn) => (payload) => {
     log(name, payload);
     fn?.(payload);
   };
 
-  /**
-   * listeners map
-   */
   const listeners = {
     "message:new": wrap("message:new", onNewMessage),
     "message:update": wrap("message:update", onEditMessage),
     "message:delete": wrap("message:delete", onDeleteMessage),
-    "room:typing": wrap("room:typing", onTyping),
+    "room:typing": handleTyping,
     "user:online": wrap("user:online", onUserOnline),
     "user:offline": wrap("user:offline", onUserOffline),
-    connect: wrap("connect", onConnect),
-    disconnect: wrap("disconnect", onDisconnect),
+    "users:online:list": wrap("users:online:list", onOnlineList),
+
+    connect: () => {
+      log("connect");
+      onConnect?.();
+    },
+
+    disconnect: () => {
+      log("disconnect");
+      onDisconnect?.();
+    },
   };
 
   /**
-   * register listeners
+   * tránh duplicate listeners
    */
   Object.entries(listeners).forEach(([event, handler]) => {
+    socket.off(event);
     socket.on(event, handler);
   });
 
   log("registered events");
 
   /**
-   * cleanup function
+   * cleanup
    */
   return () => {
     Object.entries(listeners).forEach(([event, handler]) => {

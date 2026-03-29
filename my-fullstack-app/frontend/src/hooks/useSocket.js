@@ -1,18 +1,18 @@
 import { useEffect , useState } from 'react'
 import  socket  from '../socket/socket'
-
+import { useChatStore } from '@/stores/chat';
 const useSocket = () => {
-    const [connected , setConnected] = useState(false);
-    
+    const setSocketConnected = useChatStore((s) => s.setConnected);
+
     useEffect(() => {
         if (!socket.connected) socket.connect();
 
         const onConnect = () => {
             console.log("🟢 Socket connected:", socket.id);
-            setConnected(true);
+            setSocketConnected(true);
         }
         const onDisconnect = () => {
-            setConnected(false);
+            setSocketConnected(false);
             console.log("🔴 Socket disconnected");
         }
 
@@ -24,7 +24,7 @@ const useSocket = () => {
             socket.off("disconnect", onDisconnect);
         }
     }, [])
-    return { connected };
+    return { socket };
 }
 
 export default useSocket;

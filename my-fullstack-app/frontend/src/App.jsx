@@ -16,7 +16,7 @@ import { ProjectSettings } from "./pages/projects/ProjectSettings";
 import { Layout } from "./layouts/Layout";
 import { Chat } from "./pages/chat/Chat";
 import useSocket from "./hooks/useSocket";
-import useSocketEvents from "./hooks/useSocketEvents";
+import useSocketRegister from "./hooks/useSocketRegister";
 
 function App() {
   const { auth, setAuth, appLoading, setAppLoading } = useContext(AuthContext);
@@ -80,7 +80,7 @@ function App() {
   }, [auth.user.themeColor, auth.isAuthenticated, setPrimaryColor]);
 
   useSocket();
-  useSocketEvents();
+  useSocketRegister();
 
   return (
     <BrowserRouter>

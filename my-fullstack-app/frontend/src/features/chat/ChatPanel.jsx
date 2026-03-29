@@ -4,6 +4,7 @@ import { useChatStore } from "@/stores/chat/chatStore";
 
 export const ChatPanel = () => {
   const selectedRoom = useChatStore((s) => s.rooms.find(r => r.room_id === s.currentRoomId));
+  const isActive = useChatStore((s) => s.connected);
   console.log("Selected Room:", selectedRoom);
 
   if (!selectedRoom) {
@@ -39,7 +40,7 @@ export const ChatPanel = () => {
                 selectedRoom.full_name ||
                 selectedRoom.name}
             </h2>
-            <p className="text-xs text-gray-400">Active now</p>
+            <p className="text-xs text-gray-400">{isActive ? "Online" : "Offline"}</p>
           </div>
         </div>
       </div>

@@ -70,7 +70,19 @@ class ChatRoomMembers {
     const values = [roomId, senderId];
     const { rows } = await pool.query(query, values)
     return rows?.[0] || null;
-  } 
+  }
+
+  static async getMemberFriends(roomId, userId) {
+    const query = `SELECT DISTINCT crm2.user_id
+      FROM chat_room_members crm1
+      JOIN chat_room_members crm2
+      ON crm1.room_id = crm2.room_id
+      WHERE crm1.user_id = $1
+      AND crm2.user_id <> $2`
+    const values = [roomId, userId];
+    const { rows } = await pool.query(query, values);
+    return rows?.map(r => r.user_id) || [];
+  }
 }
 
 module.exports = ChatRoomMembers;
