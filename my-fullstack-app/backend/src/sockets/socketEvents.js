@@ -52,7 +52,6 @@ module.exports = (io, socket) => {
         socket.join(room.room_id);
       });
 
-      // 🔥 sync online list
       const onlineUsers = await redis.smembers("online_users");
       socket.emit("users:online:list", onlineUsers);
 

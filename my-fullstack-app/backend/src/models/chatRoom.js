@@ -9,13 +9,52 @@ class ChatRoom {
   }
 
   static async getRoomsByUser(userId) {
-    const query = `SELECT r.room_id , r.name , r.is_group, r.created_by , r.last_message_at , m.last_read_message_id , m.last_read_at , m.role , m.unread_count
-    FROM chat_rooms as r INNER JOIN chat_room_members as m 
-    ON r.room_id = m.room_id WHERE m.user_id = $1
-    ORDER BY r.last_message_at DESC`;
-    const values = [userId];
-    const result = await pool.query(query, values);
-    return result.rows;
+    const query = `
+    SELECT 
+      r.room_id,
+      r.name,
+      r.is_group,
+      r.created_by,
+      r.last_message_at,
+      m.last_read_message_id,
+      m.last_read_at,
+      m.role,
+      m.unread_count,
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'user_id', u.user_id,
+            'name', u.full_name
+          )
+        ) FILTER (WHERE u.user_id IS NOT NULL),
+        '[]'
+      ) AS members,
+      (
+        ARRAY_AGG(u.user_id) 
+        FILTER (WHERE u.user_id != $1)
+      )[1] AS partner_id,
+
+      (
+        ARRAY_AGG(u.full_name) 
+        FILTER (WHERE u.user_id != $1)
+      )[1] AS partner_name
+    FROM chat_rooms r
+    JOIN chat_room_members m 
+      ON r.room_id = m.room_id
+      AND m.user_id = $1
+    JOIN chat_room_members am
+      ON am.room_id = r.room_id
+    JOIN users u
+      ON u.user_id = am.user_id
+    GROUP BY 
+      r.room_id, r.name, r.is_group, r.created_by, r.last_message_at,
+      m.last_read_message_id, m.last_read_at, m.role, m.unread_count
+
+    ORDER BY r.last_message_at DESC;
+    `;
+
+    const { rows } = await pool.query(query, [userId]);
+    return rows;
   }
 
   static async getRoomById(roomId) {

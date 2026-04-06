@@ -9,7 +9,7 @@ import { loadMessagesAPI } from "@/services/message.service";
 import { useMessageStore } from "@/stores/chat/messageStore";
 
 export const RoomList = () => {
-  const { rooms, loading, selectRoom } = useChatRooms();
+  const { rooms, loading } = useChatRooms();
   const { keyword, setKeyword, isSearchMode, roomsResult, usersResult } =
     useChatSearch(rooms);
   const { startPrivateChat, loading: privateChatLoading } = usePrivateChat();

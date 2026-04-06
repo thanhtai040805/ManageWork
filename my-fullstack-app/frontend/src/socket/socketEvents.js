@@ -12,15 +12,12 @@ const typingTimeouts = new Map();
 const TYPING_DURATION = 2000;
 
 const handleTyping = (payload) => {
-  const { roomId, userId } = payload || {};
+  const { roomId, userId , userName} = payload || {};
   if (!roomId || !userId) return;
-
   log("room:typing", payload);
-
   const store = useTypingStore.getState();
-
   // set typing
-  store.setTyping(roomId, userId);
+  store.setTyping(roomId, userId, userName);
 
   // clear old timeout
   if (typingTimeouts.has(userId)) {

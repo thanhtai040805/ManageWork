@@ -69,11 +69,8 @@ const TYPING_DELAY = 500;
 
 export const emitTyping = (roomId) => {
   if (!socket.connected) return;
-
   if (typingTimer) return;
-
-  socket.emit("room:typing", { roomId });
-
+  socket.emit("typing", { roomId });
   typingTimer = setTimeout(() => {
     typingTimer = null;
   }, TYPING_DELAY);

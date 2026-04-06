@@ -1,7 +1,7 @@
 const chatRoomMemberService = require("../services/chatRoomMemberService");
 const messageService = require('../services/messageService');
 const chatRoomService = require('../services/chatRoomService')
-const { redis} = require('../redis/redis')
+const { redis, pub} = require('../redis/redis')
 
 const sendMessage = async (io, socket, data) => {
     const { roomId,  content} = data;
@@ -35,6 +35,7 @@ const typing = async (io, socket, { roomId }) => {
   if (!redis) return;
 
   const userId = socket.user.uid;
+  const userName = socket.user.username;
   if (!roomId) return;
 
   const isMember = await chatRoomMemberService.isMemberOfChatRoom({
@@ -49,13 +50,12 @@ const typing = async (io, socket, { roomId }) => {
   if (exists) return;
 
   await redis.set(key, 1, "EX", 2);
-
-  // 🔥 publish thay vì emit
   await pub.publish(
     "typing",
     JSON.stringify({
       roomId,
       userId,
+      userName
     })
   );
 };
@@ -181,3 +181,4 @@ module.exports = {
   deleteMessage,
   openRoom,
 };
+

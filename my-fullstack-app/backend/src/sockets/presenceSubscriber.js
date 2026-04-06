@@ -1,32 +1,30 @@
-const { sub, redis } = require("../redis/redis");
+const { subRealtime, redis } = require("../redis/redis");
 
 // 🔥 in-memory cache
 const friendCache = new Map();
 
 const getFriends = async (userId) => {
-  // ✅ có cache rồi
   if (friendCache.has(userId)) {
     return friendCache.get(userId);
   }
 
-  // ❗ chưa có → lấy từ Redis
   const friends = await redis.smembers(`user:${userId}:friends`);
 
-  // cache lại
   friendCache.set(userId, friends);
 
   return friends;
 };
 
+let isInitialized = false;
 const initRealtimeSubscriber = (io) => {
-  if (!sub) return;
+  if (isInitialized) return;
+  isInitialized = true;
+  if (!subRealtime) return;
+  subRealtime.subscribe("presence", "typing");
 
-  sub.subscribe("presence", "typing");
-
-  sub.on("message", async (channel, message) => {
+  subRealtime.on("message", async (channel, message) => {
     try {
       const data = JSON.parse(message);
-
       if (channel === "presence") {
         const { type, userId, lastSeen } = data;
 
@@ -41,11 +39,12 @@ const initRealtimeSubscriber = (io) => {
       }
 
       if (channel === "typing") {
-        const { roomId, userId } = data;
-
+        const { roomId, userId, userName } = data;
+        console.log("Received message on channel", channel, ":", data);
         io.to(roomId).emit("room:typing", {
           roomId,
           userId,
+          userName,
         });
       }
 
