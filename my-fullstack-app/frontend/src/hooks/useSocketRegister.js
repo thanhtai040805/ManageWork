@@ -24,10 +24,12 @@ const useSocketRegister = () => {
       // USER ONLINE / OFFLINE
       // ========================
       onUserOnline: ({ userId }) => {
+        console.log("DEBUG: LISTENING ON USER ONLINE", userId);
         useOnlineStore.getState().setOnline(userId);
       },
 
       onUserOffline: ({ userId }) => {
+        console.log("DEBUG: LISTENING ON USER OFFLINE", userId);
         useOnlineStore.getState().setOffline(userId);
       },
 

@@ -9,7 +9,7 @@ export const Chat = () => {
   );
 
   return (
-    <div className="flex">
+    <div className="flex rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
       <RoomList />
       <ChatPanel selectedRoom={currentRoom} />
     </div>

@@ -27,7 +27,7 @@ module.exports = (io, socket) => {
         let friends = await redis.smembers(`user:${userId}:friends`);
         if (!friends || friends.length === 0) {
           friends = await chatRoomMemberService.getFriends({ userId });
-
+          console.log("Caching friends for user", userId, ":", friends);
           if (friends.length > 0) {
             await redis.sadd(`user:${userId}:friends`, ...friends);
             await redis.expire(`user:${userId}:friends`, 3600);

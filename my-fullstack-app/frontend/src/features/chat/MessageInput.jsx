@@ -1,8 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useContext, useState, useRef } from "react";
 import { emitTyping, emitSendMessage } from "@/socket/socketEmit";
 import { useMessageStore } from "@/stores/chat/messageStore";
+import { ThemeContext } from "@/context/themeContext";
 
 export const MessageInput = ({ room }) => {
+  const { primaryColor } = useContext(ThemeContext);
   const [message, setMessage] = useState("");
   const typingRef = useRef(null);
 
@@ -43,19 +45,23 @@ export const MessageInput = ({ room }) => {
   };
 
   return (
-    <div className="border-t bg-white px-4 py-3 flex items-center gap-2 shadow-inner">
+    <div className="border-t border-gray-200 bg-[#f0f2f5] px-4 py-3 flex items-center gap-2">
       <input
         type="text"
-        placeholder="Type a message..."
+        placeholder="Type a message"
         value={message}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition"
+        className="flex-1 border border-transparent rounded-lg px-4 py-2.5 text-sm outline-none bg-white transition"
+        style={{
+          boxShadow: "0 1px 1px rgba(0, 0, 0, 0.06)",
+        }}
       />
 
       <button
         onClick={sendMessage}
-        className="bg-blue-500 hover:bg-blue-600 active:scale-95 text-white px-5 py-2 rounded-full text-sm font-medium transition"
+        className="text-white px-5 py-2.5 rounded-lg text-sm font-medium transition active:scale-[0.98]"
+        style={{ backgroundColor: primaryColor }}
       >
         Send
       </button>

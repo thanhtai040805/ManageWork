@@ -110,3 +110,6 @@ typings/
 Thumbs.db
 
 # parcel-bund
+
+# claude
+*.ps1

@@ -42,6 +42,15 @@ export const useChatStore = create((set) => ({
       rooms: state.rooms.filter((r) => r.room_id !== roomId),
     })),
 
+  selectFirstRoom: () => {
+    set((state) => {
+      if (state.rooms.length > 0) {
+        return { currentRoomId: state.rooms[0].room_id };
+      }
+      return {};
+    });
+  },
+
   /* search */
   setKeyword: (keyword) => set({ keyword }),
   setSearchResults: (results) => set({ searchResults: results }),

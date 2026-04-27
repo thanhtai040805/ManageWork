@@ -27,9 +27,7 @@ const initRealtimeSubscriber = (io) => {
       const data = JSON.parse(message);
       if (channel === "presence") {
         const { type, userId, lastSeen } = data;
-
         const friends = await getFriends(userId);
-
         for (const friendId of friends) {
           io.to(`user:${friendId}`).emit(`user:${type}`, {
             userId,
@@ -40,7 +38,6 @@ const initRealtimeSubscriber = (io) => {
 
       if (channel === "typing") {
         const { roomId, userId, userName } = data;
-        console.log("Received message on channel", channel, ":", data);
         io.to(roomId).emit("room:typing", {
           roomId,
           userId,

@@ -46,8 +46,8 @@ const getUnreadMessagesCount = async ({roomId, userId}) => {
     return count;
 }
 
-const getFriends = async ( {roomId, userId}) => {
-    const friends = await chatRoomMemberModel.getMemberFriends(roomId, userId)
+const getFriends = async ( { userId}) => {
+    const friends = await chatRoomMemberModel.getMemberFriends(userId)
     return friends;
 }
 
