@@ -1,7 +1,7 @@
 import apiClient from "./apiClient";
 
 const createUserAPI = (username, email, password, full_name) => {
-    const URL_API = "/v1/api/register";
+    const URL_API = "/v1/api/users/register";
     const data = {
         username,
         email,
@@ -12,7 +12,7 @@ const createUserAPI = (username, email, password, full_name) => {
 }
 
 const loginAPI = (username, password) => {
-  const URL_API = "/v1/api/login";
+  const URL_API = "/v1/api/users/login";
   const data = {
     username,
     password,

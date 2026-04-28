@@ -6,20 +6,20 @@ export const useOnlineStore = create((set) => ({
   setOnline: (userId) =>
     set((state) => {
       const newSet = new Set(state.onlineUsers);
-      newSet.add(userId);
+      newSet.add(String(userId));
       return { onlineUsers: newSet };
     }),
 
   setOffline: (userId) =>
     set((state) => {
       const newSet = new Set(state.onlineUsers);
-      newSet.delete(userId);
+      newSet.delete(String(userId));
       return { onlineUsers: newSet };
     }),
 
   setOnlineList: (users) =>
     set({
-      onlineUsers: new Set(users),
+      onlineUsers: new Set(users.map(u => String(u))),
     }),
 
   isOnline: (userId) => {

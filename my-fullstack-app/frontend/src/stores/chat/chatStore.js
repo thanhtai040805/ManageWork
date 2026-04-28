@@ -33,7 +33,38 @@ export const useChatStore = create((set) => ({
   updateRoom: (updatedRoom) =>
     set((state) => ({
       rooms: state.rooms.map((r) =>
-        r.room_id === updatedRoom.room_id ? updatedRoom : r,
+        r.room_id === updatedRoom.room_id ? { ...r, ...updatedRoom } : r,
+      ),
+    })),
+
+  updateRoomLastMessage: (roomId, message) =>
+    set((state) => {
+      const isCurrentRoom = state.currentRoomId === roomId;
+      const updatedRooms = state.rooms.map((r) => {
+        if (r.room_id === roomId) {
+          return {
+            ...r,
+            last_message_content: message.content,
+            last_message_at: message.created_at,
+            last_message_sender_name: message.sender_name,
+            unread_count: isCurrentRoom ? 0 : (r.unread_count || 0) + 1,
+          };
+        }
+        return r;
+      });
+
+      // Sort by last message time
+      return {
+        rooms: [...updatedRooms].sort((a, b) => 
+          new Date(b.last_message_at) - new Date(a.last_message_at)
+        )
+      };
+    }),
+  
+  markRoomAsRead: (roomId) =>
+    set((state) => ({
+      rooms: state.rooms.map((r) =>
+        r.room_id === roomId ? { ...r, unread_count: 0 } : r
       ),
     })),
 

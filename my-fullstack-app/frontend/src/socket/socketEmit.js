@@ -42,8 +42,8 @@ const emitWithAck = (event, payload, options = {}) => {
 /**
  * MESSAGE
  */
-export const emitSendMessage = (roomId, content) =>
-  emitWithAck("message:send", { roomId, content });
+export const emitSendMessage = (roomId, content, parentMessageId = null) =>
+  emitWithAck("message:send", { roomId, content, parentMessageId });
 
 export const emitEditMessage = (payload) =>
   emitWithAck("message:edit", payload);
@@ -54,9 +54,18 @@ export const emitDeleteMessage = (payload) =>
 export const emitGetMessages = (payload) =>
   emitWithAck("message:get", payload);
 
+export const emitToggleReaction = (payload) =>
+  emitWithAck("message:reaction:toggle", payload);
+
+export const emitTogglePinMessage = (payload) =>
+  emitWithAck("message:pin:toggle", payload);
+
 /**
  * ROOM
  */
+export const emitUpdateRoom = (payload) =>
+  emitWithAck("room:update", payload);
+
 export const emitOpenRoom = (roomId) => {
   socket.emit("room:open", { roomId });
 };

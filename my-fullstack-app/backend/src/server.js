@@ -1,15 +1,15 @@
 require("dotenv").config();
 const express = require("express");
 const http = require("http");
-const initSocket = require("./sockets/socket");
+const initSocket = require("./shared/sockets/socket");
 const rootRouter = require("./routes/index");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const pool = require("./config/database");
-const errorHandler = require("./middlewares/errorHandler");
-const { swaggerDocs } = require("./config/swagger");
-const { initCronJobs } = require("./cron");
+const pool = require("./shared/config/database");
+const errorHandler = require("./shared/middlewares/errorHandler");
+const { swaggerDocs } = require("./shared/config/swagger");
+const { initCronJobs } = require("./shared/cron");
 
 const app = express();
 const server = http.createServer(app);
@@ -83,6 +83,17 @@ const port = process.env.PORT || 8888;
         `� Swagger docs available at http://localhost:${port}/api-docs`,
       );
       console.log(`🚀 Backend + Socket.IO running on http://localhost:${port}`);
+      
+      // Clear stale online users on restart
+      if (process.env.REDIS_ENABLED === "true") {
+        const { redis } = require("./shared/redis/redis");
+        if (redis) {
+          redis.del("online_users").then(() => {
+            console.log("🧹 Cleared stale online_users in Redis");
+          });
+        }
+      }
+
       initCronJobs();
       console.log("✅ Cron jobs started successfully!");
     });

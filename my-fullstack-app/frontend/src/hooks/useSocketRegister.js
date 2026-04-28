@@ -3,6 +3,7 @@ import { registerSocketEvents } from "../socket/socketEvents";
 import { useMessageStore } from "../stores/chat/messageStore";
 import { useTypingStore } from "../stores/chat/typingStore";
 import { useOnlineStore } from "../stores/chat/useOnlineStore";
+import { useChatStore } from "../stores/chat/chatStore";
 
 
 const useSocketRegister = () => {
@@ -10,6 +11,7 @@ const useSocketRegister = () => {
     const cleanup = registerSocketEvents({
       onNewMessage: ({ roomId, message }) => {
         useMessageStore.getState().addMessage(roomId, message);
+        useChatStore.getState().updateRoomLastMessage(roomId, message);
       },
 
       onEditMessage: ({ roomId, newMessage }) => {
@@ -18,6 +20,18 @@ const useSocketRegister = () => {
 
       onDeleteMessage: ({ roomId, messageId }) => {
         useMessageStore.getState().removeMessage(roomId, messageId);
+      },
+
+      onReactionUpdate: ({ roomId, messageId, reactions }) => {
+        useMessageStore.getState().updateReactions(roomId, messageId, reactions);
+      },
+
+      onPinUpdate: ({ roomId, messageId, isPinned }) => {
+        useMessageStore.getState().updatePinStatus(roomId, messageId, isPinned);
+      },
+
+      onRoomUpdate: (updatedRoom) => {
+        useChatStore.getState().updateRoom(updatedRoom);
       },
 
       // ========================

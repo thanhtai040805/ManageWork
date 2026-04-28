@@ -13,7 +13,7 @@ const createToDoTaskAPI = (
   repeatUntil = null,
   projectId = null
 ) => {
-  const URL_API = "/v1/api/task/create";
+  const URL_API = "/v1/api/tasks";
   const data = {
     title,
     description,
@@ -31,22 +31,22 @@ const createToDoTaskAPI = (
 };
 
 const getTasksAPI = () => {
-  const URL_API = "/v1/api/task";
+  const URL_API = "/v1/api/tasks";
   return apiClient.get(URL_API);
 }
 
 const deleteTaskByIDAPI = (taskId) => {
-  const URL_API = `/v1/api/task/delete/${taskId}`;
-  return apiClient.post(URL_API);
+  const URL_API = `/v1/api/tasks/${taskId}`;
+  return apiClient.delete(URL_API);
 }
 
 const editTaskByIDAPI = (taskId, updateData, applyTo = 'this') => {
-  const URL_API = `/v1/api/task/edit/${taskId}`;
-  return apiClient.post(URL_API, { ...updateData, applyTo });
+  const URL_API = `/v1/api/tasks/${taskId}`;
+  return apiClient.put(URL_API, { ...updateData, applyTo });
 };
 
 const updateTaskStatusAPI = (taskId, status) => {
-  const URL_API = `/v1/api/task/status/${taskId}`;
+  const URL_API = `/v1/api/tasks/${taskId}/status`;
   return apiClient.patch(URL_API, { status });
 };
 

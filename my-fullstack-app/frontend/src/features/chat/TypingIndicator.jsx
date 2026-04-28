@@ -36,34 +36,34 @@ export const TypingIndicator = () => {
   const names = visibleUsers.map((u) => u.name);
 
   return (
-    <div className="px-4 pb-2">
+    <div className="px-6 pb-2 relative z-0">
       <div
-        className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-white border shadow-sm"
+        className="inline-flex items-center gap-2.5 rounded-2xl px-3 py-1.5 text-[11px] bg-white/60 backdrop-blur-sm border border-gray-200/50 shadow-sm animate-in slide-in-from-bottom-2 fade-in duration-300"
         style={{
-          borderColor: `${primaryColor}33`,
           color: "#667781",
         }}
       >
-        <span className="italic">
+        <div className="flex items-center gap-1">
+          <span
+            className="h-1 w-1 rounded-full animate-bounce bg-gray-400"
+            style={{ animationDelay: "0ms" }}
+          />
+          <span
+            className="h-1 w-1 rounded-full animate-bounce bg-gray-400"
+            style={{ animationDelay: "150ms" }}
+          />
+          <span
+            className="h-1 w-1 rounded-full animate-bounce bg-gray-400"
+            style={{ animationDelay: "300ms" }}
+          />
+        </div>
+        <span className="font-bold uppercase tracking-tight opacity-80">
           {names.length === 1
-            ? `${names[0]} is typing`
+            ? `${names[0]}`
             : names.length === 2
-            ? `${names[0]} and ${names[1]} are typing`
-            : `${names.slice(0, 2).join(", ")} and others are typing`}
-        </span>
-        <span className="flex items-center gap-1">
-          <span
-            className="h-1.5 w-1.5 rounded-full animate-bounce"
-            style={{ backgroundColor: primaryColor, animationDelay: "0ms" }}
-          />
-          <span
-            className="h-1.5 w-1.5 rounded-full animate-bounce"
-            style={{ backgroundColor: primaryColor, animationDelay: "120ms" }}
-          />
-          <span
-            className="h-1.5 w-1.5 rounded-full animate-bounce"
-            style={{ backgroundColor: primaryColor, animationDelay: "240ms" }}
-          />
+            ? `${names[0]} & ${names[1]}`
+            : `${names[0]} and others`}
+          <span className="ml-1 font-medium lowercase italic">is typing...</span>
         </span>
       </div>
     </div>

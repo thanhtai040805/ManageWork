@@ -25,34 +25,34 @@ instance.interceptors.request.use(
 
 // Add a response interceptor
 instance.interceptors.response.use(
-  function (response) {
-    // Any status code that lie within the range of 2xx cause this function to trigger
-    // Do something with response data
-    if (response && response.data) return response.data;
-    return response;
+  (response) => {
+    // Return data directly for easier consumption
+    return response.data || response;
   },
-  function (error) {
-    // Any status codes that falls outside the range of 2xx cause this function to trigger
-    // Do something with response error
-    
-    // Handle 401 - Unauthorized
+  (error) => {
+    // Handle 401 - Unauthorized (Token expired or invalid)
     if (error.response?.status === 401) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("theme_color");
-      // Redirect to login if not already there
-      if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+
+      const publicPaths = ["/login", "/register"];
+      const currentPath = window.location.pathname;
+
+      // Redirect to login only if not on a public page to avoid infinite loops
+      if (!publicPaths.includes(currentPath)) {
+        console.warn("Unauthorized! Redirecting to login...");
         window.location.href = "/login";
       }
     }
 
     // Handle 403 - Forbidden
     if (error.response?.status === 403) {
-      console.error("Access forbidden");
+      console.error("Access forbidden: You do not have permission for this resource.");
     }
 
     // Handle network errors
     if (!error.response) {
-      console.error("Network error:", error.message);
+      console.error("Network error: Please check your connection.");
     }
 
     return Promise.reject(error);

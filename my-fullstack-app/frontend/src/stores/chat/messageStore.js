@@ -79,6 +79,26 @@ export const useMessageStore = create((set) => ({
       },
     })),
 
+  updateReactions: (roomId, messageId, reactions) =>
+    set((state) => ({
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: (state.messagesByRoom[roomId] || []).map((m) =>
+          m.message_id === messageId ? { ...m, reactions } : m
+        ),
+      },
+    })),
+
+  updatePinStatus: (roomId, messageId, isPinned) =>
+    set((state) => ({
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: (state.messagesByRoom[roomId] || []).map((m) =>
+          m.message_id === messageId ? { ...m, is_pinned: isPinned } : m
+        ),
+      },
+    })),
+
   clearRoom: (roomId) =>
     set((state) => {
       const clone = { ...state.messagesByRoom };

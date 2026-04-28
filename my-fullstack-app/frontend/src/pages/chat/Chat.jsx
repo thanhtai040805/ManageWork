@@ -9,9 +9,9 @@ export const Chat = () => {
   );
 
   return (
-    <div className="flex rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+    <div className="flex h-full rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
       <RoomList />
-      <ChatPanel selectedRoom={currentRoom} />
+      <ChatPanel />
     </div>
   );
 };
