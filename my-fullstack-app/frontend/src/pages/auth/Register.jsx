@@ -10,7 +10,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { createUserAPI } from "../../services/auth.service";
-import { notificationService } from "../../services/notificationService";
+import { notificationService } from "../../services/notification.service";
 
 const SignUp = () => {
   const navigate = useNavigate();

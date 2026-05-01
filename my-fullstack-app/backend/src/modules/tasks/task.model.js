@@ -336,6 +336,53 @@ class Task {
       throw error;
     }
   }
+
+  static async search(queryText, userId, projectId = null) {
+    let query = `
+      SELECT t.task_id, t.project_id, t.title, t.description, t.status, t.priority, 
+             t.start_date::text as start_date, t.due_date::text as due_date, 
+             t.order_index, t.created_by, t.assigned_to, 
+             t.created_at::text as created_at, t.updated_at::text as updated_at,
+             u1.username as creator_username, u1.full_name as creator_name,
+             u2.username as assignee_username, u2.full_name as assignee_name,
+             p.name as project_name
+      FROM tasks t
+      LEFT JOIN users u1 ON t.created_by = u1.user_id
+      LEFT JOIN users u2 ON t.assigned_to = u2.user_id
+      LEFT JOIN projects p ON t.project_id = p.project_id
+      WHERE (t.title ILIKE $1 OR t.description ILIKE $1)
+    `;
+
+    const params = [`%${queryText}%`];
+
+    if (projectId) {
+      query += ` AND t.project_id = $2`;
+      params.push(projectId);
+    } else {
+      query += ` AND (t.assigned_to = $2 OR t.created_by = $2)`;
+      params.push(userId);
+    }
+
+    query += ` ORDER BY t.created_at DESC`;
+
+    try {
+      const result = await pool.query(query, params);
+      return result.rows.map(task => {
+        ['start_date', 'due_date', 'created_at', 'updated_at'].forEach(field => {
+          if (task[field]) {
+            const ts = task[field].includes('+') || task[field].endsWith('Z') 
+              ? task[field] 
+              : task[field] + 'Z';
+            task[field] = new Date(ts).toISOString();
+          }
+        });
+        return task;
+      });
+    } catch (error) {
+      console.error("Error searching tasks:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = Task;

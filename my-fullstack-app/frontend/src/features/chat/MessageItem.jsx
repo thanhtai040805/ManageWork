@@ -3,11 +3,11 @@ import { ThemeContext } from "@/context/themeContext";
 import { AuthContext } from "@/context/authContext";
 import { Pin, Reply, Smile, MoreHorizontal, Edit2, Trash2, X, Check } from "lucide-react";
 import { useChatUIStore } from "@/stores/chat/chatUIStore";
-import { 
-  emitToggleReaction, 
-  emitTogglePinMessage, 
-  emitEditMessage, 
-  emitDeleteMessage 
+import {
+  emitToggleReaction,
+  emitTogglePinMessage,
+  emitEditMessage,
+  emitDeleteMessage
 } from "@/socket/socketEmit";
 
 const REACTION_OPTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -16,7 +16,7 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
   const { primaryColor } = useContext(ThemeContext);
   const { auth } = useContext(AuthContext);
   const setReplyingToMessage = useChatUIStore((s) => s.setReplyingToMessage);
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message?.content || "");
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -51,19 +51,19 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
   }
 
   const handleToggleReaction = (emoji) => {
-    emitToggleReaction({ 
-      messageId: message.message_id, 
-      roomId: message.room_id, 
-      reactionType: emoji 
+    emitToggleReaction({
+      messageId: message.message_id,
+      roomId: message.room_id,
+      reactionType: emoji
     });
     setShowReactionPicker(false);
   };
 
   const handleTogglePin = () => {
-    emitTogglePinMessage({ 
-      messageId: message.message_id, 
-      roomId: message.room_id, 
-      isPinned: !isPinned 
+    emitTogglePinMessage({
+      messageId: message.message_id,
+      roomId: message.room_id,
+      isPinned: !isPinned
     });
   };
 
@@ -104,13 +104,13 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
       className={`flex w-full ${isMe ? "justify-end" : "justify-start"} ${isLastInGroup ? "mb-4" : "mb-1"} group animate-in fade-in slide-in-from-bottom-1 duration-300`}
     >
       <div className={`flex items-end gap-2 max-w-[85%] ${isMe ? "flex-row-reverse" : "flex-row"}`}>
-        
+
         {/* Avatar for Others */}
         {!isMe && (
           <div className="w-8 flex-shrink-0">
             {isLastInGroup ? (
-              <img 
-                src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`} 
+              <img
+                src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`}
                 alt={senderName}
                 className="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover"
               />
@@ -121,7 +121,7 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
         )}
 
         <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-          
+
           {/* Sender Name in Group */}
           {!isMe && isFirstInGroup && (
             <span className="text-[11px] font-bold text-gray-500 mb-1 ml-2 uppercase tracking-tight">
@@ -132,11 +132,11 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
           {/* Reply Preview */}
           {parentMessage && (
             <div className={`text-[11px] text-gray-400 mb-1 flex items-center gap-1.5 px-2 ${isMe ? "flex-row-reverse" : ""}`}>
-               <Reply size={12} className="opacity-50" />
-               <div className="flex items-center gap-1 bg-black/5 px-2 py-0.5 rounded-full border border-black/5 max-w-[200px]">
-                 <span className="font-bold text-gray-500 truncate">{parentMessage.sender_name}:</span>
-                 <span className="truncate opacity-80">{parentMessage.content}</span>
-               </div>
+              <Reply size={12} className="opacity-50" />
+              <div className="flex items-center gap-1 bg-black/5 px-2 py-0.5 rounded-full border border-black/5 max-w-[200px]">
+                <span className="font-bold text-gray-500 truncate">{parentMessage.sender_name}:</span>
+                <span className="truncate opacity-80">{parentMessage.content}</span>
+              </div>
             </div>
           )}
 
@@ -146,7 +146,7 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
               {showReactionPicker && (
                 <div className={`absolute -top-12 ${isMe ? "right-0" : "left-0"} z-50 bg-white/95 backdrop-blur-md shadow-2xl border border-gray-100 rounded-full p-1 flex gap-0.5 animate-in zoom-in-95 duration-200 ring-4 ring-black/5`}>
                   {REACTION_OPTIONS.map(emoji => (
-                    <button 
+                    <button
                       key={emoji}
                       onClick={() => handleToggleReaction(emoji)}
                       className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 rounded-full transition-transform hover:scale-150 active:scale-95"
@@ -158,24 +158,23 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
               )}
 
               <div
-                className={`relative px-4 py-2.5 rounded-2xl text-[14px] transition-all duration-300 ${
-                  isMe
+                className={`relative px-4 py-2.5 rounded-2xl text-[14px] transition-all duration-300 ${isMe
                     ? `text-white ${isLastInGroup ? "rounded-br-none" : ""}`
                     : `bg-white text-gray-800 ${isLastInGroup ? "rounded-bl-none" : ""} border border-gray-200/50 shadow-sm`
-                } ${isPinned ? "ring-2 ring-yellow-400 ring-offset-2" : ""}`}
+                  } ${isPinned ? "ring-2 ring-yellow-400 ring-offset-2" : ""}`}
                 style={
                   isMe
-                    ? { 
-                        background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}ee)`,
-                        boxShadow: `0 4px 15px -5px ${primaryColor}66` 
-                      }
+                    ? {
+                      background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}ee)`,
+                      boxShadow: `0 4px 15px -5px ${primaryColor}66`
+                    }
                     : {}
                 }
               >
                 {/* Bubble Tail */}
                 {isLastInGroup && (
-                   <div className={`absolute bottom-0 w-3 h-3 ${isMe ? "-right-1 bg-[#222]" : "-left-1 bg-white border-l border-b border-gray-200/50"} transform rotate-45 z-0`} 
-                        style={isMe ? { background: primaryColor } : {}} />
+                  <div className={`absolute bottom-0 w-3 h-3 ${isMe ? "-right-1 bg-[#222]" : "-left-1 bg-white border-l border-b border-gray-200/50"} transform rotate-45 z-0`}
+                    style={isMe ? { background: primaryColor } : {}} />
                 )}
 
                 {isPinned && (
@@ -208,10 +207,10 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
                       {content}
                     </p>
                     <div className={`flex items-center gap-1 mt-1 self-end ${isMe ? "text-white/70" : "text-gray-400"}`}>
-                       <span className="text-[9px]">
-                         {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                       </span>
-                       {isMe && <Check size={10} className="opacity-70" />}
+                      <span className="text-[9px]">
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      </span>
+                      {isMe && <Check size={10} className="opacity-70" />}
                     </div>
                   </div>
                 )}
@@ -219,18 +218,18 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
                 {/* Reactions summary */}
                 {reactions.length > 0 && (
                   <div className={`absolute -bottom-3 ${isMe ? "right-2" : "left-2"} flex gap-1 bg-white/95 backdrop-blur-sm border border-gray-100 rounded-full px-2 py-0.5 shadow-md scale-100 transition-transform cursor-pointer overflow-hidden z-20 ring-2 ring-black/5`}>
-                     <div className="flex -space-x-1">
-                       {Array.from(new Set(reactions.map(r => r.reaction_type))).slice(0, 3).map((emoji, idx) => (
-                         <span key={idx} className="text-xs drop-shadow-sm">{emoji}</span>
-                       ))}
-                     </div>
-                     <span className="text-[9px] text-gray-500 font-black ml-1">{reactions.length}</span>
+                    <div className="flex -space-x-1">
+                      {Array.from(new Set(reactions.map(r => r.reaction_type))).slice(0, 3).map((emoji, idx) => (
+                        <span key={idx} className="text-xs drop-shadow-sm">{emoji}</span>
+                      ))}
+                    </div>
+                    <span className="text-[9px] text-gray-500 font-black ml-1">{reactions.length}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            <MessageActions 
+            <MessageActions
               onReply={() => setReplyingToMessage(message)}
               onReact={() => setShowReactionPicker(!showReactionPicker)}
               onPin={roomRole === 'admin' ? handleTogglePin : null}
@@ -257,12 +256,11 @@ const MessageActions = ({ onReply, onReact, onPin, onEdit, onDelete, isPinned, i
 );
 
 const ActionButton = ({ onClick, icon, title, active, danger }) => (
-  <button 
-    onClick={onClick} 
+  <button
+    onClick={onClick}
     title={title}
-    className={`p-1.5 hover:bg-gray-100 rounded-lg transition-all duration-200 ${
-      active ? "text-yellow-500 bg-yellow-50" : "text-gray-400 hover:text-gray-600"
-    } ${danger ? "hover:text-red-500 hover:bg-red-50" : ""}`}
+    className={`p-1.5 hover:bg-gray-100 rounded-lg transition-all duration-200 ${active ? "text-yellow-500 bg-yellow-50" : "text-gray-400 hover:text-gray-600"
+      } ${danger ? "hover:text-red-500 hover:bg-red-50" : ""}`}
   >
     {icon}
   </button>

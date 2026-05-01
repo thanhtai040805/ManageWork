@@ -13,7 +13,7 @@ const createToDoTaskAPI = (
   repeatUntil = null,
   projectId = null
 ) => {
-  const URL_API = "/v1/api/tasks";
+  const URL_API = "/v1/api/tasks/create";
   const data = {
     title,
     description,
@@ -36,19 +36,33 @@ const getTasksAPI = () => {
 }
 
 const deleteTaskByIDAPI = (taskId) => {
-  const URL_API = `/v1/api/tasks/${taskId}`;
-  return apiClient.delete(URL_API);
+  const URL_API = `/v1/api/tasks/delete/${taskId}`;
+  return apiClient.post(URL_API);
 }
 
 const editTaskByIDAPI = (taskId, updateData, applyTo = 'this') => {
-  const URL_API = `/v1/api/tasks/${taskId}`;
-  return apiClient.put(URL_API, { ...updateData, applyTo });
+  const URL_API = `/v1/api/tasks/edit/${taskId}`;
+  return apiClient.post(URL_API, { ...updateData, applyTo });
 };
 
 const updateTaskStatusAPI = (taskId, status) => {
-  const URL_API = `/v1/api/tasks/${taskId}/status`;
+  const URL_API = `/v1/api/tasks/status/${taskId}`;
   return apiClient.patch(URL_API, { status });
 };
 
-export { createToDoTaskAPI, getTasksAPI, deleteTaskByIDAPI, editTaskByIDAPI, updateTaskStatusAPI };
+const searchTasksAPI = (query, projectId = null) => {
+  const URL_API = "/v1/api/tasks/search";
+  const params = { q: query };
+  if (projectId) params.projectId = projectId;
+  return apiClient.get(URL_API, { params });
+};
+
+export { 
+  createToDoTaskAPI, 
+  getTasksAPI, 
+  deleteTaskByIDAPI, 
+  editTaskByIDAPI, 
+  updateTaskStatusAPI,
+  searchTasksAPI 
+};
 

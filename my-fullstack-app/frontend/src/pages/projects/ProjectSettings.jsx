@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Users, UserPlus, Settings as SettingsIcon, X, Save, Trash2 } from "lucide-react";
-import { 
-  getProjectAPI, 
-  updateProjectAPI, 
-  deleteProjectAPI, 
-  getProjectMembersAPI, 
-  addProjectMemberAPI, 
-  removeProjectMemberAPI 
+import {
+  getProjectAPI,
+  updateProjectAPI,
+  deleteProjectAPI,
+  getProjectMembersAPI,
+  addProjectMemberAPI,
+  removeProjectMemberAPI
 } from "../../services/project.service";
 import { getUsersAPI } from "../../services/auth.service";
-import { notificationService } from "../../services/notificationService";
+import { notificationService } from "../../services/notification.service";
+import { ProjectCardSkeleton } from "../../components/common/SkeletonLoader";
 
 /**
  * ProjectSettings Component
@@ -141,8 +142,29 @@ export const ProjectSettings = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Loading project settings...</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-slate-200 rounded-lg animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-8 w-64 bg-slate-200 rounded-lg animate-pulse" />
+              <div className="h-4 w-48 bg-slate-100 rounded-lg animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+          <div className="h-6 w-32 bg-slate-200 rounded-lg animate-pulse" />
+          <div className="h-10 w-full bg-slate-100 rounded-lg animate-pulse" />
+          <div className="h-20 w-full bg-slate-100 rounded-lg animate-pulse" />
+        </div>
+        <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+          <div className="h-6 w-32 bg-slate-200 rounded-lg animate-pulse" />
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-16 w-full bg-slate-50 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -285,21 +307,20 @@ export const ProjectSettings = () => {
                   <div>
                     <div className="font-semibold text-slate-900">
                       {member.full_name || member.username}
-                        {project.owner_id === member.user_id && (
-                          <span className="ml-2 text-xs text-slate-500">(Owner)</span>
-                        )}
-                      </div>
+                      {project.owner_id === member.user_id && (
+                        <span className="ml-2 text-xs text-slate-500">(Owner)</span>
+                      )}
+                    </div>
                     <div className="text-sm text-slate-500">{member.email}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    member.role === "admin" 
-                      ? "bg-indigo-100 text-indigo-600" 
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${member.role === "admin"
+                      ? "bg-indigo-100 text-indigo-600"
                       : member.role === "member"
-                      ? "bg-blue-100 text-blue-600"
-                      : "bg-slate-100 text-slate-600"
-                  }`}>
+                        ? "bg-blue-100 text-blue-600"
+                        : "bg-slate-100 text-slate-600"
+                    }`}>
                     {member.role}
                   </span>
                   {project.owner_id !== member.user_id && (

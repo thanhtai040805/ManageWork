@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getPinnedMessagesAPI } from "@/services/chat-room.service";
 import { Pin, X } from "lucide-react";
 
-export const PinnedMessagesDialog = ({ roomId, isOpen, onClose, primaryColor }) => {
+export const PinnedMessagesDialog = ({ roomId, isOpen, onClose, onJump, primaryColor }) => {
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -79,12 +79,12 @@ export const PinnedMessagesDialog = ({ roomId, isOpen, onClose, primaryColor }) 
                 </div>
                 <p className="text-sm text-gray-600 line-clamp-4 leading-relaxed font-medium">{msg.content}</p>
                 <div className="mt-4 pt-3 border-t border-gray-50 flex justify-end">
-                   <button 
-                     className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
-                     onClick={() => {/* Jump to message logic */}}
-                   >
-                     Jump to message
-                   </button>
+                    <button 
+                      className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
+                      onClick={() => onJump(msg.message_id)}
+                    >
+                      Jump to message
+                    </button>
                 </div>
               </div>
             ))

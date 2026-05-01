@@ -1,15 +1,16 @@
-require("dotenv").config();
-const fs = require("fs");
 const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
+const fs = require("fs");
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "your_password_here",
-  database: process.env.DB_NAME || "ManageWork",
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 });
+
 
 async function runMigration(migrationFile) {
   try {
@@ -28,8 +29,7 @@ async function runMigration(migrationFile) {
 
 async function runMigrations() {
   try {
-    // Run migration 003
-    await runMigration("003_chat_feature.sql");
+    await runMigration("006_recurring_tasks_nullable_project.sql");
 
     console.log("🎉 All migrations completed successfully!");
   } catch (error) {

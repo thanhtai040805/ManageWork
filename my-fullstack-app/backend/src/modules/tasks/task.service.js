@@ -1,6 +1,7 @@
 require("dotenv");
 const taskModel = require("./task.model");
 const recurringTaskModel = require("./models/recurringTask.model");
+const AutomationService = require("./automation.service");
 
 const createTodoTaskService = async (
   title,
@@ -13,6 +14,12 @@ const createTodoTaskService = async (
   projectId = null
 ) => {
   try {
+    const assignedToId = await AutomationService.autoAssignTask({
+      projectId,
+      assignedTo: assignedUserId,
+      createdBy: assignedUserId
+    });
+
     const task = await taskModel.create({
       projectId,
       title,
@@ -22,7 +29,7 @@ const createTodoTaskService = async (
       startDate: startDate,
       dueDate: dueDate,
       createdBy: assignedUserId,
-      assignedTo: assignedUserId,
+      assignedTo: assignedToId,
     });
     return task;
   } catch (error) {
@@ -79,7 +86,7 @@ const getTasksByUserIDService = async (userId) => {
 
 const updateTaskByIDService = async (taskId, updateData) => {
   try {
-    const task = await taskModel.update(taskId, {
+    await taskModel.update(taskId, {
       title: updateData.title,
       description: updateData.description,
       status: updateData.status || "todo",
@@ -88,7 +95,9 @@ const updateTaskByIDService = async (taskId, updateData) => {
       dueDate: updateData.dueDate,
       assignedTo: updateData.assignedUserId,
     });
-    return task;
+    // Return full task data after update
+    const fullTask = await taskModel.findById(taskId);
+    return fullTask;
   } catch (error) {
     console.error("Error updating task:", error);
     throw error;
@@ -204,6 +213,12 @@ const createRecurringTasksService = async (
       throw new Error("Repeat period cannot exceed 12 weeks");
     }
 
+    const assignedToId = await AutomationService.autoAssignTask({
+      projectId,
+      assignedTo: assignedUserId,
+      createdBy: assignedUserId
+    });
+
     // Bước 1: Tạo RecurringTask template (theo ClickUp pattern)
     const recurringTask = await recurringTaskModel.create({
       projectId,
@@ -215,7 +230,7 @@ const createRecurringTasksService = async (
       repeatType,
       repeatDays: repeatType === "custom" ? repeatDays : [],
       createdBy: assignedUserId,
-      assignedTo: assignedUserId,
+      assignedTo: assignedToId,
     });
 
     // Bước 2: Generate dates và tạo task instances
@@ -271,7 +286,7 @@ const createRecurringTasksService = async (
             startDate: newStart.toISOString(),
             dueDate: newDue.toISOString(),
             createdBy: assignedUserId,
-            assignedTo: assignedUserId,
+            assignedTo: recurringTask.assigned_to,
             recurringTaskId: recurringTask.recurring_task_id, // ← Link đến template
           });
 

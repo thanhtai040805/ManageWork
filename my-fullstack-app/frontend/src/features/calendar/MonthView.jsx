@@ -1,7 +1,14 @@
 import React from "react";
 import { getMonthDays, isSameDay } from "../../utils/dateHelpers";
+import { Star } from "lucide-react";
 
-export const MonthView = ({ currentDate, tasks, onTaskClick }) => {
+export const MonthView = ({
+  currentDate,
+  tasks,
+  onTaskClick,
+  myDayTaskIdsSet = new Set(),
+  onToggleMyDay = () => {},
+}) => {
   const monthDays = getMonthDays(currentDate);
 
   return (
@@ -100,8 +107,31 @@ export const MonthView = ({ currentDate, tasks, onTaskClick }) => {
                             task.description ? ` - ${task.description}` : ""
                           }`}
                         >
-                          <div className="font-medium truncate">
-                            {task.title}
+                          <div className="flex items-start gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleMyDay(task.task_id);
+                              }}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              className={`p-0.5 rounded transition ${
+                                myDayTaskIdsSet.has(String(task.task_id))
+                                  ? "text-indigo-600 bg-indigo-50"
+                                  : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                              }`}
+                              title="Add/remove from My Day"
+                            >
+                              <Star
+                                size={12}
+                                fill={
+                                  myDayTaskIdsSet.has(String(task.task_id))
+                                    ? "currentColor"
+                                    : "none"
+                                }
+                              />
+                            </button>
+                            <div className="font-medium truncate">{task.title}</div>
                           </div>
                           {task.due_date && (
                             <div className="text-[9px] md:text-[10px] opacity-75 mt-0.5 hidden md:block">
@@ -125,8 +155,31 @@ export const MonthView = ({ currentDate, tasks, onTaskClick }) => {
                           className="text-[10px] md:text-xs p-1 md:p-1.5 rounded cursor-pointer bg-emerald-50 text-emerald-700 border border-emerald-200 line-through opacity-75 hover:opacity-100 transition"
                           title={task.title}
                         >
-                          <div className="font-medium truncate">
-                            {task.title}
+                          <div className="flex items-start gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleMyDay(task.task_id);
+                              }}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              className={`p-0.5 rounded transition ${
+                                myDayTaskIdsSet.has(String(task.task_id))
+                                  ? "text-indigo-600 bg-indigo-50"
+                                  : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                              }`}
+                              title="Add/remove from My Day"
+                            >
+                              <Star
+                                size={12}
+                                fill={
+                                  myDayTaskIdsSet.has(String(task.task_id))
+                                    ? "currentColor"
+                                    : "none"
+                                }
+                              />
+                            </button>
+                            <div className="font-medium truncate">{task.title}</div>
                           </div>
                         </div>
                       ))}

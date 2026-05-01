@@ -101,10 +101,22 @@ const updateTaskStatus = async (req, res, next) => {
   }
 };
 
+const searchTasks = async (req, res, next) => {
+  try {
+    const { q, projectId } = req.query;
+    const userId = req.user.uid;
+    const tasks = await taskModel.search(q, userId, projectId);
+    return res.status(200).json(tasks);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createTask,
   getTasks,
   deleteTaskByID,
   updateTaskByID,
   updateTaskStatus,
+  searchTasks,
 };

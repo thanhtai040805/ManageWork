@@ -2,7 +2,7 @@ import { FacebookIcon, LockIcon, TwitchIcon, User, XIcon } from "lucide-react";
 import { React, useContext, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { notificationService } from "../../services/notificationService";
+import { notificationService } from "../../services/notification.service";
 import { loginAPI } from "../../services/auth.service";
 import { AuthContext } from "../../context/authContext";
 import { ThemeContext } from "../../context/themeContext";
@@ -18,7 +18,7 @@ export const Login = () => {
     formState: { errors, isSubmitting },
   } = useForm({ mode: "onChange" });
 
-  const {setAuth} = useContext(AuthContext);
+  const { setAuth } = useContext(AuthContext);
   const { setPrimaryColor } = useContext(ThemeContext);
 
   const form = useRef();
@@ -31,10 +31,10 @@ export const Login = () => {
       const response = await loginAPI(username, password);
       console.log("Response:", response);
       localStorage.setItem("access_token", response.access_token);
-      
+
       // Get theme color from response or use default
       const userThemeColor = response.data.themeColor || "#f87171";
-      
+
       // Update auth context with user data including theme color
       setAuth({
         isAuthenticated: true,
@@ -49,11 +49,11 @@ export const Login = () => {
           themeColor: userThemeColor,
         },
       });
-      
+
       // Update theme color immediately
       setPrimaryColor(userThemeColor);
       localStorage.setItem("theme_color", userThemeColor);
-      
+
       // Dismiss loading toast and navigate immediately
       notificationService.dismissAll();
       navigate("/");

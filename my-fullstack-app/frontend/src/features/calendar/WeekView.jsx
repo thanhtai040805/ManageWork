@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { X } from "lucide-react";
+import { Star, X } from "lucide-react";
 import { getWeekDays, isSameDay } from "../../utils/dateHelpers";
 import { updateTaskStatusAPI } from "../../services/task.service";
 import { deleteTaskByIDAPI } from "../../services/task.service";
@@ -10,6 +10,8 @@ export const WeekView = ({
   onTaskClick,
   onTaskDelete,
   onTaskStatusChange,
+  myDayTaskIdsSet = new Set(),
+  onToggleMyDay = () => {},
 }) => {
   // Get week days for week view
   const weekDays = useMemo(() => {
@@ -135,9 +137,37 @@ export const WeekView = ({
                         >
                           <X size={14} />
                         </button>
-                        <div className="text-sm font-semibold text-slate-900 line-clamp-2 pr-6">
-                          {task.title}
+
+                        <div className="flex items-start gap-2 pr-7">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleMyDay(task.task_id);
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className={`p-1.5 rounded-lg transition ${
+                              myDayTaskIdsSet.has(String(task.task_id))
+                                ? "text-indigo-600 bg-indigo-50"
+                                : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                            }`}
+                            title="Add/remove from My Day"
+                          >
+                            <Star
+                              size={14}
+                              fill={
+                                myDayTaskIdsSet.has(String(task.task_id))
+                                  ? "currentColor"
+                                  : "none"
+                              }
+                            />
+                          </button>
+
+                          <div className="text-sm font-semibold text-slate-900 line-clamp-2">
+                            {task.title}
+                          </div>
                         </div>
+
                         {task.description && (
                           <div className="text-sm text-slate-600 mt-2 line-clamp-4 leading-relaxed">
                             {task.description}
@@ -202,8 +232,32 @@ export const WeekView = ({
                     {dayCompletedTasks.map((task) => (
                       <div
                         key={task.task_id}
-                        className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 opacity-75"
+                        className="group p-2 rounded-lg bg-emerald-50 border border-emerald-200 opacity-75 flex items-start gap-2"
                       >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleMyDay(task.task_id);
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className={`mt-0.5 p-1.5 rounded-lg transition ${
+                            myDayTaskIdsSet.has(String(task.task_id))
+                              ? "text-indigo-600 bg-indigo-50"
+                              : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                          }`}
+                          title="Add/remove from My Day"
+                        >
+                          <Star
+                            size={14}
+                            fill={
+                              myDayTaskIdsSet.has(String(task.task_id))
+                                ? "currentColor"
+                                : "none"
+                            }
+                          />
+                        </button>
+
                         <div className="text-sm font-semibold text-slate-700 line-clamp-2 line-through">
                           {task.title}
                         </div>

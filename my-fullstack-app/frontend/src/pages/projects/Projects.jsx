@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Grid3x3, List, Search, Calendar, MoreVertical } from "lucide-react";
 import { getProjectsAPI, createProjectAPI, deleteProjectAPI } from "../../services/project.service";
-import { notificationService } from "../../services/notificationService";
+import { notificationService } from "../../services/notification.service";
+import { ProjectCardSkeleton } from "../../components/common/SkeletonLoader";
 
 export const Projects = () => {
   const [projects, setProjects] = useState([]);
@@ -84,8 +85,16 @@ export const Projects = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Loading projects...</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="h-10 w-48 bg-slate-200 rounded-lg animate-pulse" />
+          <div className="h-10 w-32 bg-slate-200 rounded-lg animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <ProjectCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }

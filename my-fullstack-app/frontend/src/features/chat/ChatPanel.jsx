@@ -10,6 +10,7 @@ import { PinnedMessagesDialog } from "./PinnedMessagesDialog";
 export const ChatPanel = () => {
   const { primaryColor } = useContext(ThemeContext);
   const [showPinned, setShowPinned] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const rooms = useChatStore((s) => s.rooms);
   const selectedRoom = useChatStore((s) =>
     s.rooms.find((r) => r.room_id === s.currentRoomId)
@@ -24,10 +25,10 @@ export const ChatPanel = () => {
 
   const roomRole = selectedRoom?.role || 'member';
   console.log("Selected Room:", selectedRoom);
-  
+
   const { auth } = useContext(AuthContext);
   const currentUserId = String(auth?.user?.uid);
-  
+
   const onlineUsers = useOnlineStore((s) => s.onlineUsers);
   const is_group = selectedRoom?.is_group || false;
   const partner_id = selectedRoom?.partner_id;
@@ -41,7 +42,7 @@ export const ChatPanel = () => {
           : false;
       return { isOnline: status, onlineCount: 0, othersOnline: status };
     }
-    
+
     // In group, count online users excluding current user
     const others = members.filter(m => String(m.user_id) !== currentUserId);
     const count = others.reduce(
@@ -60,7 +61,7 @@ export const ChatPanel = () => {
     return (
       <div className="flex-1 h-full flex flex-col items-center justify-center bg-[#f8f9fa] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-80">
         <div className="flex flex-col items-center gap-6 text-center animate-in zoom-in duration-700">
-          <div 
+          <div
             className="w-24 h-24 rounded-[32px] flex items-center justify-center text-white shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500"
             style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)` }}
           >
@@ -87,9 +88,9 @@ export const ChatPanel = () => {
         <div className="flex items-center gap-4">
           <div className="relative">
             {selectedRoom?.avatar_url ? (
-              <img 
-                src={selectedRoom.avatar_url} 
-                alt={displayName} 
+              <img
+                src={selectedRoom.avatar_url}
+                alt={displayName}
                 className="w-11 h-11 rounded-2xl object-cover shadow-sm border border-gray-100"
               />
             ) : (
@@ -123,7 +124,7 @@ export const ChatPanel = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={() => setShowPinned(true)}
             className="p-2.5 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-gray-900 transition-all active:scale-95 group"
             title="Pinned Messages"
@@ -139,14 +140,23 @@ export const ChatPanel = () => {
         </div>
       </div>
 
-      <MessageList roomId={selectedRoom.room_id} />
+      <MessageList
+        roomId={selectedRoom.room_id}
+        highlightedMessageId={highlightedMessageId}
+        onClearHighlight={() => setHighlightedMessageId(null)}
+      />
       <TypingIndicator />
       <MessageInput room={selectedRoom} />
 
       {showPinned && (
-        <PinnedMessagesDialog 
-          roomId={selectedRoom.room_id} 
-          onClose={() => setShowPinned(false)} 
+        <PinnedMessagesDialog
+          roomId={selectedRoom.room_id}
+          isOpen={showPinned}
+          onClose={() => setShowPinned(false)}
+          onJump={(msgId) => {
+            setHighlightedMessageId(msgId);
+            setShowPinned(false);
+          }}
         />
       )}
     </div>

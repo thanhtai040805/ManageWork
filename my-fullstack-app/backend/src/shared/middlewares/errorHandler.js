@@ -1,24 +1,16 @@
+const logger = require("../utils/logger");
+
 const errorHandler = (err, req, res, next) => {
-  console.error("Error:", err);
+  logger.error(err.message, {
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    path: req.path,
+    method: req.method
+  });
 
-  // JWT errors
-  if (err.name === "JsonWebTokenError") {
-    return res.status(401).json({
-      message: "Invalid token",
-      error: "Token is malformed",
-    });
-  }
-
-  if (err.name === "TokenExpiredError") {
-    return res.status(401).json({
-      message: "Token expired",
-      error: "Please login again",
-    });
-  }
-
-  // Database errors
+  // Handle specific database errors
   if (err.code === "23505") {
     return res.status(409).json({
+      status: "error",
       message: "Duplicate entry",
       error: "Resource already exists",
     });
@@ -26,28 +18,55 @@ const errorHandler = (err, req, res, next) => {
 
   if (err.code === "23503") {
     return res.status(400).json({
+      status: "error",
       message: "Foreign key constraint violation",
       error: "Referenced resource does not exist",
     });
   }
 
-  // Validation errors
+  // Handle JWT errors
+  if (err.name === "JsonWebTokenError") {
+    return res.status(401).json({
+      status: "error",
+      message: "Invalid token",
+      error: "Token is malformed",
+    });
+  }
+
+  if (err.name === "TokenExpiredError") {
+    return res.status(401).json({
+      status: "error",
+      message: "Token expired",
+      error: "Please login again",
+    });
+  }
+
+  // Handle express-validator formatted errors
   if (err.name === "ValidationError") {
     return res.status(400).json({
-      message: "Validation error",
-      error: err.message,
+      status: "error",
+      message: err.message || "Validation failed",
+      errors: err.errors,
+    });
+  }
+
+  // Handle UnauthorizedError (from express-jwt if used)
+  if (err.name === "UnauthorizedError") {
+    return res.status(401).json({
+      status: "error",
+      message: "Unauthorized access",
     });
   }
 
   // Default error
   const statusCode = err.statusCode || 500;
-  const message = err.message || "Internal server error";
+  const message = err.message || "Internal Server Error";
 
-  res.status(statusCode).json({
+  return res.status(statusCode).json({
+    status: "error",
     message,
-    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 };
 
 module.exports = errorHandler;
-

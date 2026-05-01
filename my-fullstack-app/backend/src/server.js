@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const path = require("path");
 const http = require("http");
 const initSocket = require("./shared/sockets/socket");
 const rootRouter = require("./routes/index");
@@ -59,6 +60,7 @@ app.get("/health", (req, res) => {
 swaggerDocs(app);
 
 // Routes
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/v1/api", rootRouter);
 
 // Error handling middleware (must be last)

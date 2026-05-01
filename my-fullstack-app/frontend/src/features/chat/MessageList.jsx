@@ -4,16 +4,22 @@ import { useMessageStore } from "@/stores/chat/messageStore";
 import { useChatStore } from "@/stores/chat/chatStore";
 import { AuthContext } from "@/context/authContext";
 import { formatDateLabel } from "@/utils/formatDateLabel";
+import { loadMessagesAPI } from "@/services/message.service";
+import { Loader2 } from "lucide-react";
 
-export const MessageList = ({ roomId }) => {
+export const MessageList = ({ roomId, highlightedMessageId, onClearHighlight }) => {
   const { auth } = useContext(AuthContext);
   const currentUserId = auth?.user?.uid;
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
+  const messageRefs = useRef({});
   const previousRoomRef = useRef(roomId);
   const previousLastMessageIdRef = useRef(null);
   const wasNearBottomRef = useRef(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const prependMessages = useMessageStore((s) => s.prependMessages);
 
   const messages = useMessageStore(
     (state) => state.messagesByRoom[roomId] || []
@@ -35,16 +41,55 @@ export const MessageList = ({ roomId }) => {
     const container = containerRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
+    const handleScroll = async () => {
       const near = isNearBottom();
       wasNearBottomRef.current = near;
       setShowScrollBtn(!near);
+
+      // Infinite scroll logic
+      if (container.scrollTop < 50 && !isLoadingMore && hasMore) {
+        handleLoadMore();
+      }
+    };
+
+    const handleLoadMore = async () => {
+      if (isLoadingMore || !hasMore || messages.length === 0) return;
+
+      setIsLoadingMore(true);
+      const firstMsg = messages[0];
+      const scrollHeightBefore = container.scrollHeight;
+
+      try {
+        const res = await loadMessagesAPI({
+          roomId,
+          cursorMessageId: firstMsg.message_id,
+          cursorCreatedAt: firstMsg.created_at
+        });
+
+        if (res.messages && res.messages.length > 0) {
+          prependMessages(roomId, res.messages);
+          if (res.messages.length < 30) setHasMore(false);
+
+          // Preserve scroll position
+          requestAnimationFrame(() => {
+            if (container) {
+              container.scrollTop = container.scrollHeight - scrollHeightBefore;
+            }
+          });
+        } else {
+          setHasMore(false);
+        }
+      } catch (error) {
+        console.error("Error loading more messages:", error);
+      } finally {
+        setIsLoadingMore(false);
+      }
     };
 
     handleScroll();
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [roomId]);
+  }, [roomId, messages, isLoadingMore, hasMore]);
 
 
   useEffect(() => {
@@ -79,6 +124,23 @@ export const MessageList = ({ roomId }) => {
     }
   }, [messages, roomId, currentUserId]);
 
+  useEffect(() => {
+    if (highlightedMessageId && messageRefs.current[highlightedMessageId]) {
+      const element = messageRefs.current[highlightedMessageId];
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Add a visual pulse or highlight effect
+      element.classList.add("ring-4", "ring-indigo-500/30", "rounded-2xl");
+
+      const timer = setTimeout(() => {
+        element.classList.remove("ring-4", "ring-indigo-500/30", "rounded-2xl");
+        onClearHighlight();
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedMessageId, messages]);
+
   return (
     <div className="flex-1 relative flex flex-col min-h-0">
       <div
@@ -91,6 +153,16 @@ export const MessageList = ({ roomId }) => {
           backgroundSize: "36px 36px",
         }}
       >
+        {isLoadingMore && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          </div>
+        )}
+        {!hasMore && messages.length > 0 && (
+          <div className="text-center py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            End of message history
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="h-full flex items-center justify-center text-gray-500 text-sm">
             No messages yet
@@ -115,7 +187,11 @@ export const MessageList = ({ roomId }) => {
               (nextMsg.sender_id !== msg.sender_id);
 
             return (
-              <div key={msg.message_id || index}>
+              <div
+                key={msg.message_id || index}
+                ref={el => messageRefs.current[msg.message_id] = el}
+                className="transition-all duration-1000"
+              >
                 {showDateSeparator && (
                   <div className="flex justify-center my-6 sticky top-0 z-10">
                     <span className="px-4 py-1.5 bg-gray-400/20 backdrop-blur-md text-gray-600 text-[11px] font-bold rounded-full shadow-sm border border-white/20">

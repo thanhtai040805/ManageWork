@@ -6,6 +6,7 @@ import {
   WorkflowIcon,
   FolderKanban,
   MessageCircleIcon,
+  BarChart2,
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useContext } from "react";
@@ -20,6 +21,7 @@ export const VerticalNav = () => {
     { href: "/projects", label: "Projects", icon: FolderKanban },
     { href: "/my-task", label: "My Tasks", icon: WorkflowIcon },
     { href: "/chat", label: "DMs", icon: MessageCircleIcon },
+    { href: "/dashboard", label: "Analytics", icon: BarChart2 },
     { href: "/help", label: "Help", icon: HelpCircleIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
   ];

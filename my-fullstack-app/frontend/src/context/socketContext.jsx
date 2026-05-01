@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect } from "react";
 import socket from "@/socket/socket";
 
-const SocketContext = createContext(null);
+// eslint-disable-next-line react-refresh/only-export-components
+export const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
   useEffect(() => {
@@ -24,4 +25,5 @@ export const SocketProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = () => useContext(SocketContext);

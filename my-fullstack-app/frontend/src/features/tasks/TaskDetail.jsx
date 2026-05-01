@@ -1,5 +1,3 @@
-import { useState, useEffect } from "react";
-import { editTaskByIDAPI } from "../../services/task.service";
 import { 
   X, 
   Calendar, 
@@ -8,268 +6,58 @@ import {
   Flag, 
   FileText, 
   CheckCircle2,
-  Circle
+  Circle,
+  Star
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { SubtaskList } from "./SubtaskList";
+import { TaskComments } from "./TaskComments";
+import { TagManager } from "./TagManager";
+import { AttachmentManager } from "./AttachmentManager";
+import { DependencyManager } from "./DependencyManager";
+import { useTaskDetail } from "./hooks/useTaskDetail";
+import { TaskApplyToModal } from "./components/TaskApplyToModal";
+import { 
+  normalizeEnum, 
+  formatDate, 
+  formatUser, 
+  getStatusColor, 
+  getPriorityColor 
+} from "./utils/formatters";
+import { formatDateTimeLocal } from "./hooks/useTaskForm";
 
-export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
-  const [isEditing, setIsEditing] = useState({
-    title: false,
-    description: false,
-    status: false,
-    priority: false,
-    startDate: false,
-    dueDate: false,
-  });
+export const TaskDetail = ({
+  onClose = () => {},
+  task,
+  onUpdate,
+  myDayTaskIdsSet,
+  onToggleMyDay,
+}) => {
+  const {
+    isEditing,
+    setIsEditing,
+    formData,
+    isSaving,
+    showApplyToModal,
+    setShowApplyToModal,
+    applyToOption,
+    setApplyToOption,
+    isRecurringTask,
+    handleFieldChange,
+    handleFieldBlur,
+    handleFieldFocus,
+    handleSave,
+  } = useTaskDetail(task, onUpdate);
 
-  const [formData, setFormData] = useState({
-    title: task?.title || "",
-    description: task?.description || "",
-    status: task?.status || "todo",
-    priority: task?.priority || "medium",
-    start_date: task?.start_date || "",
-    due_date: task?.due_date || "",
-  });
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [showApplyToModal, setShowApplyToModal] = useState(false);
-  const [applyToOption, setApplyToOption] = useState("this");
-
-  // Check if task is part of recurring series
-  const isRecurringTask =
-    task?.recurring_task_id !== null && task?.recurring_task_id !== undefined;
-
-  // Fields that should trigger "Apply to" modal (theo ClickUp: không hỏi status)
-  const fieldsThatTriggerModal = [
-    "title",
-    "description",
-    "priority",
-    "start_date",
-    "due_date",
-  ];
-
-  // Update formData when task changes
-  useEffect(() => {
-    if (task) {
-      setFormData({
-        title: task.title || "",
-        description: task.description || "",
-        status: task.status || "todo",
-        priority: task.priority || "medium",
-        start_date: task.start_date || "",
-        due_date: task.due_date || "",
-      });
-    }
-  }, [task]);
-
-  const normalizeEnum = (value) => {
-    if (!value) return "-";
-    return String(value)
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  };
-
-  const formatDate = (value, { withTime = false } = {}) => {
-    if (!value) return "-";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
-    return withTime
-      ? date.toLocaleString(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })
-      : date.toLocaleDateString(undefined, { dateStyle: "medium" });
-  };
-
-  const formatDateTimeLocal = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return "";
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  const parseDateTimeLocal = (dateTimeLocal) => {
-    if (!dateTimeLocal) return null;
-    return new Date(dateTimeLocal).toISOString();
-  };
-
-  const formatUser = (name, username) => {
-    if (!name && !username) return "-";
-    if (name && username) return `${name} (@${username})`;
-    return name || `@${username}`;
-  };
-
-  const handleFieldChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSave = async (applyTo = "this") => {
-    if (!task?.task_id) return;
-
-    setIsSaving(true);
-    try {
-      const updateData = {
-        title: formData.title,
-        description: formData.description,
-        status: formData.status,
-        priority: formData.priority,
-        startDate: formData.start_date
-          ? parseDateTimeLocal(formData.start_date)
-          : null,
-        dueDate: formData.due_date
-          ? parseDateTimeLocal(formData.due_date)
-          : null,
-        assignedUserId: task.assigned_to || null,
-      };
-
-      const updatedTask = await editTaskByIDAPI(
-        task.task_id,
-        updateData,
-        applyTo
-      );
-
-      // Update local state
-      setIsEditing({
-        title: false,
-        description: false,
-        status: false,
-        priority: false,
-        startDate: false,
-        dueDate: false,
-      });
-
-      // Notify parent component
-      if (onUpdate) {
-        onUpdate(updatedTask);
-      }
-
-      // Close modal
-      setShowApplyToModal(false);
-    } catch (error) {
-      console.error("Error updating task:", error);
-      alert("Failed to update task. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleFieldBlur = (field) => {
-    // Map field names for comparison
-    const taskFieldMap = {
-      title: "title",
-      description: "description",
-      status: "status",
-      priority: "priority",
-      start_date: "start_date",
-      due_date: "due_date",
-    };
-
-    const taskField = taskFieldMap[field] || field;
-    const originalValue = task?.[taskField] || "";
-    const currentValue = formData[field];
-
-    let hasChanges = false;
-    // For dates, compare ISO strings
-    if (field === "start_date" || field === "due_date") {
-      const originalISO = task?.[taskField]
-        ? new Date(task[taskField]).toISOString()
-        : "";
-      const currentISO = currentValue ? parseDateTimeLocal(currentValue) : "";
-      hasChanges = originalISO !== currentISO;
-    } else {
-      hasChanges = originalValue !== currentValue;
-    }
-
-    if (hasChanges) {
-      // Check if should show modal (recurring task + field triggers modal)
-      if (isRecurringTask && fieldsThatTriggerModal.includes(field)) {
-        // Show modal, user will choose applyTo option
-        setShowApplyToModal(true);
-      } else {
-        // Status changes hoặc non-recurring task → save directly
-        handleSave("this");
-      }
-    }
-
-    // Map editing state field names
-    const editingFieldMap = {
-      title: "title",
-      description: "description",
-      status: "status",
-      priority: "priority",
-      start_date: "startDate",
-      due_date: "dueDate",
-    };
-
-    const editingField = editingFieldMap[field] || field;
-    setIsEditing((prev) => ({
-      ...prev,
-      [editingField]: false,
-    }));
-  };
-
-  const handleFieldFocus = (field) => {
-    // Map field names for editing state
-    const editingFieldMap = {
-      title: "title",
-      description: "description",
-      status: "status",
-      priority: "priority",
-      startDate: "startDate",
-      dueDate: "dueDate",
-    };
-
-    const editingField = editingFieldMap[field] || field;
-    setIsEditing((prev) => ({
-      ...prev,
-      [editingField]: true,
-    }));
-  };
-
-  const description =
-    formData.description?.trim() || "No description provided.";
-
-  // Status và Priority styling helpers
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "todo":
-        return "text-rose-600 bg-rose-50 border-rose-200";
-      case "in_progress":
-        return "text-blue-600 bg-blue-50 border-blue-200";
-      case "done":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200";
-      default:
-        return "text-slate-600 bg-slate-50 border-slate-200";
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "high":
-        return "text-rose-600";
-      case "medium":
-        return "text-amber-600";
-      case "low":
-        return "text-emerald-600";
-      default:
-        return "text-slate-600";
-    }
-  };
+  const isInMyDay = myDayTaskIdsSet?.has(String(task?.task_id));
+  const description = formData.description?.trim() || "No description provided.";
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-2 py-2 backdrop-blur-sm">
-        <div className="relative w-full max-w-6xl bg-white rounded-lg shadow-2xl max-h-[95vh] flex flex-col overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/50 px-2 py-4 backdrop-blur-sm overflow-y-auto">
+        <div className="relative w-full max-w-6xl bg-white rounded-lg shadow-2xl my-4 flex flex-col max-h-[calc(100vh-2rem)]">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-white sticky top-0 z-20">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 md:px-6 py-3 bg-white sticky top-0 z-20">
             <div className="flex-1 min-w-0">
               {isEditing.title ? (
                 <input
@@ -282,19 +70,16 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                       e.target.blur();
                     }
                     if (e.key === "Escape") {
-                      setFormData((prev) => ({
-                        ...prev,
-                        title: task?.title || "",
-                      }));
+                      handleFieldChange("title", task?.title || "");
                       setIsEditing((prev) => ({ ...prev, title: false }));
                     }
                   }}
-                  className="text-xl font-semibold text-slate-900 w-full border-2 border-indigo-500 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="text-lg md:text-xl font-semibold text-slate-900 w-full border-2 border-indigo-500 rounded px-2 md:px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   autoFocus
                 />
               ) : (
                 <h2
-                  className="text-xl font-semibold text-slate-900 cursor-text hover:bg-slate-50 rounded px-2 py-1 -mx-2 transition truncate"
+                  className="text-lg md:text-xl font-semibold text-slate-900 cursor-text hover:bg-slate-50 rounded px-2 py-1 -mx-2 transition truncate"
                   onClick={() => handleFieldFocus("title")}
                   title={formData.title || "Untitled Task"}
                 >
@@ -302,9 +87,23 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                 </h2>
               )}
             </div>
-            <div className="flex items-center gap-2 ml-4">
+            <div className="flex items-center gap-2 ml-2 md:ml-4">
               {isSaving && (
                 <span className="text-xs text-slate-500">Saving...</span>
+              )}
+              {onToggleMyDay && (
+                <button
+                  type="button"
+                  onClick={() => onToggleMyDay?.(task?.task_id)}
+                  className={`p-1.5 rounded-lg transition ${
+                    isInMyDay
+                      ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
+                      : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                  }`}
+                  title={isInMyDay ? "Remove from My Day" : "Add to My Day"}
+                >
+                  <Star size={18} fill={isInMyDay ? "currentColor" : "none"} />
+                </button>
               )}
               <button
                 type="button"
@@ -317,20 +116,20 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
             </div>
           </div>
 
-          {/* Main Content - 6-4 Layout */}
+          {/* Main Content - Flex Layout */}
           <div className="flex-1 overflow-hidden">
-            <div className="grid grid-cols-10 h-full">
-              {/* Left Side - Main Content (6 cols) */}
-              <div className="col-span-10 md:col-span-6 p-4 md:p-6 space-y-4 md:space-y-6 overflow-y-auto border-r-0 md:border-r border-slate-200">
+            <div className="flex flex-col lg:flex-row h-full max-h-[calc(100vh-8rem)]">
+              {/* Left Side - Main Content */}
+              <div className="flex-1 p-3 md:p-4 lg:p-6 space-y-3 md:space-y-4 lg:space-y-6 overflow-y-auto min-h-0 custom-scrollbar">
                 {/* Description Section */}
-                <section className="space-y-3">
+                <section className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <FileText size={18} className="text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                    <FileText size={16} className="text-slate-500" />
+                    <h3 className="text-xs md:text-sm font-semibold text-slate-700 uppercase tracking-wide">
                       Description
                     </h3>
                   </div>
-                  <div className="min-h-[200px]">
+                  <div className="min-h-[120px] md:min-h-[150px] lg:min-h-[200px]">
                     {isEditing.description ? (
                       <textarea
                         value={formData.description}
@@ -340,34 +139,53 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                         onBlur={() => handleFieldBlur("description")}
                         onKeyDown={(e) => {
                           if (e.key === "Escape") {
-                            setFormData((prev) => ({
-                              ...prev,
-                              description: task?.description || "",
-                            }));
+                            handleFieldChange("description", task?.description || "");
                             setIsEditing((prev) => ({
                               ...prev,
                               description: false,
                             }));
                           }
                         }}
-                        className="w-full min-h-[200px] text-sm leading-relaxed text-slate-700 border-2 border-indigo-500 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
+                        className="w-full min-h-[120px] md:min-h-[150px] lg:min-h-[200px] text-sm leading-relaxed text-slate-700 border-2 border-indigo-500 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
                         autoFocus
                         placeholder="Add a description..."
                       />
                     ) : (
                       <div
-                        className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap break-words cursor-text hover:bg-slate-50 rounded-md px-3 py-2 min-h-[200px] border border-transparent hover:border-slate-200 transition"
+                        className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap break-words cursor-text hover:bg-slate-50 rounded-xl px-3 md:px-4 py-2 md:py-3 min-h-[120px] md:min-h-[150px] lg:min-h-[200px] border border-transparent hover:border-indigo-100 transition-all bg-white/50 backdrop-blur-sm"
                         onClick={() => handleFieldFocus("description")}
                       >
-                        {description}
+                        <div className="prose prose-sm max-w-none">
+                          <ReactMarkdown>{description}</ReactMarkdown>
+                        </div>
                       </div>
                     )}
                   </div>
                 </section>
+
+                {/* Subtasks Section */}
+                <section className="pt-3 md:pt-4 border-t border-slate-100">
+                  <SubtaskList taskId={task?.task_id} />
+                </section>
+
+                {/* Attachments Section */}
+                <section className="pt-3 md:pt-4 border-t border-slate-100">
+                  <AttachmentManager taskId={task?.task_id} />
+                </section>
+
+                {/* Dependencies Section */}
+                <section className="pt-3 md:pt-4 border-t border-slate-100">
+                  <DependencyManager taskId={task?.task_id} projectId={task?.project_id} />
+                </section>
+
+                {/* Comments Section */}
+                <section className="pt-4 md:pt-6 border-t border-slate-100">
+                  <TaskComments taskId={task?.task_id} />
+                </section>
               </div>
 
-              {/* Right Sidebar - Details (4 cols) */}
-              <div className="col-span-10 md:col-span-4 bg-slate-50 p-4 md:p-6 space-y-4 md:space-y-6 border-t md:border-t-0 border-slate-200 overflow-y-auto h-full">
+              {/* Right Sidebar - Details */}
+              <div className="w-full lg:w-[360px] xl:w-[400px] bg-slate-50 p-3 md:p-4 lg:p-6 space-y-3 md:space-y-4 lg:space-y-6 border-t lg:border-t-0 border-slate-200 overflow-y-auto min-h-0 custom-scrollbar flex-shrink-0">
                 {/* Status */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -378,12 +196,12 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                       <select
                         value={formData.status}
                         onChange={(e) => {
-                          handleFieldChange("status", e.target.value);
-                          handleSave();
+                          const newValue = e.target.value;
+                          handleFieldChange("status", newValue);
+                          setIsEditing((prev) => ({ ...prev, status: false }));
+                          handleSave("this", { ...formData, status: newValue });
                         }}
-                        onBlur={() =>
-                          setIsEditing((prev) => ({ ...prev, status: false }))
-                        }
+                        onClick={(e) => e.stopPropagation()}
                         className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         autoFocus
                       >
@@ -392,8 +210,11 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                         <option value="done">Done</option>
                       </select>
                     ) : (
-                      <button
-                        onClick={() => handleFieldFocus("status")}
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFieldFocus("status");
+                        }}
                         className={`w-full text-left px-3 py-2 rounded-md border text-sm font-medium cursor-pointer hover:opacity-80 transition ${getStatusColor(
                           formData.status
                         )}`}
@@ -408,16 +229,15 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                           )}
                           <span>{normalizeEnum(formData.status)}</span>
                         </div>
-                      </button>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* Divider */}
                 <div className="border-t border-slate-200"></div>
 
                 {/* Details Section */}
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                     Details
                   </h4>
@@ -433,15 +253,12 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                         <select
                           value={formData.priority}
                           onChange={(e) => {
-                            handleFieldChange("priority", e.target.value);
-                            handleSave();
+                            const newValue = e.target.value;
+                            handleFieldChange("priority", newValue);
+                            setIsEditing((prev) => ({ ...prev, priority: false }));
+                            handleSave("this", { ...formData, priority: newValue });
                           }}
-                          onBlur={() =>
-                            setIsEditing((prev) => ({
-                              ...prev,
-                              priority: false,
-                            }))
-                          }
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                           autoFocus
                         >
@@ -450,8 +267,11 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                           <option value="high">High</option>
                         </select>
                       ) : (
-                        <button
-                          onClick={() => handleFieldFocus("priority")}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFieldFocus("priority");
+                          }}
                           className="w-full text-left px-3 py-2 rounded-md border border-slate-200 bg-white text-sm font-medium cursor-pointer hover:bg-slate-50 transition flex items-center gap-2"
                         >
                           <Flag
@@ -461,12 +281,18 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                           <span className={getPriorityColor(formData.priority)}>
                             {normalizeEnum(formData.priority)}
                           </span>
-                        </button>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Divider */}
+                  <div className="border-t border-slate-200"></div>
+
+                  {/* Tags */}
+                  <div className="pt-1 md:pt-2">
+                    <TagManager taskId={task?.task_id} />
+                  </div>
+
                   <div className="border-t border-slate-200"></div>
 
                   {/* Assignee */}
@@ -480,7 +306,6 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* Divider */}
                   <div className="border-t border-slate-200"></div>
 
                   {/* Start Date */}
@@ -504,10 +329,7 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                           onBlur={() => handleFieldBlur("start_date")}
                           onKeyDown={(e) => {
                             if (e.key === "Escape") {
-                              setFormData((prev) => ({
-                                ...prev,
-                                start_date: task?.start_date || "",
-                              }));
+                              handleFieldChange("start_date", task?.start_date || "");
                               setIsEditing((prev) => ({
                                 ...prev,
                                 startDate: false,
@@ -532,7 +354,6 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* Divider */}
                   <div className="border-t border-slate-200"></div>
 
                   {/* Due Date */}
@@ -556,10 +377,7 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                           onBlur={() => handleFieldBlur("due_date")}
                           onKeyDown={(e) => {
                             if (e.key === "Escape") {
-                              setFormData((prev) => ({
-                                ...prev,
-                                due_date: task?.due_date || "",
-                              }));
+                              handleFieldChange("due_date", task?.due_date || "");
                               setIsEditing((prev) => ({
                                 ...prev,
                                 dueDate: false,
@@ -582,7 +400,6 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* Divider */}
                   <div className="border-t border-slate-200"></div>
 
                   {/* Reporter */}
@@ -596,11 +413,10 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* Divider */}
                   <div className="border-t border-slate-200"></div>
 
                   {/* Dates Info */}
-                  <div className="space-y-3 text-xs text-slate-500">
+                  <div className="space-y-2 text-xs text-slate-500">
                     <div>
                       <span className="font-medium">Created:</span>{" "}
                       {formatDate(task?.created_at, { withTime: true })}
@@ -617,81 +433,14 @@ export const TaskDetail = ({ onClose = () => {}, task, onUpdate }) => {
         </div>
       </div>
 
-      {/* Apply To Modal - chỉ hiện khi edit recurring task */}
-      {showApplyToModal && isRecurringTask && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              Apply changes to
-            </h3>
-            <p className="text-sm text-slate-600 mb-4">
-              This task is part of a recurring series. How would you like to
-              apply these changes?
-            </p>
-
-            <div className="space-y-3 mb-6">
-              <label className="flex items-center gap-3 p-3 rounded-lg border-2 border-slate-200 cursor-pointer hover:bg-slate-50">
-                <input
-                  type="radio"
-                  name="applyTo"
-                  value="this"
-                  checked={applyToOption === "this"}
-                  onChange={(e) => setApplyToOption(e.target.value)}
-                  className="h-4 w-4 accent-indigo-500"
-                />
-                <div>
-                  <div className="font-medium text-slate-900">
-                    This task only
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Only update this specific task
-                  </div>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 p-3 rounded-lg border-2 border-slate-200 cursor-pointer hover:bg-slate-50">
-                <input
-                  type="radio"
-                  name="applyTo"
-                  value="future"
-                  checked={applyToOption === "future"}
-                  onChange={(e) => setApplyToOption(e.target.value)}
-                  className="h-4 w-4 accent-indigo-500"
-                />
-                <div>
-                  <div className="font-medium text-slate-900">
-                    This and future tasks
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Update this task and all future tasks in the series
-                  </div>
-                </div>
-              </label>
-            </div>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowApplyToModal(false);
-                }}
-                className="px-4 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSave(applyToOption)}
-                disabled={isSaving}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {isSaving ? "Saving..." : "Apply"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TaskApplyToModal 
+        show={showApplyToModal && isRecurringTask}
+        isSaving={isSaving}
+        applyToOption={applyToOption}
+        setApplyToOption={setApplyToOption}
+        onCancel={() => setShowApplyToModal(false)}
+        onSave={handleSave}
+      />
     </>
   );
 };
-

@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { formatDateRange } from "../../utils/dateHelpers";
 
 export const MyTasksHeader = ({
@@ -11,6 +11,7 @@ export const MyTasksHeader = ({
   onNext,
   onToday,
   onAddTask,
+  onSearch,
 }) => {
   return (
     <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
@@ -20,22 +21,20 @@ export const MyTasksHeader = ({
           <button
             type="button"
             onClick={() => onViewTypeChange("week")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition ${
-              viewType === "week"
-                ? "bg-indigo-500 text-white"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition ${viewType === "week"
+              ? "bg-indigo-500 text-white"
+              : "text-slate-600 hover:bg-slate-100"
+              }`}
           >
             Week
           </button>
           <button
             type="button"
             onClick={() => onViewTypeChange("month")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition ${
-              viewType === "month"
-                ? "bg-indigo-500 text-white"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition ${viewType === "month"
+              ? "bg-indigo-500 text-white"
+              : "text-slate-600 hover:bg-slate-100"
+              }`}
           >
             Month
           </button>
@@ -72,6 +71,17 @@ export const MyTasksHeader = ({
           <span className="text-sm font-medium">
             {formatDateRange(dateRange.start, dateRange.end, viewType)}
           </span>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative ml-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            placeholder="Tìm kiếm công việc..."
+            className="h-10 pl-[35px]! w-64 rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm transition focus:border-indigo-500 focus:bg-white focus:outline-none"
+            onChange={(e) => onSearch(e.target.value)}
+          />
         </div>
       </div>
 

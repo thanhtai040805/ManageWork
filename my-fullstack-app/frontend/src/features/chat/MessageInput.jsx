@@ -60,32 +60,32 @@ export const MessageInput = ({ room }) => {
     <div className="p-4 bg-transparent relative z-10">
       {/* Floating Container */}
       <div className="bg-white rounded-3xl shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1),0_10px_20px_-5px_rgba(0,0,0,0.05)] border border-gray-200/50 overflow-hidden transition-all duration-300 focus-within:shadow-xl focus-within:border-gray-300/50">
-        
+
         {/* Reply Preview Bar */}
         {replyingToMessage && (
           <div className="px-5 py-3 bg-gray-50/80 backdrop-blur-sm border-b border-gray-100 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-300">
-             <div className="flex items-center gap-3 border-l-4 pl-4 py-1" style={{ borderColor: primaryColor }}>
-                <Reply size={16} style={{ color: primaryColor }} />
-                <div className="flex flex-col">
-                   <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryColor }}>Replying to</span>
-                   <p className="text-xs text-gray-500 line-clamp-1 italic font-medium">{replyingToMessage.content}</p>
-                </div>
-             </div>
-             <button onClick={clearReply} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400 transition-all active:scale-90">
-                <X size={16} />
-             </button>
+            <div className="flex items-center gap-3 border-l-4 pl-4 py-1" style={{ borderColor: primaryColor }}>
+              <Reply size={16} style={{ color: primaryColor }} />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryColor }}>Replying to</span>
+                <p className="text-xs text-gray-500 line-clamp-1 italic font-medium">{replyingToMessage.content}</p>
+              </div>
+            </div>
+            <button onClick={clearReply} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400 transition-all active:scale-90">
+              <X size={16} />
+            </button>
           </div>
         )}
 
         <div className="px-4 py-2 flex items-end gap-2 min-h-[56px]">
           {/* Action Buttons */}
           <div className="flex items-center pb-1">
-             <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
-                <Paperclip size={20} />
-             </button>
-             <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
-                <ImageIcon size={20} />
-             </button>
+            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
+              <Paperclip size={20} />
+            </button>
+            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
+              <ImageIcon size={20} />
+            </button>
           </div>
 
           <textarea
@@ -99,22 +99,21 @@ export const MessageInput = ({ room }) => {
           />
 
           <div className="flex items-center gap-1 pb-1">
-             <button className="p-2 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 rounded-xl transition-all">
-                <Smile size={22} />
-             </button>
-             <button
-                onClick={handleSendMessage}
-                disabled={!message.trim()}
-                className={`p-2.5 rounded-2xl transition-all duration-300 shadow-md transform active:scale-90 ${
-                  !message.trim() ? "bg-gray-100 text-gray-300 shadow-none" : "text-white hover:brightness-110 shadow-lg"
+            <button className="p-2 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 rounded-xl transition-all">
+              <Smile size={22} />
+            </button>
+            <button
+              onClick={handleSendMessage}
+              disabled={!message.trim()}
+              className={`p-2.5 rounded-2xl transition-all duration-300 shadow-md transform active:scale-90 ${!message.trim() ? "bg-gray-100 text-gray-300 shadow-none" : "text-white hover:brightness-110 shadow-lg"
                 }`}
-                style={message.trim() ? { 
-                  backgroundColor: primaryColor,
-                  boxShadow: `0 4px 12px -4px ${primaryColor}aa`
-                } : {}}
-              >
-                <Send size={18} fill={message.trim() ? "currentColor" : "none"} className={message.trim() ? "translate-x-0.5 -translate-y-0.5 rotate-[-10deg]" : ""} />
-             </button>
+              style={message.trim() ? {
+                backgroundColor: primaryColor,
+                boxShadow: `0 4px 12px -4px ${primaryColor}aa`
+              } : {}}
+            >
+              <Send size={18} fill={message.trim() ? "currentColor" : "none"} className={message.trim() ? "translate-x-0.5 -translate-y-0.5 rotate-[-10deg]" : ""} />
+            </button>
           </div>
         </div>
       </div>
