@@ -3,7 +3,7 @@ const { body, param } = require("express-validator");
 const createTaskValidation = [
   body("title").notEmpty().withMessage("Title is required").isLength({ max: 200 }),
   body("description").optional({ nullable: true }).isString(),
-  body("status").optional({ nullable: true }).isIn(["todo", "in_progress", "done", "cancelled"]),
+  body("status").optional({ nullable: true }).isIn(["todo", "in_progress", "review", "done", "cancelled", "on_hold"]),
   body("priority").optional({ nullable: true }).isIn(["low", "medium", "high", "urgent"]),
   body("startDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
   body("dueDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
@@ -17,7 +17,7 @@ const updateTaskValidation = [
   param("taskId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^[0-9]+$/).withMessage("Invalid task ID"),
   body("title").optional({ nullable: true }).isLength({ max: 200 }),
   body("description").optional({ nullable: true }).isString(),
-  body("status").optional({ nullable: true }).isIn(["todo", "in_progress", "done", "cancelled"]),
+  body("status").optional({ nullable: true }).isIn(["todo", "in_progress", "review", "done", "cancelled", "on_hold"]),
   body("priority").optional({ nullable: true }).isIn(["low", "medium", "high", "urgent"]),
   body("startDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
   body("dueDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),

@@ -19,7 +19,7 @@ const formatDate = (value) => {
   });
 };
 
-const TaskCard = ({ task, onDelete, onEditSuccess, onStatusChange }) => {
+const TaskCard = ({ task, onDelete, onEditSuccess, onStatusChange, onCardClick }) => {
   const [currentTask, setCurrentTask] = useState(task);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -27,6 +27,14 @@ const TaskCard = ({ task, onDelete, onEditSuccess, onStatusChange }) => {
   useEffect(() => {
     setCurrentTask(task);
   }, [task]);
+
+  const handleCardClick = () => {
+    if (onCardClick) {
+      onCardClick(task);
+    } else {
+      setIsDetailOpen(true);
+    }
+  };
 
   const handleDelete = () => {
     deleteTaskByIDAPI(currentTask?.task_id)
@@ -86,7 +94,7 @@ const TaskCard = ({ task, onDelete, onEditSuccess, onStatusChange }) => {
   return (
     <>
       <article
-        onClick={() => setIsDetailOpen(true)}
+        onClick={handleCardClick}
         className="group relative flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-1 hover:shadow-lg"
       >
         <div className="flex-1">

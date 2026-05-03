@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/authContext";
 import { ThemeContext } from "../../context/themeContext";
 import apiClient from "../../services/apiClient";
-import { User, Palette, Save, Folder } from "lucide-react";
+import { User, Palette, Save } from "lucide-react";
 
 export const Settings = () => {
   const navigate = useNavigate();
@@ -149,20 +149,7 @@ export const Settings = () => {
         <p className="text-slate-600 mt-2">Manage your profile and preferences</p>
       </div>
 
-      <div className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
-        <button
-          onClick={() => navigate("/settings/templates")}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition"
-        >
-          <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <Folder className="w-6 h-6 text-indigo-600" />
-          </div>
-          <div className="text-left">
-            <h3 className="font-semibold text-slate-900">Templates</h3>
-            <p className="text-sm text-slate-500">Project and task templates</p>
-          </div>
-        </button>
-      </div>
+      
 
       <div className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
         <div className="flex items-center gap-3 mb-6">

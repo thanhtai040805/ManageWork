@@ -5,8 +5,8 @@ const ActivityLog = require("../../shared/models/activityLog.model");
 const getUserActivity = async (req, res, next) => {
   try {
     const userId = req.user.uid;
-    const { limit = 50, offset = 0 } = req.query;
-    const logs = await ActivityLog.getUserActivityLogs(userId, limit, offset);
+    const { limit = 50, offset = 0, days = null, date = null } = req.query;
+    const logs = await ActivityLog.getUserActivityLogs(userId, limit, offset, days, date);
     res.json(logs);
   } catch (error) {
     next(error);

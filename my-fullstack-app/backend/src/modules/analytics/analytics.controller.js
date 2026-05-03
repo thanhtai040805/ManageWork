@@ -46,38 +46,23 @@ const getBurndownChart = async (req, res, next) => {
   try {
     const { projectId } = req.params;
     
-    // Burndown: Total tasks vs remaining tasks per day since project start
+    // Simple burndown: just get task counts per day
     const query = `
-      WITH project_dates AS (
-        SELECT start_date, end_date, created_at 
-        FROM projects 
-        WHERE project_id = $1
-      ),
-      date_range AS (
-        SELECT generate_series(
-          date_trunc('day', (SELECT created_at FROM project_dates)),
-          date_trunc('day', COALESCE((SELECT end_date FROM project_dates), NOW())),
-          '1 day'::interval
-        ) as day
-      ),
-      daily_stats AS (
-        SELECT 
-          d.day,
-          (SELECT COUNT(*) FROM tasks t WHERE t.project_id = $1 AND t.created_at <= d.day + INTERVAL '1 day') as total_tasks,
-          (SELECT COUNT(*) FROM tasks t WHERE t.project_id = $1 AND t.created_at <= d.day + INTERVAL '1 day' AND (t.status != 'done' OR t.updated_at > d.day + INTERVAL '1 day')) as remaining_tasks
-        FROM date_range d
-      )
       SELECT 
-        to_char(day, 'YYYY-MM-DD') as date,
-        total_tasks,
-        remaining_tasks
-      FROM daily_stats
-      ORDER BY day ASC;
+        to_char(DATE(created_at), 'YYYY-MM-DD') as date,
+        COUNT(*) as total_tasks,
+        COUNT(*) FILTER (WHERE status != 'done') as remaining_tasks
+      FROM tasks 
+      WHERE project_id = $1
+        AND created_at >= DATE_TRUNC('day', NOW() - INTERVAL '30 days')
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
     `;
     
     const result = await pool.query(query, [projectId]);
     res.status(200).json({ status: "success", data: result.rows });
   } catch (error) {
+    console.error("Burndown error:", error);
     next(error);
   }
 };

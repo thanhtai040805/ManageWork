@@ -94,7 +94,7 @@ export const MyTasksHeader = ({
           <input
             type="text"
             placeholder="Tìm kiếm công việc..."
-            className="h-10 pl-[35px]! w-64 rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm transition focus:border-indigo-500 focus:bg-white focus:outline-none"
+            className="h-10 pl-[40px]! w-64 rounded-xl border border-slate-200 bg-slate-50 pr-4 text-sm transition focus:border-indigo-500 focus:bg-white focus:outline-none"
             onChange={(e) => onSearch(e.target.value)}
           />
         </div>

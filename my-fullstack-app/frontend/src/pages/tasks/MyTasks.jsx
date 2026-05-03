@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { TaskDetail, AddTask, MyTasksHeader, applyFilters } from "../../features/tasks";
 import { WeekView, MonthView, KanBanView } from "../../features/calendar";
 import { getTasksAPI, searchTasksAPI, updateTaskStatusAPI, reorderTasksAPI } from "../../services/task.service";
@@ -6,6 +7,7 @@ import { getProjectsAPI } from "../../services/project.service";
 import { getWeekRange, getMonthRange, isDateInRange } from "../../utils/dateHelpers";
 
 export const MyTasks = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [allTasks, setAllTasks] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -29,9 +31,18 @@ export const MyTasks = () => {
       .then((response) => {
         setAllTasks(response);
         setTasks(response);
+
+        // Check for task query param
+        const taskId = searchParams.get("task");
+        if (taskId && response) {
+          const task = response.find(t => t.task_id === taskId);
+          if (task) {
+            setSelectedTask(task);
+          }
+        }
       })
       .catch((error) => console.log(error));
-  }, [searchQuery]);
+  }, [searchQuery, searchParams]);
 
   useEffect(() => {
     getProjectsAPI()
@@ -41,7 +52,7 @@ export const MyTasks = () => {
 
   const filteredTasks = useMemo(() => {
     let result = searchQuery.trim() ? tasks : allTasks;
-    
+
     // Apply filters if any filter is active
     if (Object.values(filters).some(v => v && (Array.isArray(v) ? v.length > 0 : v))) {
       result = applyFilters(result, filters);
@@ -215,7 +226,10 @@ export const MyTasks = () => {
       {selectedTask && (
         <TaskDetail
           task={selectedTask}
-          onClose={() => setSelectedTask(null)}
+          onClose={() => {
+            setSelectedTask(null);
+            setSearchParams({}, { replace: true });
+          }}
           onUpdate={(updatedTask) => {
             handleTaskEdited(updatedTask);
             setSelectedTask(updatedTask);

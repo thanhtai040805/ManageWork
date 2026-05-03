@@ -39,20 +39,30 @@ class ActivityLog {
     }
   }
 
-  static async getUserActivityLogs(userId, limit = 50, offset = 0) {
+  static async getUserActivityLogs(userId, limit = 50, offset = 0, days = null, date = null) {
+    let dateFilter = "";
+    const params = [userId, limit, offset];
+    
+    if (date) {
+      dateFilter = `AND DATE(al.created_at) = $4`;
+      params.push(date);
+    } else if (days) {
+      dateFilter = `AND al.created_at >= NOW() - INTERVAL '${days} days'`;
+    }
+    
     const query = `
       SELECT al.log_id, al.user_id, al.task_id, al.action, al.created_at,
              t.title as task_title, p.name as project_name
       FROM activity_logs al
       LEFT JOIN tasks t ON al.task_id = t.task_id
       LEFT JOIN projects p ON t.project_id = p.project_id
-      WHERE al.user_id = $1
+      WHERE al.user_id = $1 ${dateFilter}
       ORDER BY al.created_at DESC
       LIMIT $2 OFFSET $3
     `;
     
     try {
-      const result = await pool.query(query, [userId, limit, offset]);
+      const result = await pool.query(query, params);
       return result.rows;
     } catch (error) {
       console.error("Error getting user activity logs:", error);
