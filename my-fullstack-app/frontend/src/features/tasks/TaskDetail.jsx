@@ -15,6 +15,7 @@ import { TaskComments } from "./TaskComments";
 import { TagManager } from "./TagManager";
 import { AttachmentManager } from "./AttachmentManager";
 import { DependencyManager } from "./DependencyManager";
+import { TimeTracker } from "./TimeTracker";
 import { useTaskDetail } from "./hooks/useTaskDetail";
 import { TaskApplyToModal } from "./components/TaskApplyToModal";
 import { 
@@ -24,6 +25,7 @@ import {
   getStatusColor, 
   getPriorityColor 
 } from "./utils/formatters";
+import { getStatusBadgeClass, getStatusLabel, STATUS_OPTIONS, PRIORITY_OPTIONS } from "../../utils/taskColors";
 import { formatDateTimeLocal } from "./hooks/useTaskForm";
 
 export const TaskDetail = ({
@@ -90,20 +92,6 @@ export const TaskDetail = ({
             <div className="flex items-center gap-2 ml-2 md:ml-4">
               {isSaving && (
                 <span className="text-xs text-slate-500">Saving...</span>
-              )}
-              {onToggleMyDay && (
-                <button
-                  type="button"
-                  onClick={() => onToggleMyDay?.(task?.task_id)}
-                  className={`p-1.5 rounded-lg transition ${
-                    isInMyDay
-                      ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
-                      : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-                  }`}
-                  title={isInMyDay ? "Remove from My Day" : "Add to My Day"}
-                >
-                  <Star size={18} fill={isInMyDay ? "currentColor" : "none"} />
-                </button>
               )}
               <button
                 type="button"
@@ -205,9 +193,9 @@ export const TaskDetail = ({
                         className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         autoFocus
                       >
-                        <option value="todo">To Do</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="done">Done</option>
+                        {STATUS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                       </select>
                     ) : (
                       <div
@@ -227,7 +215,7 @@ export const TaskDetail = ({
                           ) : (
                             <Circle size={16} />
                           )}
-                          <span>{normalizeEnum(formData.status)}</span>
+                          <span>{getStatusLabel(formData.status)}</span>
                         </div>
                       </div>
                     )}
@@ -262,9 +250,9 @@ export const TaskDetail = ({
                           className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                           autoFocus
                         >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
+                          {PRIORITY_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
                         </select>
                       ) : (
                         <div
@@ -285,6 +273,11 @@ export const TaskDetail = ({
                       )}
                     </div>
                   </div>
+
+                  <div className="border-t border-slate-200"></div>
+
+                  {/* Time Tracker */}
+                  <TimeTracker taskId={task?.task_id} />
 
                   <div className="border-t border-slate-200"></div>
 

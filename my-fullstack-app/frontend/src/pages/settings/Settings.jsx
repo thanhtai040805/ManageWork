@@ -1,20 +1,12 @@
 import React, { useContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/authContext";
 import { ThemeContext } from "../../context/themeContext";
 import apiClient from "../../services/apiClient";
-import { User, Palette, Save } from "lucide-react";
+import { User, Palette, Save, Folder } from "lucide-react";
 
-/**
- * Settings Component
- * 
- * Manages USER ACCOUNT settings:
- * - User full name
- * - Avatar URL
- * - Theme color preference
- * 
- * Note: This is different from ProjectSettings.jsx which manages settings for a specific project
- */
 export const Settings = () => {
+  const navigate = useNavigate();
   const { auth, setAuth } = useContext(AuthContext);
   const { primaryColor, setPrimaryColor } = useContext(ThemeContext);
   const [loading, setLoading] = useState(false);
@@ -26,7 +18,6 @@ export const Settings = () => {
     theme_color: primaryColor,
   });
 
-  // Predefined color options
   const colorOptions = [
     { name: "Red", value: "#f87171" },
     { name: "Blue", value: "#60a5fa" },
@@ -38,7 +29,6 @@ export const Settings = () => {
     { name: "Teal", value: "#2dd4bf" },
   ];
 
-  // Fetch fresh user data when component mounts
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -50,7 +40,6 @@ export const Settings = () => {
             theme_color: userData.theme_color || "#f87171",
           });
           
-          // Update auth context with fresh data
           setAuth((prev) => ({
             ...prev,
             user: {
@@ -66,7 +55,6 @@ export const Settings = () => {
             },
           }));
           
-          // Ensure theme context is synced
           if (userData.theme_color) {
             setPrimaryColor(userData.theme_color);
           }
@@ -76,12 +64,10 @@ export const Settings = () => {
       }
     };
 
-    // Only fetch if authenticated (component mounts or user logs in)
     if (auth.isAuthenticated) {
       fetchUserData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount - data will be refreshed after updates via handleSubmit
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -90,7 +76,6 @@ export const Settings = () => {
       [name]: value,
     }));
 
-    // Update theme color immediately when color changes
     if (name === "theme_color") {
       setPrimaryColor(value);
     }
@@ -109,12 +94,10 @@ export const Settings = () => {
       });
 
       if (response) {
-        // Fetch fresh user data from server to ensure we have the latest
         const userData = await apiClient.get("/v1/api/account");
         if (userData) {
           const updatedThemeColor = userData.theme_color || "#f87171";
           
-          // Update auth context with all fresh user data
           setAuth((prev) => ({
             ...prev,
             user: {
@@ -130,23 +113,20 @@ export const Settings = () => {
             },
           }));
 
-          // Update form with fresh data
           setForm({
             full_name: userData.full_name || "",
             avatar_url: userData.avatar_url || "",
             theme_color: updatedThemeColor,
           });
 
-          // Update theme color immediately
           setPrimaryColor(updatedThemeColor);
           localStorage.setItem("theme_color", updatedThemeColor);
 
-          setMessage({ type: "success", text: "Profile updated successfully!" });
+          setMessage({ type: "success", text: "Saved successfully!" });
         } else {
-          setMessage({ type: "success", text: "Profile updated successfully!" });
+          setMessage({ type: "success", text: "Saved successfully!" });
         }
         
-        // Clear message after 3 seconds
         setTimeout(() => {
           setMessage({ type: "", text: "" });
         }, 3000);
@@ -155,7 +135,7 @@ export const Settings = () => {
       console.error("Error updating profile:", error);
       setMessage({
         type: "error",
-        text: error.response?.data?.error || "Error updating profile",
+        text: error.response?.data?.error || "An error occurred",
       });
     } finally {
       setLoading(false);
@@ -164,21 +144,33 @@ export const Settings = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
         <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
         <p className="text-slate-600 mt-2">Manage your profile and preferences</p>
       </div>
 
-      {/* Profile Settings */}
+      <div className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
+        <button
+          onClick={() => navigate("/settings/templates")}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition"
+        >
+          <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+            <Folder className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div className="text-left">
+            <h3 className="font-semibold text-slate-900">Templates</h3>
+            <p className="text-sm text-slate-500">Project and task templates</p>
+          </div>
+        </button>
+      </div>
+
       <div className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
         <div className="flex items-center gap-3 mb-6">
           <User className="text-primary" size={24} />
-          <h2 className="text-xl font-semibold text-slate-900">Profile Information</h2>
+          <h2 className="text-xl font-semibold text-slate-900">Profile</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Username (read-only) */}
           <div className="grid gap-2">
             <label htmlFor="username" className="text-sm font-medium text-slate-600">
               Username
@@ -190,10 +182,9 @@ export const Settings = () => {
               disabled
               className="rounded-xl border border-slate-200 px-4 py-3 text-slate-400 bg-slate-50 cursor-not-allowed"
             />
-            <p className="text-xs text-slate-500">Username cannot be changed</p>
+            <p className="text-xs text-slate-500">Cannot be changed</p>
           </div>
 
-          {/* Email (read-only) */}
           <div className="grid gap-2">
             <label htmlFor="email" className="text-sm font-medium text-slate-600">
               Email
@@ -205,10 +196,9 @@ export const Settings = () => {
               disabled
               className="rounded-xl border border-slate-200 px-4 py-3 text-slate-400 bg-slate-50 cursor-not-allowed"
             />
-            <p className="text-xs text-slate-500">Email cannot be changed</p>
+            <p className="text-xs text-slate-500">Cannot be changed</p>
           </div>
 
-          {/* Full Name */}
           <div className="grid gap-2">
             <label htmlFor="full_name" className="text-sm font-medium text-slate-600">
               Full Name
@@ -224,7 +214,6 @@ export const Settings = () => {
             />
           </div>
 
-          {/* Avatar URL */}
           <div className="grid gap-2">
             <label htmlFor="avatar_url" className="text-sm font-medium text-slate-600">
               Avatar URL
@@ -252,16 +241,14 @@ export const Settings = () => {
             )}
           </div>
 
-          {/* Theme Color */}
           <div className="grid gap-2">
             <div className="flex items-center gap-3 mb-2">
               <Palette className="text-primary" size={20} />
               <label htmlFor="theme_color" className="text-sm font-medium text-slate-600">
-                Primary Color (Navigation Bar)
+                Theme Color
               </label>
             </div>
             
-            {/* Color Picker */}
             <div className="flex items-center gap-4">
               <input
                 id="theme_color"
@@ -281,9 +268,8 @@ export const Settings = () => {
               />
             </div>
 
-            {/* Predefined Colors */}
             <div className="mt-4">
-              <p className="text-xs text-slate-500 mb-2">Quick select:</p>
+              <p className="text-xs text-slate-500 mb-2">Quick Select</p>
               <div className="flex flex-wrap gap-2">
                 {colorOptions.map((color) => (
                   <button
@@ -305,9 +291,8 @@ export const Settings = () => {
               </div>
             </div>
 
-            {/* Preview */}
             <div className="mt-4 p-4 rounded-lg border border-slate-200 bg-slate-50">
-              <p className="text-xs text-slate-500 mb-2">Preview:</p>
+              <p className="text-xs text-slate-500 mb-2">Preview</p>
               <div
                 className="h-12 rounded-lg flex items-center justify-center text-white font-medium shadow-sm"
                 style={{ backgroundColor: form.theme_color }}
@@ -317,7 +302,6 @@ export const Settings = () => {
             </div>
           </div>
 
-          {/* Message */}
           {message.text && (
             <div
               className={`p-4 rounded-lg ${
@@ -330,7 +314,6 @@ export const Settings = () => {
             </div>
           )}
 
-          {/* Submit Button */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
             <button
               type="submit"
@@ -338,7 +321,7 @@ export const Settings = () => {
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={16} />
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? "Saving..." : "Save"}
             </button>
           </div>
         </form>
@@ -346,4 +329,3 @@ export const Settings = () => {
     </div>
   );
 };
-

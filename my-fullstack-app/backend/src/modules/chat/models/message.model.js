@@ -80,7 +80,21 @@ class Message {
           FROM messages pm
           JOIN users pu ON pm.sender_id = pu.user_id
           WHERE pm.message_id = m.parent_message_id
-        ) AS parent_message
+        ) AS parent_message,
+        COALESCE(
+          (
+            SELECT json_agg(
+              jsonb_build_object(
+                'attachment_id', ma.attachment_id,
+                'attachment_url', ma.attachment_url,
+                'attachment_type', ma.attachment_type
+              )
+            )
+            FROM message_attachments ma
+            WHERE ma.message_id = m.message_id
+          ),
+          '[]'
+        ) AS attachments
       FROM messages m
       JOIN users u ON m.sender_id = u.user_id
       LEFT JOIN message_reactions mr ON m.message_id = mr.message_id
@@ -166,7 +180,21 @@ class Message {
           FROM messages pm
           JOIN users pu ON pm.sender_id = pu.user_id
           WHERE pm.message_id = m.parent_message_id
-        ) AS parent_message
+        ) AS parent_message,
+        COALESCE(
+          (
+            SELECT json_agg(
+              jsonb_build_object(
+                'attachment_id', ma.attachment_id,
+                'attachment_url', ma.attachment_url,
+                'attachment_type', ma.attachment_type
+              )
+            )
+            FROM message_attachments ma
+            WHERE ma.message_id = m.message_id
+          ),
+          '[]'
+        ) AS attachments
       FROM messages m
       JOIN users u ON m.sender_id = u.user_id
       LEFT JOIN message_reactions mr ON m.message_id = mr.message_id

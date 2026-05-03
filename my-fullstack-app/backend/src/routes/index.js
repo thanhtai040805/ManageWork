@@ -15,6 +15,10 @@ const tagRoutes = require("../modules/tasks/tag.routes");
 const dependencyRoutes = require("../modules/tasks/task_dependency.routes");
 const fileRoutes = require("../modules/files/file.routes");
 const analyticsRoutes = require("../modules/analytics/analytics.routes");
+const activityRoutes = require("../modules/activity/activity.routes");
+const templateRoutes = require("../modules/templates/template.routes");
+const timeRoutes = require("../modules/time-tracking/timeEntry.routes");
+const channelRoutes = require("../modules/channels/channel.routes");
 
 // User routes (includes public login/register)
 router.use("/users", userRoutes);
@@ -32,5 +36,9 @@ router.use("/tags", auth, tagRoutes);
 router.use("/dependencies", auth, dependencyRoutes);
 router.use("/files", auth, fileRoutes);
 router.use("/analytics", auth, analyticsRoutes);
+router.use("/activity", auth, activityRoutes);
+router.use("/templates", auth, templateRoutes);
+router.use("/time", auth, timeRoutes);
+router.use("/channels", auth, channelRoutes);
 
 module.exports = router;

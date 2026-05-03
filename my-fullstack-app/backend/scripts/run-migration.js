@@ -29,7 +29,7 @@ async function runMigration(migrationFile) {
 
 async function runMigrations() {
   try {
-    await runMigration("006_recurring_tasks_nullable_project.sql");
+    await runMigration("012_mute_block_users.sql");
 
     console.log("🎉 All migrations completed successfully!");
   } catch (error) {

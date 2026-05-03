@@ -11,9 +11,32 @@ const pool = require("./shared/config/database");
 const errorHandler = require("./shared/middlewares/errorHandler");
 const { swaggerDocs } = require("./shared/config/swagger");
 const { initCronJobs } = require("./shared/cron");
+const logger = require("./shared/utils/logger");
+const { initSentry } = require("./shared/sentry");
 
 const app = express();
 const server = http.createServer(app);
+
+// ===== INIT SENTRY =====
+initSentry();
+
+// ===== UNHANDLED EXCEPTIONS =====
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error("Unhandled Rejection", { reason: String(reason) });
+  if (process.env.SENTRY_DSN) {
+    const { Sentry } = require("./shared/sentry");
+    Sentry.captureException(reason);
+  }
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception", { error: error.message });
+  if (process.env.SENTRY_DSN) {
+    const { Sentry } = require("./shared/sentry");
+    Sentry.captureException(error);
+  }
+  process.exit(1);
+});
 
 // ===== SOCKET.IO INIT =====
 const io = initSocket(server);
@@ -56,6 +79,41 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Redis health check
+app.get("/health/redis", async (req, res) => {
+  const { redis } = require("./shared/redis/redis");
+  
+  if (!redis) {
+    return res.status(503).json({
+      status: "unavailable",
+      reason: "Redis is disabled",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  try {
+    const start = Date.now();
+    await redis.ping();
+    const latency = Date.now() - start;
+
+    const onlineUsers = await redis.smembers("online_users");
+    
+    res.status(200).json({
+      status: "healthy",
+      latency_ms: latency,
+      online_users_count: onlineUsers.length,
+      online_users: onlineUsers,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "error",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 // Swagger documentation
 swaggerDocs(app);
 
@@ -71,36 +129,32 @@ const port = process.env.PORT || 8888;
 // Start server with database connection test
 (async () => {
   try {
-    const client = await pool.connect(); // lấy 1 connection
-    console.log("✅ Connected to PostgreSQL successfully!");
+    const client = await pool.connect();
+    logger.info("Connected to PostgreSQL successfully");
 
-    // test query đơn giản
     const result = await client.query("SELECT NOW()");
-    console.log("⏰ DB Time:", result.rows[0].now);
+    logger.debug("DB Time: " + result.rows[0].now);
 
-    client.release(); // trả connection về pool
+    client.release();
 
     server.listen(port, () => {
-      console.log(
-        `� Swagger docs available at http://localhost:${port}/api-docs`,
-      );
-      console.log(`🚀 Backend + Socket.IO running on http://localhost:${port}`);
+      logger.info(`Swagger docs available at http://localhost:${port}/api-docs`);
+      logger.info(`Backend + Socket.IO running on http://localhost:${port}`);
       
-      // Clear stale online users on restart
       if (process.env.REDIS_ENABLED === "true") {
         const { redis } = require("./shared/redis/redis");
         if (redis) {
           redis.del("online_users").then(() => {
-            console.log("🧹 Cleared stale online_users in Redis");
+            logger.info("Cleared stale online_users in Redis");
           });
         }
       }
 
       initCronJobs();
-      console.log("✅ Cron jobs started successfully!");
+      logger.info("Cron jobs started successfully");
     });
   } catch (error) {
-    console.error("❌ Error connect to DB:", error);
+    logger.error("Error connecting to DB", { error: error.message });
     process.exit(1);
   }
 })();

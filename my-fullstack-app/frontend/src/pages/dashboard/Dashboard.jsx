@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   LineChart, Line, AreaChart, Area
@@ -45,17 +45,17 @@ export const Dashboard = () => {
           getVelocityChartAPI(pId)
         ]);
         
-        if (metricsRes.data?.data) {
-          setMetrics(metricsRes.data.data);
+        if (metricsRes?.data) {
+          setMetrics(metricsRes.data);
         }
-        if (velocityRes.data?.data) {
-          setVelocityData(velocityRes.data.data);
+        if (velocityRes?.data) {
+          setVelocityData(velocityRes.data);
         }
         
         if (pId) {
           const burndownRes = await getBurndownChartAPI(pId);
-          if (burndownRes.data?.data) {
-            setBurndownData(burndownRes.data.data);
+          if (burndownRes?.data) {
+            setBurndownData(burndownRes.data);
           }
         } else {
           setBurndownData([]);
@@ -90,8 +90,8 @@ export const Dashboard = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Efficiency Analytics</h1>
-            <p className="text-slate-500 mt-1">Measure performance and progress</p>
+            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+            <p className="text-slate-500 mt-1">Track your project progress</p>
           </div>
           
           <select 
@@ -126,21 +126,21 @@ export const Dashboard = () => {
                 value={metrics.overdueTasks}
                 icon={AlertTriangle}
                 colorClass="text-red-500"
-                subtitle={`${metrics.overdueRate}% of total`}
+                subtitle={`${metrics.overdueRate}%`}
               />
               <StatCard 
                 title="Overdue Rate" 
                 value={`${metrics.overdueRate}%`}
                 icon={TrendingUp}
                 colorClass="text-orange-500"
-                subtitle="Needs attention if > 20%"
+                subtitle="Needs attention"
               />
               <StatCard 
                 title="Avg Lead Time" 
                 value={`${metrics.avgLeadTimeDays}d`}
                 icon={Clock}
                 colorClass="text-emerald-500"
-                subtitle="From creation to done"
+                subtitle="From creation"
               />
             </div>
 
@@ -151,7 +151,7 @@ export const Dashboard = () => {
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-slate-800">Team Velocity</h3>
-                  <p className="text-sm text-slate-500">Tasks completed per week</p>
+                  <p className="text-sm text-slate-500">Tasks per week</p>
                 </div>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
@@ -171,7 +171,7 @@ export const Dashboard = () => {
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-slate-800">Project Burndown</h3>
-                    <p className="text-sm text-slate-500">Remaining tasks vs time</p>
+                    <p className="text-sm text-slate-500">Remaining tasks</p>
                   </div>
                   <div className="h-72">
                     <ResponsiveContainer width="100%" height="100%">
@@ -198,10 +198,8 @@ export const Dashboard = () => {
                   <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                     <TrendingUp className="text-slate-400" size={32} />
                   </div>
-                  <h3 className="text-lg font-medium text-slate-800 mb-1">Select a Project</h3>
-                  <p className="text-slate-500 max-w-xs">
-                    Choose a project from the dropdown above to view its burndown chart and specific metrics.
-                  </p>
+                  <h3 className="text-lg font-medium text-slate-800 mb-1">Select Project</h3>
+                  <p className="text-sm text-slate-400">Select a project to view burndown chart</p>
                 </div>
               )}
 

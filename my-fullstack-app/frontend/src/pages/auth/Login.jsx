@@ -6,6 +6,7 @@ import { notificationService } from "../../services/notification.service";
 import { loginAPI } from "../../services/auth.service";
 import { AuthContext } from "../../context/authContext";
 import { ThemeContext } from "../../context/themeContext";
+import socket from "../../socket/socket";
 
 
 export const Login = () => {
@@ -56,6 +57,11 @@ export const Login = () => {
 
       // Dismiss loading toast and navigate immediately
       notificationService.dismissAll();
+      
+      // Connect socket sau khi login thành công
+      socket.auth.token = response.access_token;
+      if (!socket.connected) socket.connect();
+      
       navigate("/");
     } catch (error) {
       console.error("Login error:", error);

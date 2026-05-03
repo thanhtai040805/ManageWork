@@ -7,6 +7,7 @@ import {
 import { notificationService } from "../../services/notification.service";
 import { useTaskForm, parseDateTimeLocal } from "./hooks/useTaskForm";
 import { RecurrenceSection } from "./components/RecurrenceSection";
+import { getStatusOptionsForDisplay, PRIORITY_OPTIONS } from "../../utils/taskColors";
 
 export const AddTask = ({
   onClose = () => { },
@@ -210,9 +211,9 @@ export const AddTask = ({
                 onChange={handleOnChange}
                 className="rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               >
-                <option value="todo">To Do</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
+                {getStatusOptionsForDisplay().map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
 
@@ -221,20 +222,20 @@ export const AddTask = ({
                 Priority
               </span>
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
-                {["low", "medium", "high"].map((priority) => (
+                {PRIORITY_OPTIONS.map((opt) => (
                   <label
-                    key={priority}
+                    key={opt.value}
                     className="flex cursor-pointer items-center gap-2 text-sm font-medium capitalize text-slate-600"
                   >
                     <input
                       type="radio"
                       name="priority"
-                      value={priority}
+                      value={opt.value}
                       onChange={handleOnChange}
-                      checked={form.priority === priority}
+                      checked={form.priority === opt.value}
                       className="h-4 w-4 accent-indigo-500"
                     />
-                    {priority}
+                    {opt.label}
                   </label>
                 ))}
               </div>

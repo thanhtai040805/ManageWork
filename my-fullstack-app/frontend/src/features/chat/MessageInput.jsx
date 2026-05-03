@@ -3,13 +3,18 @@ import { emitTyping, emitSendMessage } from "@/socket/socketEmit";
 import { useMessageStore } from "@/stores/chat/messageStore";
 import { useChatUIStore } from "@/stores/chat/chatUIStore";
 import { ThemeContext } from "@/context/themeContext";
-import { Image as ImageIcon, Paperclip, Send, Smile, X, Reply } from "lucide-react";
+import { Image as ImageIcon, Paperclip, Send, Smile, X, Reply, File, Upload } from "lucide-react";
+import { uploadFileAPI } from "@/services/file.service";
 
 export const MessageInput = ({ room }) => {
   const { primaryColor } = useContext(ThemeContext);
   const [message, setMessage] = useState("");
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const typingRef = useRef(null);
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
 
   const store = useMessageStore();
   const { replyingToMessage, clearReply } = useChatUIStore();
@@ -35,18 +40,71 @@ export const MessageInput = ({ room }) => {
     }, 500);
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim() || !room?.room_id) return;
+const handleSendMessage = async () => {
+    if (!message.trim() && attachments.length === 0) return;
 
     try {
-      const savedMessage = await emitSendMessage(room.room_id, message.trim(), replyingToMessage?.message_id || null);
+      // Upload attachments first if any
+      let uploadedAttachments = [];
+      if (attachments.length > 0) {
+        setUploading(true);
+        for (const file of attachments) {
+          if (file.url) {
+            uploadedAttachments.push({
+              attachmentUrl: file.url,
+              fileType: file.type,
+              fileName: file.name
+            });
+          } else {
+            const res = await uploadFileAPI(file);
+            uploadedAttachments.push({
+              attachmentUrl: res.data?.file_url || res.file_url,
+              fileType: file.type.startsWith('image/') ? 'image' : 'file',
+              fileName: file.name
+            });
+          }
+        }
+        setUploading(false);
+      }
+
+      const messageType = uploadedAttachments.some(a => a.fileType === 'image') ? 'image' : 'text';
+      
+      const savedMessage = await emitSendMessage(
+        room.room_id, 
+        message.trim(), 
+        replyingToMessage?.message_id || null,
+        uploadedAttachments,
+        messageType
+      );
       store.addMessage(room.room_id, savedMessage);
       setMessage("");
+      setAttachments([]);
       if (textareaRef.current) textareaRef.current.style.height = "auto";
       clearReply();
     } catch (err) {
+      setUploading(false);
       console.error("Send message failed:", err.message);
     }
+  };
+
+  const handleFileSelect = async (e, isImage = false) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // For images, create preview URLs
+    const newAttachments = files.map(file => ({
+      file,
+      name: file.name,
+      type: file.type.startsWith('image/') ? 'image' : 'file',
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    }));
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+    e.target.value = ''; // Reset input
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleKeyDown = (e) => {
@@ -80,13 +138,65 @@ export const MessageInput = ({ room }) => {
         <div className="px-4 py-2 flex items-end gap-2 min-h-[56px]">
           {/* Action Buttons */}
           <div className="flex items-center pb-1">
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              multiple
+              onChange={(e) => handleFileSelect(e, false)}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+            />
+            <input 
+              type="file" 
+              ref={imageInputRef} 
+              className="hidden" 
+              multiple
+              onChange={(e) => handleFileSelect(e, true)}
+              accept="image/*"
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
+              title="Attach file"
+            >
               <Paperclip size={20} />
             </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
+            <button 
+              onClick={() => imageInputRef.current?.click()}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
+              title="Send image"
+            >
               <ImageIcon size={20} />
             </button>
           </div>
+
+          {/* Attachment Previews */}
+          {attachments.length > 0 && (
+            <div className="px-4 py-2 flex gap-2 flex-wrap border-t border-gray-100">
+              {attachments.map((file, idx) => (
+                <div key={idx} className="relative group">
+                  {file.preview ? (
+                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                      <img src={file.preview} alt={file.name} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center">
+                      <File size={20} className="text-gray-500" />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => removeAttachment(idx)}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={12} />
+                  </button>
+                  <span className="absolute -bottom-4 left-0 text-[10px] text-gray-500 truncate max-w-[60px]">
+                    {file.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <textarea
             ref={textareaRef}
@@ -104,15 +214,19 @@ export const MessageInput = ({ room }) => {
             </button>
             <button
               onClick={handleSendMessage}
-              disabled={!message.trim()}
-              className={`p-2.5 rounded-2xl transition-all duration-300 shadow-md transform active:scale-90 ${!message.trim() ? "bg-gray-100 text-gray-300 shadow-none" : "text-white hover:brightness-110 shadow-lg"
+              disabled={(!message.trim() && attachments.length === 0) || uploading}
+              className={`p-2.5 rounded-2xl transition-all duration-300 shadow-md transform active:scale-90 ${(!message.trim() && attachments.length === 0) || uploading ? "bg-gray-100 text-gray-300 shadow-none" : "text-white hover:brightness-110 shadow-lg"
                 }`}
-              style={message.trim() ? {
+              style={(message.trim() || attachments.length > 0) && !uploading ? {
                 backgroundColor: primaryColor,
                 boxShadow: `0 4px 12px -4px ${primaryColor}aa`
               } : {}}
             >
-              <Send size={18} fill={message.trim() ? "currentColor" : "none"} className={message.trim() ? "translate-x-0.5 -translate-y-0.5 rotate-[-10deg]" : ""} />
+              {uploading ? (
+                <Upload size={18} className="animate-spin" />
+              ) : (
+                <Send size={18} fill={(message.trim() || attachments.length > 0) ? "currentColor" : "none"} className={(message.trim() || attachments.length > 0) ? "translate-x-0.5 -translate-y-0.5 rotate-[-10deg]" : ""} />
+              )}
             </button>
           </div>
         </div>

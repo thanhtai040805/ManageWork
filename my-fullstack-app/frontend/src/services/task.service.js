@@ -45,9 +45,9 @@ const editTaskByIDAPI = (taskId, updateData, applyTo = 'this') => {
   return apiClient.post(URL_API, { ...updateData, applyTo });
 };
 
-const updateTaskStatusAPI = (taskId, status) => {
+const updateTaskStatusAPI = (taskId, status, previousStatus) => {
   const URL_API = `/v1/api/tasks/status/${taskId}`;
-  return apiClient.patch(URL_API, { status });
+  return apiClient.patch(URL_API, { status, previousStatus });
 };
 
 const searchTasksAPI = (query, projectId = null) => {
@@ -57,12 +57,18 @@ const searchTasksAPI = (query, projectId = null) => {
   return apiClient.get(URL_API, { params });
 };
 
+const reorderTasksAPI = (taskOrders) => {
+  const URL_API = "/v1/api/tasks/reorder";
+  return apiClient.post(URL_API, { taskOrders });
+};
+
 export { 
   createToDoTaskAPI, 
   getTasksAPI, 
   deleteTaskByIDAPI, 
   editTaskByIDAPI, 
   updateTaskStatusAPI,
-  searchTasksAPI 
+  searchTasksAPI,
+  reorderTasksAPI
 };
 

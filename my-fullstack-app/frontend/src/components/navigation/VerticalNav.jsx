@@ -1,12 +1,12 @@
 import {
   HomeIcon,
   LogOutIcon,
-  HelpCircleIcon,
   SettingsIcon,
   WorkflowIcon,
   FolderKanban,
   MessageCircleIcon,
   BarChart2,
+  ActivityIcon,
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useContext } from "react";
@@ -16,13 +16,14 @@ import { ThemeContext } from "../../context/themeContext";
 export const VerticalNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  
   const menu = [
     { href: "/", label: "Home", icon: HomeIcon },
     { href: "/projects", label: "Projects", icon: FolderKanban },
     { href: "/my-task", label: "My Tasks", icon: WorkflowIcon },
     { href: "/chat", label: "DMs", icon: MessageCircleIcon },
     { href: "/dashboard", label: "Analytics", icon: BarChart2 },
-    { href: "/help", label: "Help", icon: HelpCircleIcon },
+    { href: "/activity", label: "Activity", icon: ActivityIcon },
     { href: "/settings", label: "Settings", icon: SettingsIcon },
   ];
 

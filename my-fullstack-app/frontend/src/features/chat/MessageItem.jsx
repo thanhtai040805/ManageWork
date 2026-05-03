@@ -3,6 +3,7 @@ import { ThemeContext } from "@/context/themeContext";
 import { AuthContext } from "@/context/authContext";
 import { Pin, Reply, Smile, MoreHorizontal, Edit2, Trash2, X, Check } from "lucide-react";
 import { useChatUIStore } from "@/stores/chat/chatUIStore";
+import { confirm } from "@/components/common/ConfirmModal";
 import {
   emitToggleReaction,
   emitTogglePinMessage,
@@ -80,13 +81,19 @@ export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }
     setIsEditing(false);
   };
 
-  const handleDelete = () => {
-    if (window.confirm("Delete this message?")) {
-      emitDeleteMessage({
-        messageId: message.message_id,
-        roomId: message.room_id
-      });
-    }
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: "Delete Message",
+      message: "Delete this message?",
+      confirmText: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    emitDeleteMessage({
+      messageId: message.message_id,
+      roomId: message.room_id
+    });
   };
 
   if (isDeleted) {

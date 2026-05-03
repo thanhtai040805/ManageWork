@@ -1,6 +1,7 @@
 import React from "react";
 import { Calendar, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { formatDateRange } from "../../utils/dateHelpers";
+import { TaskFilters } from "./TaskFilters";
 
 export const MyTasksHeader = ({
   viewType,
@@ -12,12 +13,26 @@ export const MyTasksHeader = ({
   onToday,
   onAddTask,
   onSearch,
+  filters,
+  onFilterChange,
+  onClearFilters,
+  projects,
 }) => {
   return (
     <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
       <div className="flex items-center gap-4">
         {/* View Type Toggle */}
         <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-1">
+          <button
+            type="button"
+            onClick={() => onViewTypeChange("kanban")}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition ${viewType === "kanban"
+              ? "bg-indigo-500 text-white"
+              : "text-slate-600 hover:bg-slate-100"
+              }`}
+          >
+            KanBan
+          </button>
           <button
             type="button"
             onClick={() => onViewTypeChange("week")}
@@ -83,6 +98,14 @@ export const MyTasksHeader = ({
             onChange={(e) => onSearch(e.target.value)}
           />
         </div>
+
+        {/* Filters */}
+        <TaskFilters
+          filters={filters}
+          onFilterChange={onFilterChange}
+          onClearFilters={onClearFilters}
+          projects={projects}
+        />
       </div>
 
       {/* Add Task Button */}

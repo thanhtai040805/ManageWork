@@ -7,6 +7,7 @@ const {
   updateTaskByID,
   updateTaskStatus,
   searchTasks,
+  reorderTasks,
 } = require("./task.controller");
 const auth = require("../../shared/middlewares/auth");
 const validate = require("../../shared/middlewares/validation.middleware");
@@ -18,5 +19,6 @@ router.get("/search", auth, searchTasks);
 router.post("/delete/:taskId", auth, deleteTaskByID);
 router.post("/edit/:taskId", auth, validate(updateTaskValidation), updateTaskByID);
 router.patch("/status/:taskId", auth, validate(updateStatusValidation), updateTaskStatus);
+router.post("/reorder", auth, reorderTasks);
 
 module.exports = router;

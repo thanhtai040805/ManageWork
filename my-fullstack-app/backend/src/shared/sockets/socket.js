@@ -2,8 +2,9 @@ const { Server } = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
 const registerSocketEvents = require("./socketEvents");
 const socketAuth = require("../middlewares/socketAuth");
-const { pub, sub } = require("../redis/redis");
+const { pub, sub, subRealtime } = require("../redis/redis");
 const initRealtimeSubscriber = require("./presenceSubscriber");
+const logger = require("../utils/logger");
 
 
 const initSocket = (server) => {
@@ -21,16 +22,34 @@ const initSocket = (server) => {
   initRealtimeSubscriber(io);
 
 
-  // ✅ chỉ dùng adapter nếu Redis bật
   if (process.env.REDIS_ENABLED === "true" && pub && sub) {
     io.adapter(createAdapter(pub, sub));
   }
 
+  if (subRealtime) {
+    subRealtime.subscribe("chat_messages");
+    subRealtime.on("message", (channel, message) => {
+      if (channel === "chat_messages") {
+        try {
+          const data = JSON.parse(message);
+          if (data.type === "new_message") {
+            io.to(data.roomId).emit("message:new", {
+              roomId: data.roomId,
+              message: data.message
+            });
+          }
+        } catch (err) {
+          logger.error("Chat message subscriber error", { error: err.message });
+        }
+      }
+    });
+  }
+
   io.on("connection", (socket) => {
-    console.log("🟢 Connected:", socket.id);
+    logger.info("Socket connected: " + socket.id);
 
     if (!socket.user) {
-      console.log("❌ no user in socket");
+      logger.warn("No user in socket");
       socket.disconnect();
       return;
     }
@@ -41,7 +60,7 @@ const initSocket = (server) => {
     socket._registered = true;
 
     socket.onAny((event, ...args) => {
-      console.log("SERVER GOT EVENT:", event, args);
+      logger.debug("SERVER GOT EVENT: " + event);
     });
 
     registerSocketEvents(io, socket);

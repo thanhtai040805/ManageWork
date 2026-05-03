@@ -16,17 +16,20 @@ module.exports = (io, socket) => {
     try {
       if (!redis) return;
 
-      // cache friends (always fresh)
+      // Cache friends only if user has friends - avoid unnecessary DB calls
       let friends = await chatRoomService.getFriends({ userId });
       if (friends.length > 0) {
+        // Clear existing and add fresh - only if we have friends
         await redis.del(`user:${userId}:friends`);
         await redis.sadd(`user:${userId}:friends`, ...friends);
         await redis.expire(`user:${userId}:friends`, 3600);
       }
 
-      // check user đã online chưa để gửi thông báo
+      // Check user already online - notify others if new login
       const isOnline = await redis.sismember("online_users", userId);
       if (!isOnline) {
+        // Clean up stale lastSeen when coming back online
+        await redis.del(`user:${userId}:lastSeen`);
         await redis.sadd("online_users", userId);
         
         // 🔥 publish thay vì emit

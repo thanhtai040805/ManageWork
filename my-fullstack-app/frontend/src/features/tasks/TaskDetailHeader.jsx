@@ -1,12 +1,10 @@
-import { X, Star } from "lucide-react";
+import { X } from "lucide-react";
 
 export const TaskDetailHeader = ({
   formData,
   isEditing,
   isSaving,
-  isInMyDay,
   onClose,
-  onToggleMyDay,
   handleFieldChange,
   handleFieldBlur,
   handleFieldFocus,
@@ -47,20 +45,6 @@ export const TaskDetailHeader = ({
       <div className="flex items-center gap-2 ml-4">
         {isSaving && (
           <span className="text-xs text-slate-500">Saving...</span>
-        )}
-        {onToggleMyDay && (
-          <button
-            type="button"
-            onClick={() => onToggleMyDay?.(task?.task_id)}
-            className={`p-1.5 rounded-lg transition ${
-              isInMyDay
-                ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
-                : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-            }`}
-            title={isInMyDay ? "Remove from My Day" : "Add to My Day"}
-          >
-            <Star size={18} fill={isInMyDay ? "currentColor" : "none"} />
-          </button>
         )}
         <button
           type="button"

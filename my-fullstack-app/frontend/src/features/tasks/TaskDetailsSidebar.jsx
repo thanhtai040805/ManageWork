@@ -1,6 +1,7 @@
 import { Calendar, User, Clock, Flag, CheckCircle2, Circle } from "lucide-react";
 import { TagManager } from "./TagManager";
 import { normalizeEnum, formatDate, formatUser, getStatusColor, getPriorityColor, getPriorityBgColor } from "./utils/formatters";
+import { getStatusLabel, getPriorityLabel, STATUS_OPTIONS, PRIORITY_OPTIONS } from "../../utils/taskColors";
 import { formatDateTimeLocal } from "./hooks/useTaskForm";
 import { editTaskByIDAPI } from "../../services/task.service";
 
@@ -53,9 +54,9 @@ export const TaskDetailsSidebar = ({
               className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               autoFocus
             >
-              <option value="todo">To Do</option>
-              <option value="in_progress">In Progress</option>
-              <option value="done">Done</option>
+              {STATUS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           ) : (
             <button
@@ -121,9 +122,9 @@ export const TaskDetailsSidebar = ({
                 className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 autoFocus
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                {PRIORITY_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             ) : (
               <button

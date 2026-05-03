@@ -1,10 +1,13 @@
 import { useEffect , useState } from 'react'
-import  socket  from '../socket/socket'
+import  socket , { getToken } from '../socket/socket'
 import { useChatStore } from '@/stores/chat';
 const useSocket = () => {
     const setSocketConnected = useChatStore((s) => s.setConnected);
 
     useEffect(() => {
+        const token = getToken();
+        if (!token) return; // Chỉ connect khi có token
+
         if (!socket.connected) socket.connect();
 
         const onConnect = () => {

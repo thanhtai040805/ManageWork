@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-// Unused userModel removed as JWT payload is trusted
+const logger = require("../utils/logger");
 
 const socketAuth = async (socket, next) => {
   try {
@@ -13,7 +13,6 @@ const socketAuth = async (socket, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Minimize DB calls by trusting JWT payload
     socket.user = {
       uid: decoded.uid,
       username: decoded.username,
@@ -23,7 +22,7 @@ const socketAuth = async (socket, next) => {
 
     next();
   } catch (err) {
-    console.log("Socket auth error:", err.message);
+    logger.error("Socket auth error", { error: err.message });
     next(new Error("INVALID_TOKEN"));
   }
 };

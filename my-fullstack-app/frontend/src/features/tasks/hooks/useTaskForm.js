@@ -60,6 +60,7 @@ export const useTaskForm = (task, isEditMode) => {
     repeat_type: "none",
     repeat_days: [],
     repeat_until: "",
+    assigned_to: task?.assigned_to || "",
   });
 
   const handleOnChange = (event) => {

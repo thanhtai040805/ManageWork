@@ -16,6 +16,8 @@ import { ProjectSettings } from "./pages/projects/ProjectSettings";
 import { Layout } from "./layouts/Layout";
 import { Chat } from "./pages/chat/Chat";
 import { Dashboard } from "./pages/dashboard/Dashboard";
+import { ActivityLog } from "./pages/activity/ActivityLog";
+import { TemplateSettings } from "./pages/settings/TemplateSettings";
 import useSocket from "./hooks/useSocket";
 import useSocketRegister from "./hooks/useSocketRegister";
 
@@ -97,8 +99,10 @@ function App() {
             />
             <Route path="/my-task" element={<MyTasks />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/templates" element={<TemplateSettings />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/activity" element={<ActivityLog />} />
           </Route>
 
           <Route path="/register" element={<SignUp />} />

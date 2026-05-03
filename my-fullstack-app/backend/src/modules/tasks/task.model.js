@@ -302,6 +302,21 @@ class Task {
     }
   }
 
+  static async updateSingleOrder(taskId, orderIndex, userId) {
+    const query = `
+      UPDATE tasks 
+      SET order_index = $1, updated_at = NOW()
+      WHERE task_id = $2 AND created_by = $3
+    `;
+    try {
+      await pool.query(query, [orderIndex, taskId, userId]);
+      return true;
+    } catch (error) {
+      console.error("Error updating single task order:", error);
+      throw error;
+    }
+  }
+
   static async updateRecurringTaskId(oldRecurringTaskId, newRecurringTaskId, fromDate) {
     const query = `
       UPDATE tasks

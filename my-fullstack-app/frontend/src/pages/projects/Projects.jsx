@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Grid3x3, List, Search, Calendar, MoreVertical } from "lucide-react";
 import { getProjectsAPI, createProjectAPI, deleteProjectAPI } from "../../services/project.service";
 import { notificationService } from "../../services/notification.service";
+import { confirm } from "../../components/common/ConfirmModal";
 import { ProjectCardSkeleton } from "../../components/common/SkeletonLoader";
 
 export const Projects = () => {
@@ -58,9 +59,13 @@ export const Projects = () => {
 
   const handleDeleteProject = async (projectId, e) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this project?")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Delete Project",
+      message: "Are you sure you want to delete this project?",
+      confirmText: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     try {
       await deleteProjectAPI(projectId);

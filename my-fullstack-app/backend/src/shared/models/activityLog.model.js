@@ -157,10 +157,10 @@ class ActivityLog {
     const query = `
       SELECT 
         COUNT(*) as total_activities,
-        COUNT(CASE WHEN action LIKE '%created%' THEN 1 END) as created_activities,
-        COUNT(CASE WHEN action LIKE '%updated%' THEN 1 END) as updated_activities,
-        COUNT(CASE WHEN action LIKE '%deleted%' THEN 1 END) as deleted_activities,
-        COUNT(CASE WHEN action LIKE '%completed%' THEN 1 END) as completed_activities
+        COUNT(CASE WHEN action LIKE '%Created%' OR action LIKE '%created%' THEN 1 END) as created_activities,
+        COUNT(CASE WHEN action LIKE '%Updated%' OR action LIKE '%updated%' THEN 1 END) as updated_activities,
+        COUNT(CASE WHEN action LIKE '%Deleted%' OR action LIKE '%deleted%' THEN 1 END) as deleted_activities,
+        COUNT(CASE WHEN action LIKE '%Completed%' OR action LIKE '%completed%' THEN 1 END) as completed_activities
       FROM activity_logs 
       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'
     `;
@@ -179,8 +179,11 @@ class ActivityLog {
     return this.create({ userId, taskId, action: `Created task: ${taskTitle}` });
   }
 
-  static async logTaskUpdated(userId, taskId, taskTitle) {
-    return this.create({ userId, taskId, action: `Updated task: ${taskTitle}` });
+  static async logTaskUpdated(userId, taskId, taskTitle, description = null) {
+    const action = description 
+      ? `Updated task: ${taskTitle} - ${description}`
+      : `Updated task: ${taskTitle}`;
+    return this.create({ userId, taskId, action });
   }
 
   static async logTaskCompleted(userId, taskId, taskTitle) {

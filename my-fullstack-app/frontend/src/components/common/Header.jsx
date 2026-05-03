@@ -1,4 +1,4 @@
-import { Bell, Calendar, Search, LogOut, Settings, User, ChevronRight } from "lucide-react";
+import { Bell, Calendar, Search, LogOut, Settings, ChevronRight, Globe } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useState, useEffect } from "react";
 import apiClient from "../../services/apiClient";
@@ -285,11 +285,10 @@ export const Header = () => {
               <div className="fixed inset-0 z-0" onClick={() => setShowProfileMenu(false)}></div>
               <div className="absolute top-full right-0 mt-3 w-56 glass rounded-[24px] shadow-2xl border border-white/40 p-2 animate-in fade-in slide-in-from-top-4 duration-200 z-10 overflow-hidden">
                 <div className="p-2 space-y-1">
-                  <button className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors text-left group">
-                    <User size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
-                    <span className="text-sm font-bold text-slate-700">My Profile</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors text-left group">
+                  <button 
+                    onClick={() => { setShowProfileMenu(false); navigate("/settings"); }}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors text-left group"
+                  >
                     <Settings size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
                     <span className="text-sm font-bold text-slate-700">Settings</span>
                   </button>

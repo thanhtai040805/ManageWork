@@ -1,4 +1,5 @@
 const logger = require("../utils/logger");
+const { Sentry } = require("../sentry");
 
 const errorHandler = (err, req, res, next) => {
   logger.error(err.message, {
@@ -6,6 +7,11 @@ const errorHandler = (err, req, res, next) => {
     path: req.path,
     method: req.method
   });
+
+  // Capture error to Sentry
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(err);
+  }
 
   // Handle specific database errors
   if (err.code === "23505") {

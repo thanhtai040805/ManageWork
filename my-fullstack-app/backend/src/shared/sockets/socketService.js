@@ -2,7 +2,7 @@ const chatService = require("../../modules/chat/chat.service");
 const { redis, pub} = require('../redis/redis')
 
 const sendMessage = async (io, socket, data) => {
-    const { roomId, content, parentMessageId } = data;
+    const { roomId, content, parentMessageId, attachments = [], messageType = "text" } = data;
     console.log("sendMessage called with data:", socket.user.uid);
     const isMember = await chatService.isMemberOfChatRoom({
         roomId,
@@ -10,22 +10,35 @@ const sendMessage = async (io, socket, data) => {
     });
     if (!isMember) return;
     const senderId = socket.user.uid
-    if(!roomId || !content) return;
+    // Allow empty content if attachments exist (media-only messages)
+    if(!roomId || (!content?.trim() && attachments.length === 0)) return;
     try {
         const message = await chatService.sendMessage({
           roomId,
           senderId,
-          content,
-          messageType: "text",
-          attachments: [],
+          content: content?.trim() || "",
+          messageType,
+          attachments,
           parentMessageId
         });
+
+        // Emit locally first (for single server)
         io.to(roomId).emit("message:new", { roomId, message });
+
+        // Publish to Redis for horizontal scaling (other servers)
+        if (pub) {
+            await pub.publish("chat_messages", JSON.stringify({
+                type: "new_message",
+                roomId,
+                message
+            }));
+        }
+
         return message
     } catch (error) {
         socket.emit("message:error", {
-          action: "send",
-          code: "SEND_FAILED",
+            action: "send",
+            code: "SEND_FAILED",
         });
     }
 }

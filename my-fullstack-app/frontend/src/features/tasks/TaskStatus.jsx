@@ -1,25 +1,5 @@
 import { TrendingUp } from "lucide-react";
-
-const STATUS_META = [
-  {
-    key: "done",
-    label: "Completed",
-    tone: "text-emerald-500",
-    track: "bg-emerald-100",
-  },
-  {
-    key: "in_progress",
-    label: "In Progress",
-    tone: "text-blue-500",
-    track: "bg-blue-100",
-  },
-  {
-    key: "todo",
-    label: "Not Started",
-    tone: "text-rose-500",
-    track: "bg-rose-100",
-  },
-];
+import { getStatusTone, getStatusOptionsForDisplay, STATUS_COLORS } from "../../utils/taskColors";
 
 const TaskStatus = ({ stats }) => {
   const counts = {
@@ -27,6 +7,7 @@ const TaskStatus = ({ stats }) => {
     in_progress: stats?.in_progress ?? 0,
     todo: stats?.todo ?? 0,
   };
+  const statusOptions = getStatusOptionsForDisplay();
 
   const total =
     stats?.total ??
@@ -53,23 +34,25 @@ const TaskStatus = ({ stats }) => {
         </span>
       </header>
       <div className="mt-6 grid gap-4">
-        {STATUS_META.map((item) => {
-          const percent = getPercentage(counts[item.key]);
+        {statusOptions.map((item) => {
+          const percent = getPercentage(counts[item.value] || 0);
+          const tone = item.tone || "text-slate-500";
+          const bgClass = item.bg || "bg-slate-100";
           return (
-            <div key={item.key} className="flex items-center gap-4">
+            <div key={item.value} className="flex items-center gap-4">
               <div
-                className={`flex h-16 w-16 items-center justify-center rounded-full border-[6px] border-current ${item.tone} bg-white`}
+                className={`flex h-16 w-16 items-center justify-center rounded-full border-[6px] border-current ${tone} bg-white`}
               >
                 <span className="text-lg font-semibold">{percent}%</span>
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between text-sm font-medium text-slate-600">
                   <span>{item.label}</span>
-                  <span className={item.tone}>{counts[item.key]}</span>
+                  <span className={tone}>{counts[item.value] || 0}</span>
                 </div>
-                <div className={`mt-2 h-2 rounded-full ${item.track}`}>
+                <div className={`mt-2 h-2 rounded-full ${bgClass}`}>
                   <div
-                    className={`h-2 rounded-full ${item.tone.replace("text", "bg")}`}
+                    className={`h-2 rounded-full ${tone.replace("text", "bg")}`}
                     style={{ width: `${percent}%` }}
                   />
                 </div>
@@ -83,4 +66,3 @@ const TaskStatus = ({ stats }) => {
 };
 
 export { TaskStatus };
-

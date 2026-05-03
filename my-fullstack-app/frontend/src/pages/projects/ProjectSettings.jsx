@@ -11,6 +11,7 @@ import {
 } from "../../services/project.service";
 import { getUsersAPI } from "../../services/auth.service";
 import { notificationService } from "../../services/notification.service";
+import { confirm } from "../../components/common/ConfirmModal";
 import { ProjectCardSkeleton } from "../../components/common/SkeletonLoader";
 
 /**
@@ -111,9 +112,13 @@ export const ProjectSettings = () => {
   };
 
   const handleRemoveMember = async (userId) => {
-    if (!window.confirm("Are you sure you want to remove this member?")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Remove Member",
+      message: "Are you sure you want to remove this member?",
+      confirmText: "Remove",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     try {
       await removeProjectMemberAPI(projectId, userId);
@@ -126,9 +131,13 @@ export const ProjectSettings = () => {
   };
 
   const handleDeleteProject = async () => {
-    if (!window.confirm("Are you sure you want to delete this project? All tasks in this project will be deleted.")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Delete Project",
+      message: "Are you sure you want to delete this project? All tasks in this project will be deleted.",
+      confirmText: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     try {
       await deleteProjectAPI(projectId);

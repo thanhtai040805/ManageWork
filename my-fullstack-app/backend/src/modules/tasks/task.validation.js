@@ -25,7 +25,7 @@ const updateTaskValidation = [
 
 const updateStatusValidation = [
   param("taskId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^[0-9]+$/).withMessage("Invalid task ID"),
-  body("status").isIn(["todo", "in_progress", "done", "cancelled"]),
+  body("status").isIn(["todo", "in_progress", "review", "on_hold", "done", "cancelled"]),
 ];
 
 module.exports = {
