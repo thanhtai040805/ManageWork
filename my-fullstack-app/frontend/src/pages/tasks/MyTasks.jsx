@@ -1,12 +1,17 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useContext } from "react";
 import { useSearchParams } from "react-router-dom";
 import { TaskDetail, AddTask, MyTasksHeader, applyFilters } from "../../features/tasks";
 import { WeekView, MonthView, KanBanView } from "../../features/calendar";
 import { getTasksAPI, searchTasksAPI, updateTaskStatusAPI, reorderTasksAPI } from "../../services/task.service";
 import { getProjectsAPI } from "../../services/project.service";
 import { getWeekRange, getMonthRange, isDateInRange } from "../../utils/dateHelpers";
+import { AuthContext } from "../../context/authContext";
+import { useTaskStore } from "../../stores/taskStore";
 
 export const MyTasks = () => {
+  const { auth } = useContext(AuthContext);
+  const userId = auth?.user?.uid;
+  const setUserTasks = useTaskStore((state) => state.setUserTasks);
   const [searchParams, setSearchParams] = useSearchParams();
   const [allTasks, setAllTasks] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -31,6 +36,7 @@ export const MyTasks = () => {
       .then((response) => {
         setAllTasks(response);
         setTasks(response);
+        setUserTasks(response);
 
         // Check for task query param
         const taskId = searchParams.get("task");
@@ -206,6 +212,8 @@ export const MyTasks = () => {
           onTaskClick={handleTaskClick}
           onTaskDelete={handleTaskDeleted}
           onTaskStatusChange={handleTaskStatusChange}
+          projectId={null}
+          userId={userId}
         />
       ) : viewType === "week" ? (
         <WeekView

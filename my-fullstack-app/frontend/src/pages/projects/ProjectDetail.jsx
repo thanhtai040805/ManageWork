@@ -8,6 +8,7 @@ import { searchTasksAPI } from "../../services/task.service";
 import { notificationService } from "../../services/notification.service";
 import { ProjectTaskFilters, applyProjectFilters } from "../../features/tasks/ProjectTaskFilters";
 import { AuthContext } from "../../context/authContext";
+import { useTaskStore } from "../../stores/taskStore";
 import { useContext } from "react";
 
 export const ProjectDetail = () => {
@@ -15,6 +16,7 @@ export const ProjectDetail = () => {
   const navigate = useNavigate();
   const { auth } = useContext(AuthContext);
   const user = auth?.user;
+  const setProjectTasks = useTaskStore((state) => state.setProjectTasks);
   const [searchParams, setSearchParams] = useSearchParams();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -64,7 +66,9 @@ export const ProjectDetail = () => {
       setLoading(true);
       const data = await getProjectAPI(projectId);
       setProject(data);
-      setTasks(data.tasks || []);
+      const projectTasks = data.tasks || [];
+      setTasks(projectTasks);
+      setProjectTasks(projectId, projectTasks);
     } catch (error) {
       console.error("Error fetching project:", error);
       notificationService.error("Failed to load project");
@@ -270,6 +274,8 @@ export const ProjectDetail = () => {
             onTaskClick={handleTaskClick}
             onTaskStatusChange={handleTaskStatusChange}
             onTaskDelete={handleTaskDeleted}
+            projectId={projectId}
+            userId={user?.uid}
           />
         ) : viewType === "week" ? (
           <WeekView currentDate={currentDate} tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskDelete={handleTaskDeleted} onTaskStatusChange={handleTaskStatusChange} />

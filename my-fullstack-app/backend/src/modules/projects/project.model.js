@@ -56,14 +56,17 @@ class Project {
 
   static async getUserProjects(userId) {
     const query = `
-      SELECT DISTINCT p.project_id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
+      SELECT DISTINCT ON (p.project_id) 
+             p.project_id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
              u.username as owner_username, u.full_name as owner_name,
-             pm.role as user_role
+             COALESCE(pm.role, 'admin') as user_role
       FROM projects p
       LEFT JOIN users u ON p.owner_id = u.user_id
-      LEFT JOIN project_members pm ON p.project_id = pm.project_id
+      LEFT JOIN project_members pm ON p.project_id = pm.project_id AND pm.user_id = $1
       WHERE p.owner_id = $1 OR pm.user_id = $1
-      ORDER BY p.created_at DESC
+      ORDER BY p.project_id, 
+        CASE WHEN p.owner_id = $1 THEN 0 ELSE 1 END,
+        pm.role NULLS LAST
     `;
     
     try {

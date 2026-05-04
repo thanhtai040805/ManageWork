@@ -7,6 +7,8 @@ const initRealtimeSubscriber = require("./presenceSubscriber");
 const logger = require("../utils/logger");
 
 
+const socketEmitter = require("./socketEmitter");
+
 const initSocket = (server) => {
   const io = new Server(server, {
     pingInterval: 5000,
@@ -25,6 +27,8 @@ const initSocket = (server) => {
   if (process.env.REDIS_ENABLED === "true" && pub && sub) {
     io.adapter(createAdapter(pub, sub));
   }
+
+  socketEmitter.setIO(io);
 
   if (subRealtime) {
     subRealtime.subscribe("chat_messages");

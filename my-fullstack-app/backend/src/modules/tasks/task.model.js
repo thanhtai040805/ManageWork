@@ -1,4 +1,5 @@
 const pool = require("../../shared/config/database");
+const TaskCacheService = require("../../shared/services/taskCache.service");
 
 class Task {
   static async create(taskData) {
@@ -125,6 +126,9 @@ class Task {
   }
 
   static async getProjectTasks(projectId) {
+    const cached = await TaskCacheService.getProjectTasks(projectId);
+    if (cached) return cached;
+
     const query = `
       SELECT t.task_id, t.project_id, t.title, t.description, t.status, t.priority, t.start_date, t.due_date, t.order_index, t.created_by, t.assigned_to, t.created_at, t.updated_at,
              u1.username as creator_username, u1.full_name as creator_name,
@@ -138,7 +142,11 @@ class Task {
 
     try {
       const result = await pool.query(query, [projectId]);
-      return result.rows;
+      const tasks = result.rows;
+      if (tasks.length > 0) {
+        await TaskCacheService.setProjectTasks(projectId, tasks);
+      }
+      return tasks;
     } catch (error) {
       console.error("Error getting project tasks:", error);
       throw error;
@@ -146,6 +154,9 @@ class Task {
   }
 
   static async getUserTasks(userId) {
+    const cached = await TaskCacheService.getUserTasks(userId);
+    if (cached) return cached;
+
     const query = `
       SELECT t.task_id, t.project_id, t.title, t.description, t.status, t.priority, 
              t.start_date::text as start_date, t.due_date::text as due_date, 
@@ -164,7 +175,7 @@ class Task {
 
     try {
       const result = await pool.query(query, [userId]);
-      return result.rows.map(task => {
+      const tasks = result.rows.map(task => {
         ['start_date', 'due_date', 'created_at', 'updated_at'].forEach(field => {
           if (task[field]) {
             const ts = task[field].includes('+') || task[field].endsWith('Z') 
@@ -175,6 +186,10 @@ class Task {
         });
         return task;
       });
+      if (tasks.length > 0) {
+        await TaskCacheService.setUserTasks(userId, tasks);
+      }
+      return tasks;
     } catch (error) {
       console.error("Error getting user tasks:", error);
       throw error;

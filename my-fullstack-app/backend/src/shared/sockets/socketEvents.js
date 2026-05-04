@@ -1,4 +1,5 @@
 const chatRoomService = require('../../modules/chat/chat.service');
+const projectModel = require('../../modules/projects/project.model');
 const {
   sendMessage,
   typing,
@@ -27,12 +28,19 @@ module.exports = (io, socket) => {
 
       // Check user already online - notify others if new login
       const isOnline = await redis.sismember("online_users", userId);
+      console.log(`[Login] isOnline check for ${userId}: ${isOnline}`);
+      
+      // Always ensure user is in online_users set
+      const saddResult = await redis.sadd("online_users", userId);
+      const members = await redis.smembers("online_users");
+      console.log(`[Login] sadd result: ${saddResult}, all members: ${JSON.stringify(members)}`);
+      
+      // Clean up stale lastSeen when coming online
+      const delResult = await redis.del(`user:${userId}:lastSeen`);
+      console.log(`[Login] del lastSeen result: ${delResult}`);
+      
+      // Only publish "online" if they weren't already marked online
       if (!isOnline) {
-        // Clean up stale lastSeen when coming back online
-        await redis.del(`user:${userId}:lastSeen`);
-        await redis.sadd("online_users", userId);
-        
-        // 🔥 publish thay vì emit
         await pub.publish(
           "presence",
           JSON.stringify({
@@ -40,6 +48,9 @@ module.exports = (io, socket) => {
             userId,
           })
         );
+        console.log(`[Presence] User ${userId} came online (new)`);
+      } else {
+        console.log(`[Presence] User ${userId} reconnected (already online)`);
       }
 
       console.log(`User ${userId} connected`);
@@ -51,6 +62,14 @@ module.exports = (io, socket) => {
       const rooms = await chatRoomService.getChatRoomsByUser(userId);
       rooms.forEach((room) => {
         socket.join(room.room_id);
+      });
+
+      // Join project channels for real-time task updates
+      const projects = await projectModel.getUserProjects(userId);
+      console.log(`[SocketInit] User ${userId} has ${projects.length} projects`);
+      projects.forEach((project) => {
+        console.log(`[SocketInit] Joining project channel: project:${project.project_id}`);
+        socket.join(`project:${project.project_id}`);
       });
 
       const onlineUsers = await redis.smembers("online_users");
@@ -81,37 +100,51 @@ module.exports = (io, socket) => {
   socket.on("message:pin:toggle", (payload) => require("./socketService").togglePin(io, socket, payload));
   socket.on("room:update", (payload) => require("./socketService").updateRoom(io, socket, payload));
 
-  socket.on("disconnect", async () => {
-    try {
-      if (!redis) return;
+  socket.on("disconnect", (reason) => {
+    console.log(`[Disconnect] Event fired for ${userId}, reason: ${reason}`);
+    
+    (async () => {
+      try {
+        if (!redis) return;
 
-      // kiểm tra còn device khác không
-      const sockets = await io.in(`user:${userId}`).fetchSockets();
-      const otherSockets = sockets.filter(s => s.id !== socket.id);
-      if (otherSockets.length > 0) {
-        console.log(`User ${userId} still has ${otherSockets.length} other sessions`);
-        return;
+        console.log(`[Disconnect] Processing disconnect for ${userId}...`);
+
+        // kiểm tra còn device khác không
+        const sockets = await io.in(`user:${userId}`).fetchSockets();
+        console.log(`[Disconnect] Found ${sockets.length} socket(s) for user ${userId}`);
+        
+        const otherSockets = sockets.filter(s => s.id !== socket.id);
+        if (otherSockets.length > 0) {
+          console.log(`[Disconnect] User ${userId} still has ${otherSockets.length} other sessions, skipping offline`);
+          return;
+        }
+
+        console.log(`[Disconnect] No other sessions, removing ${userId} from online_users...`);
+
+        // Remove from online_users set
+        const remResult = await redis.srem("online_users", userId);
+        console.log(`[Presence] Removed ${userId} from online_users, result: ${remResult}`);
+
+        // Set lastSeen
+        const lastSeen = Date.now();
+        await redis.set(`user:${userId}:lastSeen`, lastSeen);
+        console.log(`[Presence] Set lastSeen for ${userId}: ${lastSeen}`);
+
+        // Publish offline presence
+        await pub.publish(
+          "presence",
+          JSON.stringify({
+            type: "offline",
+            userId,
+            lastSeen,
+          })
+        );
+
+        console.log(`User ${userId} offline complete`);
+
+      } catch (err) {
+        console.error("Disconnect error:", err);
       }
-
-      await redis.srem("online_users", userId);
-
-      const lastSeen = Date.now();
-      await redis.set(`user:${userId}:lastSeen`, lastSeen);
-
-      // 🔥 publish thay vì emit
-      await pub.publish(
-        "presence",
-        JSON.stringify({
-          type: "offline",
-          userId,
-          lastSeen,
-        })
-      );
-
-      console.log(`User ${userId} offline`);
-
-    } catch (err) {
-      console.error("Disconnect error:", err);
-    }
+    })();
   });
 };

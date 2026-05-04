@@ -1,4 +1,4 @@
-require("dotenv");
+require("dotenv").config();
 const taskModel = require("./task.model");
 const recurringTaskModel = require("./models/recurringTask.model");
 const AutomationService = require("./automation.service");

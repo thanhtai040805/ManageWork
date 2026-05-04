@@ -20,6 +20,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Clock3, AlertCircle } from "lucide-react";
 import { updateTaskStatusAPI, reorderTasksAPI } from "../../services/task.service";
 import { getPriorityBadge, getPriorityLabel } from "../../utils/taskColors";
+import { useTaskRealtime } from "../tasks/hooks/useTaskRealtime";
 
 const formatDate = (value) => {
   if (!value) return null;
@@ -153,12 +154,97 @@ function KanBanColumn({ id, label, color, taskIds, tasks, onTaskClick }) {
   );
 }
 
-export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelete }) => {
+export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelete, projectId, userId }) => {
   const [activeId, setActiveId] = useState(null);
-  const [board, setBoard] = useState({ tasks: {}, columns: {} });
+  const [board, setBoard] = useState({ tasks: {}, columns: {}, taskToColumn: {} });
   const [initialLoad, setInitialLoad] = useState(true);
   const [localUpdate, setLocalUpdate] = useState(false);
   const [, setTick] = useState(0);
+
+  const handleRemoteTaskUpdated = useCallback((data) => {
+    if (!data || data.status === 'deleted') {
+      setLocalUpdate(false);
+      return;
+    }
+    setBoard(prev => {
+      const taskExists = prev.tasks[data.taskId];
+      if (taskExists) {
+        const updatedTask = {
+          ...prev.tasks[data.taskId],
+          status: data.status,
+          updatedAt: data.updatedAt,
+        };
+        
+        if (data.orderIndex !== undefined) {
+          updatedTask.order_index = data.orderIndex;
+        }
+        
+        let newTaskToColumn = prev.taskToColumn;
+        let newColumns = prev.columns;
+        
+        if (data.status && data.status !== prev.taskToColumn[data.taskId]) {
+          const oldColumn = prev.taskToColumn[data.taskId];
+          newTaskToColumn = {
+            ...prev.taskToColumn,
+            [data.taskId]: data.status,
+          };
+          
+          if (oldColumn && newColumns[oldColumn]) {
+            newColumns = {
+              ...newColumns,
+              [oldColumn]: newColumns[oldColumn].filter(id => id !== data.taskId),
+              [data.status]: [...newColumns[data.status], data.taskId],
+            };
+          }
+        }
+        
+        return {
+          ...prev,
+          tasks: {
+            ...prev.tasks,
+            [data.taskId]: updatedTask,
+          },
+          taskToColumn: newTaskToColumn,
+          columns: newColumns,
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleRemoteTaskReordered = useCallback((data) => {
+    if (!data || !data.tasks || !data.columnId) return;
+    
+    setBoard(prev => {
+      const newColumns = { ...prev.columns };
+      const orderedTaskIds = data.tasks.map(t => t.taskId);
+      
+      if (newColumns[data.columnId]) {
+        newColumns[data.columnId] = orderedTaskIds;
+      }
+      
+      const newTasks = { ...prev.tasks };
+      data.tasks.forEach(t => {
+        if (newTasks[t.taskId]) {
+          newTasks[t.taskId] = { ...newTasks[t.taskId], order_index: t.orderIndex };
+        }
+      });
+      
+      return {
+        ...prev,
+        columns: newColumns,
+        tasks: newTasks,
+      };
+    });
+    setLocalUpdate(true);
+  }, []);
+
+  useTaskRealtime({
+    projectId,
+    userId,
+    onTaskUpdated: handleRemoteTaskUpdated,
+    onTaskReordered: handleRemoteTaskReordered,
+  });
 
   useEffect(() => {
     if (!localUpdate) {
