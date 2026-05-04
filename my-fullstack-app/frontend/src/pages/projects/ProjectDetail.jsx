@@ -17,6 +17,7 @@ export const ProjectDetail = () => {
   const { auth } = useContext(AuthContext);
   const user = auth?.user;
   const setProjectTasks = useTaskStore((state) => state.setProjectTasks);
+  const updateTask = useTaskStore((state) => state.updateTask);
   const [searchParams, setSearchParams] = useSearchParams();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -99,12 +100,13 @@ export const ProjectDetail = () => {
 
   const handleTaskStatusChange = (taskOrId, newStatus) => {
     if (newStatus !== undefined) {
+      const taskId = taskOrId;
       setTasks((prev) =>
         prev.map((task) =>
-          task.task_id === taskOrId ? { ...task, status: newStatus } : task
+          task.task_id === taskId ? { ...task, status: newStatus } : task
         )
       );
-      fetchProject();
+      updateTask(taskId, { status: newStatus });
     } else {
       const updatedTask = taskOrId;
       setTasks((prev) =>
@@ -113,7 +115,7 @@ export const ProjectDetail = () => {
         )
       );
       setSelectedTask(updatedTask);
-      fetchProject();
+      updateTask(updatedTask.task_id, updatedTask);
     }
   };
 

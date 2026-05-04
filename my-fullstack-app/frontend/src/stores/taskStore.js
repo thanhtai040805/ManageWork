@@ -20,16 +20,23 @@ export const useTaskStore = create((set, get) => ({
   updateTask: (taskId, updates) => set((state) => {
     const updatedProjectTasks = {};
     Object.keys(state.projectTasks).forEach((projectId) => {
-      updatedProjectTasks[projectId] = state.projectTasks[projectId].map((task) =>
-        task.task_id === taskId ? { ...task, ...updates } : task
-      );
+      const tasks = state.projectTasks[projectId];
+      if (Array.isArray(tasks)) {
+        updatedProjectTasks[projectId] = tasks.map((task) =>
+          task.task_id === taskId ? { ...task, ...updates } : task
+        );
+      } else {
+        updatedProjectTasks[projectId] = tasks;
+      }
     });
     
     return {
       projectTasks: updatedProjectTasks,
-      userTasks: state.userTasks.map((task) =>
-        task.task_id === taskId ? { ...task, ...updates } : task
-      ),
+      userTasks: Array.isArray(state.userTasks) 
+        ? state.userTasks.map((task) =>
+            task.task_id === taskId ? { ...task, ...updates } : task
+          )
+        : state.userTasks,
     };
   }),
   
