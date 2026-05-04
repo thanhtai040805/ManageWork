@@ -157,7 +157,12 @@ class Project {
       SELECT 
         (SELECT COUNT(*) FROM tasks WHERE project_id = $1) as total_tasks,
         (SELECT COUNT(*) FROM tasks WHERE project_id = $1 AND status = 'done') as completed_tasks,
-        (SELECT COUNT(*) FROM project_members WHERE project_id = $1) as total_members
+        (SELECT COUNT(*) FROM project_members WHERE project_id = $1) as total_members,
+        CASE 
+          WHEN (SELECT COUNT(*) FROM tasks WHERE project_id = $1) > 0
+          THEN ROUND((SELECT COUNT(*) FROM tasks WHERE project_id = $1 AND status = 'done') * 100.0 / (SELECT COUNT(*) FROM tasks WHERE project_id = $1))
+          ELSE 0
+        END as completion_percentage
     `;
     
     try {

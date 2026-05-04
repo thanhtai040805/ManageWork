@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Grid3x3, FolderKanban, Users, Search, MoreVertical } from "lucide-react";
 import { getProjectsAPI, createProjectAPI, deleteProjectAPI } from "../../services/project.service";
 import { notificationService } from "../../services/notification.service";
 import { confirm } from "../../components/common/ConfirmModal";
 import { ProjectCardSkeleton } from "../../components/common/SkeletonLoader";
+import { AuthContext } from "../../context/authContext";
 
 export const Projects = () => {
   const [projects, setProjects] = useState([]);
@@ -14,6 +15,8 @@ export const Projects = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProject, setNewProject] = useState({ name: "", description: "" });
   const navigate = useNavigate();
+  const { auth } = useContext(AuthContext);
+  const currentUserId = auth?.user?.uid;
 
   useEffect(() => {
     fetchProjects();
@@ -81,9 +84,12 @@ export const Projects = () => {
     
     if (!matchesSearch) return false;
     
+    const isOwner = project.owner_id === currentUserId;
+    const userRole = project.user_role;
+    
     if (activeTab === "all") return true;
-    if (activeTab === "my") return project.is_owner || project.role === "owner";
-    if (activeTab === "shared") return !project.is_owner && project.role && project.role !== "owner";
+    if (activeTab === "my") return isOwner || userRole === "admin";
+    if (activeTab === "shared") return !isOwner && userRole && userRole !== "admin";
     
     return true;
   });

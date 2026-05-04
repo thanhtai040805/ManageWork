@@ -6,7 +6,7 @@ import { notificationService } from "../../services/notification.service";
 import { ThemeContext } from "../../context/themeContext";
 import { AuthContext } from "../../context/authContext";
 
-export const Header = () => {
+export const Header = ({ onTaskSelect }) => {
   const { primaryColor } = useContext(ThemeContext);
   const { auth, logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -96,12 +96,22 @@ export const Header = () => {
     }
   };
 
-  const handleResultClick = (result) => {
+  const handleResultClick = async (result) => {
     setSearchQuery("");
     setSearchResults([]);
-    if (result.type === 'project') navigate(`/projects/${result.project_id || result.id}`);
-    if (result.type === 'task') navigate(`/tasks/${result.task_id}`);
-    if (result.type === 'user') navigate(`/profile/${result.user_id || result.id}`);
+    if (result.type === 'project') {
+      navigate(`/projects/${result.project_id || result.id}`);
+    } else if (result.type === 'task') {
+      try {
+        const response = await apiClient.get(`/v1/api/tasks/${result.task_id}`);
+        onTaskSelect(response);
+      } catch (error) {
+        console.error("Error fetching task:", error);
+        notificationService.error("Failed to load task details");
+      }
+    } else if (result.type === 'user') {
+      notificationService.info("User profile coming soon");
+    }
   };
 
   return (

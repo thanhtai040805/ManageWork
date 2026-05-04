@@ -20,6 +20,8 @@ import { ActivityLog } from "./pages/activity/ActivityLog";
 
 import useSocket from "./hooks/useSocket";
 import useSocketRegister from "./hooks/useSocketRegister";
+import { TaskDetail } from "./features/tasks";
+import { useState } from "react";
 
 function App() {
   const { auth, setAuth, appLoading, setAppLoading } = useContext(AuthContext);
@@ -85,7 +87,7 @@ function App() {
   useSocket();
   useSocketRegister();
 
-  return (
+return (
     <BrowserRouter>
       <div className="App">
         <Routes>

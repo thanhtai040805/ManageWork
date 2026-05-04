@@ -1,25 +1,40 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Settings, Users, Plus, Clock, Search, LayoutGrid, Calendar } from "lucide-react";
+import { ArrowLeft, Settings, Plus, LayoutGrid, Calendar } from "lucide-react";
 import { getProjectAPI } from "../../services/project.service";
-import { TaskCard, AddTask, TaskDetail } from "../../features/tasks";
-import { WeekView, MonthView } from "../../features/calendar";
+import { AddTask, TaskDetail } from "../../features/tasks";
+import { WeekView, MonthView, KanBanView } from "../../features/calendar";
 import { searchTasksAPI } from "../../services/task.service";
 import { notificationService } from "../../services/notification.service";
+import { ProjectTaskFilters, applyProjectFilters } from "../../features/tasks/ProjectTaskFilters";
+import { AuthContext } from "../../context/authContext";
+import { useContext } from "react";
 
 export const ProjectDetail = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const { auth } = useContext(AuthContext);
+  const user = auth?.user;
   const [searchParams, setSearchParams] = useSearchParams();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddTask, setShowAddTask] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState(null);
   const [viewType, setViewType] = useState("kanban");
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  const [filters, setFilters] = useState({
+    status: [],
+    priority: [],
+    assignee: [],
+    creator: [],
+    dateRange: null,
+    quickFilter: null
+  });
+
+  const members = useMemo(() => project?.members || [], [project]);
 
   useEffect(() => {
     fetchProject();
@@ -78,14 +93,24 @@ export const ProjectDetail = () => {
     fetchProject();
   };
 
-  const handleTaskStatusChange = (updatedTask) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.task_id === updatedTask.task_id ? updatedTask : task
-      )
-    );
-    setSelectedTask(updatedTask);
-    fetchProject();
+  const handleTaskStatusChange = (taskOrId, newStatus) => {
+    if (newStatus !== undefined) {
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.task_id === taskOrId ? { ...task, status: newStatus } : task
+        )
+      );
+      fetchProject();
+    } else {
+      const updatedTask = taskOrId;
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.task_id === updatedTask.task_id ? updatedTask : task
+        )
+      );
+      setSelectedTask(updatedTask);
+      fetchProject();
+    }
   };
 
   const handleTaskClick = (task) => {
@@ -102,22 +127,38 @@ export const ProjectDetail = () => {
     }
   }, [searchParams, tasks]);
 
-  const filteredTasks = tasks.filter((task) => {
-    if (statusFilter === "all") return true;
-    return task.status === statusFilter;
-  });
+  const filteredTasks = useMemo(() => {
+    let result = tasks;
+    const uid = user?.uid || null;
 
-  const tasksByStatus = {
-    todo: filteredTasks.filter((t) => t.status === "todo"),
-    in_progress: filteredTasks.filter((t) => t.status === "in_progress"),
-    review: filteredTasks.filter((t) => t.status === "review"),
-    done: filteredTasks.filter((t) => t.status === "done"),
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(task => 
+        task.title?.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query)
+      );
+    }
+
+    result = applyProjectFilters(result, filters, uid);
+    return result;
+  }, [tasks, searchQuery, filters, user?.uid]);
+
+  const clearFilters = () => {
+    setFilters({
+      status: [],
+      priority: [],
+      assignee: [],
+      creator: [],
+      dateRange: null,
+      quickFilter: null
+    });
+    setSearchQuery("");
   };
 
   if (loading) {
     return (
       <div className="h-full bg-slate-50/50 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-6xl space-y-6">
           <div className="flex justify-between items-center">
             <div className="space-y-2">
               <div className="h-10 w-64 bg-slate-200 rounded-xl animate-pulse" />
@@ -143,8 +184,8 @@ export const ProjectDetail = () => {
   }
 
   return (
-    <div className="h-full bg-slate-50/50 p-8 overflow-y-auto">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="h-full bg-slate-50/50 overflow-y-auto">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -160,7 +201,7 @@ export const ProjectDetail = () => {
               )}
               <div className="mt-3 flex items-center gap-3">
                 <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-indigo-600 transition-all duration-1000"
                     style={{ width: `${project.stats?.completion_percentage || 0}%` }}
                   />
@@ -189,39 +230,16 @@ export const ProjectDetail = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-[40px]! pr-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
-            />
-          </div>
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
-            {[
-              { id: "all", label: "All" },
-              { id: "todo", label: "To Do" },
-              { id: "in_progress", label: "In Progress" },
-              { id: "review", label: "Review" },
-              { id: "done", label: "Done" },
-            ].map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => setStatusFilter(filter.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                  statusFilter === filter.id
-                    ? "bg-white text-indigo-600 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+        <div className="flex flex-wrap items-center gap-4">
+          <ProjectTaskFilters
+            filters={filters}
+            onFilterChange={setFilters}
+            members={members}
+            onClearFilters={clearFilters}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl ml-auto">
             <button
               onClick={() => setViewType("kanban")}
               className={`p-2 rounded-lg transition ${viewType === "kanban" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
@@ -234,105 +252,33 @@ export const ProjectDetail = () => {
               className={`p-2 rounded-lg transition ${viewType === "week" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
               title="Week"
             >
+              <LayoutGrid size={16} className="rotate-90" />
+            </button>
+            <button
+              onClick={() => setViewType("month")}
+              className={`p-2 rounded-lg transition ${viewType === "month" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              title="Month"
+            >
               <Calendar size={16} />
             </button>
           </div>
         </div>
 
-        {project.stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-5 border border-slate-200">
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{project.stats.total_tasks || 0}</p>
-            </div>
-            <div className="bg-white rounded-2xl p-5 border border-slate-200">
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Completed</p>
-              <p className="text-2xl font-bold text-emerald-600 mt-1">{project.stats.completed_tasks || 0}</p>
-            </div>
-            <div className="bg-white rounded-2xl p-5 border border-slate-200">
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">In Progress</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">{tasksByStatus.in_progress.length}</p>
-            </div>
-            <div className="bg-white rounded-2xl p-5 border border-slate-200">
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Members</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{project.stats.total_members || 0}</p>
-            </div>
-          </div>
-        )}
-
         {viewType === "kanban" ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-5 bg-rose-500 rounded-full" />
-                  <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">To Do</h3>
-                  <span className="text-[10px] font-bold bg-white text-slate-500 px-1.5 py-0.5 rounded-md border border-slate-100">
-                    {tasksByStatus.todo.length}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-3 min-h-[300px]">
-                {tasksByStatus.todo.map((task) => (
-                  <TaskCard key={task.task_id} task={task} onDelete={handleTaskDeleted} onEditSuccess={handleTaskEdited} onStatusChange={handleTaskStatusChange} onCardClick={handleTaskClick} />
-                ))}
-              </div>
-            </div>
-            <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-5 bg-blue-500 rounded-full" />
-                  <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">In Progress</h3>
-                  <span className="text-[10px] font-bold bg-white text-slate-500 px-1.5 py-0.5 rounded-md border border-slate-100">
-                    {tasksByStatus.in_progress.length}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-3 min-h-[300px]">
-                {tasksByStatus.in_progress.map((task) => (
-                  <TaskCard key={task.task_id} task={task} onDelete={handleTaskDeleted} onEditSuccess={handleTaskEdited} onStatusChange={handleTaskStatusChange} onCardClick={handleTaskClick} />
-                ))}
-              </div>
-            </div>
-            <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-5 bg-amber-500 rounded-full" />
-                  <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Review</h3>
-                  <span className="text-[10px] font-bold bg-white text-slate-500 px-1.5 py-0.5 rounded-md border border-slate-100">
-                    {tasksByStatus.review.length}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-3 min-h-[300px]">
-                {tasksByStatus.review.map((task) => (
-                  <TaskCard key={task.task_id} task={task} onDelete={handleTaskDeleted} onEditSuccess={handleTaskEdited} onStatusChange={handleTaskStatusChange} onCardClick={handleTaskClick} />
-                ))}
-              </div>
-            </div>
-            <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-5 bg-emerald-500 rounded-full" />
-                  <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Done</h3>
-                  <span className="text-[10px] font-bold bg-white text-slate-500 px-1.5 py-0.5 rounded-md border border-slate-100">
-                    {tasksByStatus.done.length}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-3 min-h-[300px]">
-                {tasksByStatus.done.map((task) => (
-                  <TaskCard key={task.task_id} task={task} onDelete={handleTaskDeleted} onEditSuccess={handleTaskEdited} onStatusChange={handleTaskStatusChange} onCardClick={handleTaskClick} />
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
+          <KanBanView
+            tasks={filteredTasks}
+            onTaskClick={handleTaskClick}
+            onTaskStatusChange={handleTaskStatusChange}
+            onTaskDelete={handleTaskDeleted}
+          />
+        ) : viewType === "week" ? (
           <WeekView currentDate={currentDate} tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskDelete={handleTaskDeleted} onTaskStatusChange={handleTaskStatusChange} />
+        ) : (
+          <MonthView currentDate={currentDate} tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskDelete={handleTaskDeleted} onTaskStatusChange={handleTaskStatusChange} />
         )}
 
         {showAddTask && (
-          <AddTask onClose={() => setShowAddTask(false)} onAddSuccess={handleTaskAdded} defaultProjectId={projectId} />
+          <AddTask onClose={() => setShowAddTask(false)} onAddSuccess={handleTaskAdded} defaultProjectId={projectId} members={members} />
         )}
 
         {selectedTask && (

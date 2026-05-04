@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createTask,
   getTasks,
+  getTaskById,
   deleteTaskByID,
   updateTaskByID,
   updateTaskStatus,
@@ -15,6 +16,7 @@ const { createTaskValidation, updateTaskValidation, updateStatusValidation } = r
 
 router.post("/create", auth, validate(createTaskValidation), createTask);
 router.get("/", auth, getTasks);
+router.get("/:taskId", auth, getTaskById);
 router.get("/search", auth, searchTasks);
 router.post("/delete/:taskId", auth, deleteTaskByID);
 router.post("/edit/:taskId", auth, validate(updateTaskValidation), updateTaskByID);

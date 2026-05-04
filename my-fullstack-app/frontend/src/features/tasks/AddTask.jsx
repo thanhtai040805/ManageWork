@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState, useMemo } from "react";
 import { AuthContext } from "../../context/authContext";
 import {
   createToDoTaskAPI,
@@ -15,6 +15,7 @@ export const AddTask = ({
   task,
   onEditSuccess = () => { },
   defaultProjectId = null,
+  members = [],
 }) => {
   const {
     auth: { user },
@@ -90,7 +91,7 @@ export const AddTask = ({
           priority: form.priority,
           startDate: startDateISO,
           dueDate: dueDateISO,
-          assignedUserId: user.uid,
+          assignedUserId: form.assigned_to || null,
         });
         console.log("Task edited successfully:", response);
         onEditSuccess(response);
@@ -103,7 +104,7 @@ export const AddTask = ({
           form.priority,
           startDateISO,
           dueDateISO,
-          user.uid,
+          form.assigned_to || null,
           form.repeat_type !== "none" ? form.repeat_type : null,
           form.repeat_type !== "none" ? form.repeat_days : [],
           repeatUntilISO,
@@ -196,7 +197,7 @@ export const AddTask = ({
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="grid gap-2">
               <label
                 htmlFor="status"
@@ -239,6 +240,17 @@ export const AddTask = ({
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-slate-600">
+                Assignee
+              </label>
+              <AssigneeSelect
+                members={members}
+                value={form.assigned_to || ""}
+                onChange={(userId) => setForm(prev => ({ ...prev, assigned_to: userId }))}
+              />
             </div>
           </div>
 
@@ -316,6 +328,89 @@ export const AddTask = ({
           </div>
         </form>
       </div>
+    </div>
+  );
+};
+
+const AssigneeSelect = ({ members, value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredMembers = useMemo(() => {
+    if (!search) return members;
+    const query = search.toLowerCase();
+    return members.filter(m => 
+      (m.full_name || "").toLowerCase().includes(query) ||
+      (m.username || "").toLowerCase().includes(query)
+    );
+  }, [members, search]);
+
+  const selectedMember = members.find(m => m.user_id === value);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-left shadow-sm transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+      >
+        {selectedMember ? (
+          <span className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">
+              {selectedMember.full_name?.[0] || selectedMember.username?.[0] || "?"}
+            </div>
+            <span className="text-slate-900">{selectedMember.full_name || selectedMember.username}</span>
+          </span>
+        ) : (
+          <span className="text-slate-400">Select assignee...</span>
+        )}
+        <svg className={`w-4 h-4 text-slate-400 transition ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-20 mt-1 w-full bg-white rounded-xl border border-slate-200 shadow-lg max-h-60 overflow-hidden">
+            <div className="p-2 border-b border-slate-100">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-500"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => { onChange(""); setIsOpen(false); setSearch(""); }}
+                className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 ${!value ? "bg-indigo-50 text-indigo-700" : "text-slate-600"}`}
+              >
+                Unassigned
+              </button>
+              {filteredMembers.map((member) => (
+                <button
+                  key={member.user_id}
+                  type="button"
+                  onClick={() => { onChange(member.user_id); setIsOpen(false); setSearch(""); }}
+                  className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 flex items-center gap-2 ${value === member.user_id ? "bg-indigo-50 text-indigo-700" : "text-slate-600"}`}
+                >
+                  <div className="w-6 h-6 rounded-full bg-indigo-200 flex items-center justify-center text-xs font-bold text-indigo-700">
+                    {member.full_name?.[0] || member.username?.[0] || "?"}
+                  </div>
+                  {member.full_name || member.username || "Unknown"}
+                </button>
+              ))}
+              {filteredMembers.length === 0 && (
+                <div className="px-4 py-3 text-sm text-slate-400 text-center">No results found</div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

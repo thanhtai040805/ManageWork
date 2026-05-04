@@ -63,6 +63,19 @@ const getTasks = async (req, res, next) => {
   }
 };
 
+const getTaskById = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const task = await taskModel.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    return res.status(200).json(task);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteTaskByID = async (req, res, next) => {
   try {
     const { taskId } = req.params;
@@ -153,6 +166,7 @@ const reorderTasks = async (req, res, next) => {
 module.exports = {
   createTask,
   getTasks,
+  getTaskById,
   deleteTaskByID,
   updateTaskByID,
   updateTaskStatus,
