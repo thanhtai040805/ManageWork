@@ -2,7 +2,7 @@ const pool = require("../../shared/config/database");
 
 class User {
   static async create(userData) {
-    const { username, email, password, fullName } = userData;
+    const { username, email, password, fullName, themeColor } = userData;
     const query = `
       INSERT INTO users (username, email, password_hash, full_name, theme_color, created_at, updated_at)
       VALUES ($1, $2, $3, $4, COALESCE($5, '#f87171'), NOW(), NOW())
@@ -10,7 +10,7 @@ class User {
     `;
     
     try {
-      const result = await pool.query(query, [username, email, password, fullName, '#f87171']);
+      const result = await pool.query(query, [username, email, password, fullName, themeColor]);
       return result.rows[0];
     } catch (error) {
       console.error("Error creating user:", error);

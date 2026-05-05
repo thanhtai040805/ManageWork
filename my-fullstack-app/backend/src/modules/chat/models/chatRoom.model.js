@@ -18,6 +18,7 @@ class ChatRoom {
       r.last_message_at,
       r.avatar_url,
       r.description,
+      r.is_pinned,
       m.last_read_message_id,
       m.last_read_at,
       m.role,
@@ -47,7 +48,13 @@ class ChatRoom {
         FILTER (WHERE u.user_id != $1)
       )[1] AS partner_avatar,
       lm.content as last_message_content,
-      lmu.full_name as last_message_sender_name
+      lmu.full_name as last_message_sender_name,
+      CASE 
+        WHEN r.is_group = false THEN (
+          ARRAY_AGG(u.full_name) FILTER (WHERE u.user_id != $1)
+        )[1]
+        ELSE r.name
+      END AS display_name
     FROM chat_rooms r
     JOIN chat_room_members m 
       ON r.room_id = m.room_id
@@ -61,14 +68,25 @@ class ChatRoom {
     LEFT JOIN users lmu
       ON lm.sender_id = lmu.user_id
     GROUP BY 
-      r.room_id, r.name, r.is_group, r.created_by, r.last_message_at, r.avatar_url, r.description,
+      r.room_id, r.name, r.is_group, r.created_by, r.last_message_at, r.avatar_url, r.description, r.is_pinned,
       m.last_read_message_id, m.last_read_at, m.role, m.unread_count,
       lm.content, lmu.full_name
-    ORDER BY r.last_message_at DESC;
+    ORDER BY r.is_pinned DESC, r.last_message_at DESC;
     `;
 
     const { rows } = await pool.query(query, [userId]);
     return rows;
+  }
+
+  static async togglePin(roomId, isPinned) {
+    const query = `
+      UPDATE chat_rooms 
+      SET is_pinned = $2, pinned_at = CASE WHEN $2 = true THEN NOW() ELSE NULL END
+      WHERE room_id = $1
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [roomId, isPinned]);
+    return rows[0];
   }
 
   static async getRoomById(roomId) {

@@ -1,51 +1,23 @@
 import { create } from "zustand";
 import {
-  getCategoriesAPI,
   getMyChannelsAPI,
   createChannelAPI,
-  createCategoryAPI,
   deleteChannelAPI,
-  deleteCategoryAPI,
 } from "@/services/channel.service";
 
 export const useChannelStore = create((set, get) => ({
-  categories: [],
   channels: [],
   currentChannel: null,
   loading: false,
   error: null,
+  posts: [],
 
-  // Get all categories and channels for a project
+  // Get all channels for a project
   fetchChannels: async (projectId) => {
-    if (!projectId) {
-      // Fetch all accessible channels
-      try {
-        set({ loading: true });
-        const channels = await getMyChannelsAPI();
-        set({ channels: channels || [], loading: false });
-      } catch (error) {
-        set({ error: error.message, loading: false });
-      }
-      return;
-    }
-
     try {
       set({ loading: true });
-      const categories = await getCategoriesAPI(projectId);
-      
-      // Flatten channels from categories
-      const allChannels = categories.reduce((acc, cat) => {
-        if (cat.channels) {
-          return [...acc, ...cat.channels.map(c => ({ ...c, category_name: cat.name }))];
-        }
-        return acc;
-      }, []);
-
-      set({ 
-        categories: categories || [], 
-        channels: allChannels,
-        loading: false 
-      });
+      const channels = await getMyChannelsAPI(projectId);
+      set({ channels: channels || [], loading: false });
     } catch (error) {
       set({ error: error.message, loading: false });
     }
@@ -59,20 +31,6 @@ export const useChannelStore = create((set, get) => ({
         channels: [...state.channels, newChannel] 
       }));
       return newChannel;
-    } catch (error) {
-      set({ error: error.message });
-      throw error;
-    }
-  },
-
-  // Create new category
-  addCategory: async (categoryData) => {
-    try {
-      const newCategory = await createCategoryAPI(categoryData);
-      set(state => ({ 
-        categories: [...state.categories, newCategory] 
-      }));
-      return newCategory;
     } catch (error) {
       set({ error: error.message });
       throw error;
@@ -93,24 +51,37 @@ export const useChannelStore = create((set, get) => ({
     }
   },
 
-  // Delete category
-  removeCategory: async (categoryId) => {
-    try {
-      await deleteCategoryAPI(categoryId);
-      set(state => ({
-        categories: state.categories.filter(c => c.category_id !== categoryId)
-      }));
-    } catch (error) {
-      set({ error: error.message });
-      throw error;
-    }
-  },
-
   // Set current channel
   setCurrentChannel: (channel) => set({ currentChannel: channel }),
   
   // Clear current channel
   clearCurrentChannel: () => set({ currentChannel: null }),
+
+  // Posts actions for real-time
+  setPosts: (posts) => set({ posts }),
+
+  addPost: (post) => set(state => {
+    const exists = state.posts.some(p => p.post_id === post.post_id);
+    if (exists) return state;
+    return { posts: [...state.posts, post] };
+  }),
+
+  addReplyToPost: (postId, reply) => set(state => ({
+  posts: state.posts.map(p => {
+    if (p.post_id !== postId) return p;
+
+    const replies = p.replies || [];
+
+    if (replies.some(r => r.reply_id === reply.reply_id)) {
+      return p;
+    }
+    return {
+      ...p,
+      replies: [...replies, reply],
+      reply_count: (p.reply_count || 0) + 1
+    };
+  })})),
+  
 }));
 
 export default useChannelStore;

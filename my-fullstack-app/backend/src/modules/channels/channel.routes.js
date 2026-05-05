@@ -34,7 +34,7 @@ router.get("/categories", auth, getCategoriesByProject);
 router.put("/categories/:categoryId", auth, validate(categoryIdParamValidation), updateCategory);
 router.delete("/categories/:categoryId", auth, validate(categoryIdParamValidation), deleteCategory);
 
-// Channel routes
+// Channel routes - specific paths BEFORE :channelId parameter
 router.post("/", auth, validate(createChannelValidation), createChannel);
 router.get("/my", auth, getMyChannels);
 router.get("/by-project", auth, getChannelsByProject);

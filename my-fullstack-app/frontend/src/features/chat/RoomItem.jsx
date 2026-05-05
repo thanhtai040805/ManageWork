@@ -1,6 +1,7 @@
 import { useContext } from "react";
 import { ThemeContext } from "@/context/themeContext";
 import { useOnlineStore } from "@/stores/chat/useOnlineStore";
+import { Pin } from "lucide-react";
 
 export default function RoomItem({ room, active, onClick }) {
   const { primaryColor } = useContext(ThemeContext);
@@ -8,12 +9,14 @@ export default function RoomItem({ room, active, onClick }) {
   
   const isUser = room.type === "user"; // From search
   const isGroup = room.is_group;
-  const displayName = isUser ? room.full_name : room.name;
+  // Use display_name from backend, fallback to partner_name for DMs, then name
+  const displayName = room.display_name || room.partner_name || (isUser ? room.full_name : room.name);
 
   const avatarUrl = isUser ? room.avatar_url : (room.avatar_url || room.partner_avatar);
   const lastMessage = room.last_message_content;
   const lastTime = room.last_message_at;
   const senderName = room.last_message_sender_name;
+  const isPinned = room.is_pinned;
 
   const formatTime = (date) => {
     if (!date) return "";
@@ -40,6 +43,13 @@ export default function RoomItem({ room, active, onClick }) {
           className="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full animate-in slide-in-from-left-1 duration-300"
           style={{ backgroundColor: primaryColor }}
         />
+      )}
+
+      {/* Pinned Indicator */}
+      {isPinned && (
+        <div className="absolute right-2 top-2">
+          <Pin size={12} className="text-amber-500 fill-amber-500" />
+        </div>
       )}
 
       <div className="flex items-center gap-4">

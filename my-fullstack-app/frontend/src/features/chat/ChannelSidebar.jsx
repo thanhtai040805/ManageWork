@@ -1,20 +1,18 @@
 import { useState, useContext, useEffect } from "react";
 import { 
   Hash, Lock, Plus, Search, Settings, 
-  ChevronDown, ChevronRight, FolderPlus 
+  ChevronDown, ChevronRight
 } from "lucide-react";
 import { ThemeContext } from "@/context/themeContext";
 import { useChannelStore } from "@/stores/chat/channelStore";
-import { CategoryItem } from "./CategoryItem";
 import { getProjectsAPI } from "@/services/project.service";
 
 export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) {
   const { primaryColor } = useContext(ThemeContext);
-  const { categories, channels, loading, fetchChannels, setCurrentChannel } = useChannelStore();
+  const { channels, loading, fetchChannels, setCurrentChannel } = useChannelStore();
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || null);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
-  const [showCreateCategory, setShowCreateCategory] = useState(false);
 
   useEffect(() => {
     getProjectsAPI().then((data) => {
@@ -50,22 +48,13 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
       <div className="px-4 py-4 border-b border-gray-100">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-black text-gray-900 tracking-tight">Channels</h3>
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={() => setShowCreateCategory(true)}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
-              title="Add Category"
-            >
-              <FolderPlus size={16} />
-            </button>
-            <button 
-              onClick={handleCreateChannel}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
-              title="Add Channel"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
+          <button 
+            onClick={handleCreateChannel}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+            title="Add Channel"
+          >
+            <Plus size={16} />
+          </button>
         </div>
 
         {/* Project Filter */}
@@ -89,29 +78,21 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
           <div className="px-4 py-8 text-center text-gray-400 text-sm">
             Loading...
           </div>
-        ) : categories.length > 0 ? (
-          categories.map((category) => (
-            <CategoryItem
-              key={category.category_id}
-              category={category}
-              activeChannelId={null}
-              onChannelClick={handleChannelClick}
-            />
-          ))
         ) : channels.length > 0 ? (
-          // Uncategorized channels
           <div className="space-y-0.5">
             {channels.map((channel) => (
-              <CategoryItem
+              <div
                 key={channel.channel_id}
-                category={{ 
-                  category_id: 'uncategorized', 
-                  name: 'Channels', 
-                  channels: channels 
-                }}
-                activeChannelId={null}
-                onChannelClick={handleChannelClick}
-              />
+                onClick={() => handleChannelClick(channel)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
+              >
+                {channel.is_public ? (
+                  <Hash size={16} className="text-gray-400" />
+                ) : (
+                  <Lock size={16} className="text-gray-400" />
+                )}
+                <span className="truncate">{channel.name}</span>
+              </div>
             ))}
           </div>
         ) : (
@@ -132,7 +113,7 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
       {showCreateChannel && (
         <CreateChannelModal 
           projectId={selectedProjectId}
-          categories={categories}
+          projects={projects}
           onClose={() => setShowCreateChannel(false)}
           onSuccess={() => {
             setShowCreateChannel(false);
@@ -145,26 +126,25 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
 }
 
 // Simple Create Channel Modal
-function CreateChannelModal({ projectId, categories, onClose, onSuccess }) {
+function CreateChannelModal({ projectId, projects, onClose, onSuccess }) {
   const { primaryColor } = useContext(ThemeContext);
   const { addChannel } = useChannelStore();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId || "");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !projectId) return;
+    if (!name.trim() || !selectedProjectId) return;
     
     try {
       setSaving(true);
       await addChannel({
         name: name.trim(),
         description: description.trim(),
-        category_id: categoryId || null,
-        project_id: projectId,
+        project_id: selectedProjectId,
         is_public: isPublic,
       });
       onSuccess();
@@ -211,24 +191,6 @@ function CreateChannelModal({ projectId, categories, onClose, onSuccess }) {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">
-              Category
-            </label>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-            >
-              <option value="">No Category</option>
-              {categories.map((cat) => (
-                <option key={cat.category_id} value={cat.category_id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -242,6 +204,25 @@ function CreateChannelModal({ projectId, categories, onClose, onSuccess }) {
             </label>
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Project
+            </label>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
+              required
+            >
+              <option value="">Select project</option>
+              {projects?.map((p) => (
+                <option key={p.project_id} value={p.project_id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -252,7 +233,7 @@ function CreateChannelModal({ projectId, categories, onClose, onSuccess }) {
             </button>
             <button
               type="submit"
-              disabled={saving || !name.trim() || !projectId}
+              disabled={saving || !name.trim() || !selectedProjectId}
               className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
               style={{ backgroundColor: primaryColor }}
             >

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Save, FileText, X, Copy, Trash2 } from "lucide-react";
+import { Save, X, Trash2 } from "lucide-react";
 import apiClient from "../../services/apiClient";
 import { confirm } from "../../components/common/ConfirmModal";
 

@@ -19,6 +19,7 @@ const activityRoutes = require("../modules/activity/activity.routes");
 
 const timeRoutes = require("../modules/time-tracking/timeEntry.routes");
 const channelRoutes = require("../modules/channels/channel.routes");
+const channelPostRoutes = require("../modules/channels/channelPost.routes");
 
 // User routes (includes public login/register)
 router.use("/users", userRoutes);
@@ -37,8 +38,9 @@ router.use("/dependencies", auth, dependencyRoutes);
 router.use("/files", auth, fileRoutes);
 router.use("/analytics", auth, analyticsRoutes);
 router.use("/activity", auth, activityRoutes);
-
 router.use("/time", auth, timeRoutes);
+// IMPORTANT: channel post routes must come BEFORE channel routes (specific before param)
+router.use("/channel-posts", auth, channelPostRoutes);
 router.use("/channels", auth, channelRoutes);
 
 module.exports = router;

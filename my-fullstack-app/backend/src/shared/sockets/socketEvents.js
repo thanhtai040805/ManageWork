@@ -1,5 +1,6 @@
 const chatRoomService = require('../../modules/chat/chat.service');
 const projectModel = require('../../modules/projects/project.model');
+const channelModel = require('../../modules/channels/channel.model');
 const {
   sendMessage,
   typing,
@@ -72,6 +73,14 @@ module.exports = (io, socket) => {
         socket.join(`project:${project.project_id}`);
       });
 
+      // Join channel rooms for real-time channel updates
+      const userChannels = await channelModel.getUserChannels(userId, null);
+      console.log(`[SocketInit] User ${userId} has ${userChannels.length} channels`);
+      userChannels.forEach((channel) => {
+        console.log(`[SocketInit] Joining channel: channel:${channel.channel_id}`);
+        socket.join(`channel:${channel.channel_id}`);
+      });
+
       const onlineUsers = await redis.smembers("online_users");
       socket.emit("users:online:list", onlineUsers);
 
@@ -99,6 +108,29 @@ module.exports = (io, socket) => {
   socket.on("message:reaction:toggle", (payload) => require("./socketService").toggleReaction(io, socket, payload));
   socket.on("message:pin:toggle", (payload) => require("./socketService").togglePin(io, socket, payload));
   socket.on("room:update", (payload) => require("./socketService").updateRoom(io, socket, payload));
+
+  // Channel real-time events
+  socket.on("channel:join", (payload) => {
+    const { channelId } = payload;
+    socket.join(`channel:${channelId}`);
+    console.log(`[Channel] User ${userId} joined channel:${channelId}`);
+  });
+
+  socket.on("channel:leave", (payload) => {
+    const { channelId } = payload;
+    socket.leave(`channel:${channelId}`);
+    console.log(`[Channel] User ${userId} left channel:${channelId}`);
+  });
+
+  socket.on("channel:post:created", (payload) => {
+    const { channelId, post } = payload;
+    io.to(`channel:${channelId}`).emit("channel:post:new", post);
+  });
+
+  socket.on("channel:reply:created", (payload) => {
+    const { channelId, reply } = payload;
+    io.to(`channel:${channelId}`).emit("channel:reply:new", reply);
+  });
 
   socket.on("disconnect", (reason) => {
     console.log(`[Disconnect] Event fired for ${userId}, reason: ${reason}`);

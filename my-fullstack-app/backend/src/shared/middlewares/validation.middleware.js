@@ -14,6 +14,9 @@ const validate = (validations) => {
       return next();
     }
 
+    // Debug: Log validation errors
+    console.log("[Validation] Errors:", errors.array());
+
     // Transform errors to a consistent format
     const formattedErrors = errors.array().map((err) => ({
       field: err.path,

@@ -6,7 +6,7 @@ const ChannelCategory = require("./channelCategory.model");
 const createCategory = async (req, res, next) => {
   try {
     const { name, project_id, position } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.uid;
 
     const category = await ChannelCategory.create({
       name,
@@ -62,13 +62,12 @@ const deleteCategory = async (req, res, next) => {
 
 const createChannel = async (req, res, next) => {
   try {
-    const { name, category_id, project_id, is_public, description } = req.body;
-    const userId = req.user.id;
+    const { name, project_id, is_public, description } = req.body;
+    const userId = req.user.uid;
 
     const channel = await Channel.create({
       name,
-      categoryId: category_id || null,
-      projectId,
+      projectId: project_id,
       isPublic: is_public !== false,
       description: description || null,
       createdBy: userId,
@@ -86,7 +85,7 @@ const createChannel = async (req, res, next) => {
 const getChannelsByProject = async (req, res, next) => {
   try {
     const { project_id } = req.query;
-    const userId = req.user.id;
+    const userId = req.user.uid;
 
     if (!project_id) {
       return res.status(400).json({ message: "project_id is required" });
@@ -101,7 +100,7 @@ const getChannelsByProject = async (req, res, next) => {
 
 const getMyChannels = async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.uid;
     const { project_id } = req.query;
 
     const channels = await Channel.getUserChannels(userId, project_id || null);
@@ -130,13 +129,12 @@ const getChannelById = async (req, res, next) => {
 const updateChannel = async (req, res, next) => {
   try {
     const { channelId } = req.params;
-    const { name, description, is_public, category_id } = req.body;
+    const { name, description, is_public } = req.body;
 
     const channel = await Channel.update(channelId, {
       name,
       description,
       isPublic: is_public,
-      categoryId: category_id,
     });
 
     res.json(channel);

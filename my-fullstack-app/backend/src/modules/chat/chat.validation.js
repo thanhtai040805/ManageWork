@@ -1,9 +1,9 @@
 const { body, param, query } = require("express-validator");
 
 const createChatRoomValidation = [
-  body("name").optional().trim().isString(),
-  body("isGroup").optional().isBoolean(),
-  body("partnerId").optional().matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  body("room_name").optional({ nullable: true }),
+  body("is_group").optional({ nullable: true }),
+  body("member_ids").optional({ nullable: true }),
 ];
 
 const addMemberValidation = [

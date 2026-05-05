@@ -17,11 +17,8 @@ import { Layout } from "./layouts/Layout";
 import { Chat } from "./pages/chat/Chat";
 import { Dashboard } from "./pages/dashboard/Dashboard";
 import { ActivityLog } from "./pages/activity/ActivityLog";
-
 import useSocket from "./hooks/useSocket";
 import useSocketRegister from "./hooks/useSocketRegister";
-import { TaskDetail } from "./features/tasks";
-import { useState } from "react";
 
 function App() {
   const { auth, setAuth, appLoading, setAppLoading } = useContext(AuthContext);
@@ -87,7 +84,7 @@ function App() {
   useSocket();
   useSocketRegister();
 
-return (
+  return (
     <BrowserRouter>
       <div className="App">
         <Routes>
@@ -103,7 +100,7 @@ return (
             />
             <Route path="/my-task" element={<MyTasks />} />
             <Route path="/settings" element={<Settings />} />
-            
+
             <Route path="/chat" element={<Chat />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/activity" element={<ActivityLog />} />

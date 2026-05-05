@@ -5,13 +5,15 @@ const messageAttachmentModel = require("./models/messageAttachment.model");
 const messageReactionModel = require("./models/messageReaction.model");
 const pool = require("../../shared/config/database");
 
-const sendSystemMessage = async ({ roomId, content, client = pool }) => {
+const sendSystemMessage = async ({ roomId, content, senderId = null, client = pool }) => {
+    // For system messages, we need to allow NULL sender_id or use a valid system user
+    // Using NULL for system messages since there's no system user in the users table
     const query = `
       Insert into messages (room_id, sender_id, content, message_type, created_at) 
-      VALUES ($1, '00000000-0000-0000-0000-000000000000', $2, 'system', NOW()) 
+      VALUES ($1, $2, $3, 'system', NOW()) 
       RETURNING *
     `;
-    const result = await client.query(query, [roomId, content]);
+    const result = await client.query(query, [roomId, senderId, content]);
     return result.rows[0];
 };
 
@@ -25,15 +27,18 @@ const createChatRoom = async ({ name, isGroup, createdBy, members = [], avatarUr
     await chatRoomMemberModel.addMember(chatRoom.room_id, createdBy, "admin", client);
     
     // Add other members
-    for (const memberId of members) {
-      if (memberId === createdBy) continue;
-      await chatRoomMemberModel.addMember(chatRoom.room_id, memberId, "member", client);
+    if (Array.isArray(members)) {
+      for (const memberId of members) {
+        if (memberId === createdBy) continue;
+        await chatRoomMemberModel.addMember(chatRoom.room_id, memberId, "member", client);
+      }
     }
 
     // System message
     await sendSystemMessage({ 
         roomId: chatRoom.room_id, 
         content: `Chat room "${name || 'New Room'}" created`,
+        senderId: createdBy,
         client 
     });
 
@@ -41,6 +46,7 @@ const createChatRoom = async ({ name, isGroup, createdBy, members = [], avatarUr
     return chatRoom;
   } catch (error) {
     await client.query('ROLLBACK');
+    console.error("[createChatRoom] Service error:", error.message);
     throw error;
   } finally {
     client.release();
@@ -67,7 +73,7 @@ const searchChatRoomsAndUsers = async (keyword, userId) => {
   return await chatRoomModel.searchChatRoomsAndUsers(keyword, userId);
 };
 
-const addMemberToChatRoom = async ({ roomId, memberId, role, requesterRole }) => {
+const addMemberToChatRoom = async ({ roomId, memberId, role, requesterRole, addedBy }) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -76,6 +82,7 @@ const addMemberToChatRoom = async ({ roomId, memberId, role, requesterRole }) =>
             await sendSystemMessage({ 
                 roomId, 
                 content: `Member added to room`,
+                senderId: addedBy || memberId,
                 client 
             });
         }
@@ -173,6 +180,7 @@ const leaveChatRoom = async ({roomId, userId}) => {
             await sendSystemMessage({ 
                 roomId, 
                 content: `A member left the room`,
+                senderId: userId,
                 client 
             });
         }
@@ -206,6 +214,10 @@ const getFriends = async ({ userId }) => {
     return await chatRoomMemberModel.getMemberFriends(userId);
 }
 
+const togglePinChatRoom = async (roomId, isPinned) => {
+    return await chatRoomModel.togglePin(roomId, isPinned);
+}
+
 module.exports = {
   createChatRoom,
   getChatRoomsByUser,
@@ -231,4 +243,5 @@ module.exports = {
   togglePinMessage,
   getPinnedMessages,
   updateChatRoom,
+  togglePinChatRoom,
 };

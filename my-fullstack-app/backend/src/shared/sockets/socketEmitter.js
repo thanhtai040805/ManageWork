@@ -4,6 +4,8 @@ const setIO = (socketIO) => {
   io = socketIO;
 };
 
+const getIO = () => io;
+
 const emitToProject = (projectId, event, data) => {
   if (io) {
     io.to(`project:${projectId}`).emit(event, data);
@@ -62,6 +64,7 @@ const emitTaskReordered = (projectId, columnId, tasks) => {
 
 module.exports = {
   setIO,
+  getIO,
   emitToProject,
   emitToUser,
   emitTaskUpdated,

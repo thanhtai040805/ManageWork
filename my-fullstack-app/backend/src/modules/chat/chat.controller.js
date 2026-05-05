@@ -3,6 +3,8 @@ const chatRoomService = require("./chat.service");
 const createChatRoom = async (req, res, next) => {
   try {
     const { room_name, is_group, member_ids = [] } = req.body;
+    console.log("[createChatRoom] Request body:", req.body);
+    console.log("[createChatRoom] member_ids:", member_ids);
     const createdBy = req.user.uid;
     const chatRoom = await chatRoomService.createChatRoom({
       name: room_name,
@@ -12,6 +14,7 @@ const createChatRoom = async (req, res, next) => {
     });
     return res.status(200).json(chatRoom);
   } catch (error) {
+    console.error("[createChatRoom] Error:", error.message);
     next(error);
   }
 };
@@ -19,11 +22,13 @@ const createChatRoom = async (req, res, next) => {
 const addMemberToChatRoom = async (req, res, next) => {
   try {
     const { roomId, memberId, role, requesterRole } = req.body;
+    const addedBy = req.user.uid;
     const member = await chatRoomService.addMemberToChatRoom({
       roomId,
       memberId,
       role,
       requesterRole,
+      addedBy,
     });
     if (!member) {
       return res.status(400).json({
@@ -134,6 +139,17 @@ const updateChatRoom = async (req, res, next) => {
   }
 };
 
+const togglePinChatRoom = async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const { is_pinned } = req.body;
+    const updatedRoom = await chatRoomService.togglePinChatRoom(roomId, is_pinned);
+    return res.status(200).json(updatedRoom);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createChatRoom,
   addMemberToChatRoom,
@@ -143,4 +159,5 @@ module.exports = {
   searchMessages,
   getPinnedMessages,
   updateChatRoom,
+  togglePinChatRoom,
 };

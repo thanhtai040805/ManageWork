@@ -10,6 +10,7 @@ const {
   searchMessages,
   getPinnedMessages,
   updateChatRoom,
+  togglePinChatRoom,
 } = require("./chat.controller");
 const auth = require("../../shared/middlewares/auth");
 const validate = require("../../shared/middlewares/validation.middleware");
@@ -28,6 +29,7 @@ router.get("/rooms/my", auth, getMyChatRoom);
 router.get("/rooms/search", auth, getChatRoomByNameAndUserName);
 router.get("/rooms/:roomId/pinned", auth, validate(roomIdParamValidation), getPinnedMessages);
 router.put("/rooms/:roomId/update", auth, validate(roomIdParamValidation), updateChatRoom);
+router.put("/rooms/:roomId/pin", auth, validate(roomIdParamValidation), togglePinChatRoom);
 
 // Message Routes
 router.get("/messages/load", auth, validate(getMessagesValidation), getMessages);

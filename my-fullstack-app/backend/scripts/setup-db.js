@@ -15,16 +15,27 @@ async function setupDatabase() {
   try {
     console.log("🚀 Starting database setup...");
 
-    // Read migration file
-    const migrationPath = path.join(
-      __dirname,
-      "../src/migrations/001_init_schema.sql"
-    );
-    const migrationSQL = fs.readFileSync(migrationPath, "utf8");
+    // Get all migration files in order
+    const migrationsDir = path.join(__dirname, "../src/migrations");
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
 
-    // Execute migration
-    await pool.query(migrationSQL);
-    console.log("✅ Database migration completed successfully!");
+    // Run each migration
+    for (const file of files) {
+      const migrationPath = path.join(migrationsDir, file);
+      const migrationSQL = fs.readFileSync(migrationPath, "utf8");
+      
+      try {
+        await pool.query(migrationSQL);
+        console.log(`✅ Migration ${file} completed`);
+      } catch (err) {
+        // Ignore "already exists" errors
+        if (!err.message.includes('already exists') && !err.message.includes('duplicate')) {
+          console.log(`⚠️  ${file}: ${err.message}`);
+        }
+      }
+    }
 
     // Test the setup
     const result = await pool.query("SELECT COUNT(*) FROM users");
