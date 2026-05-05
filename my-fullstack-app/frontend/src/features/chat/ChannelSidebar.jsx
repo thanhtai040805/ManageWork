@@ -1,11 +1,11 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect, useMemo } from "react";
 import { 
   Hash, Lock, Plus, Search, Settings, 
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, Folder
 } from "lucide-react";
 import { ThemeContext } from "@/context/themeContext";
 import { useChannelStore } from "@/stores/chat/channelStore";
-import { getProjectsAPI } from "@/services/project.service";
+import { getProjectsAPI, getProjectMembersAPI } from "@/services/project.service";
 
 export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) {
   const { primaryColor } = useContext(ThemeContext);
@@ -13,6 +13,7 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || null);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState({});
 
   useEffect(() => {
     getProjectsAPI().then((data) => {
@@ -21,12 +22,37 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
   }, []);
 
   useEffect(() => {
-    if (selectedProjectId) {
-      fetchChannels(selectedProjectId);
-    } else {
-      fetchChannels(null);
-    }
-  }, [selectedProjectId]);
+    fetchChannels(null);
+  }, []);
+
+  const groupedChannels = useMemo(() => {
+    const groups = { public: [], byProject: {} };
+    
+    channels.forEach((channel) => {
+      if (!channel.project_id) {
+        groups.public.push(channel);
+      } else {
+        if (!groups.byProject[channel.project_id]) {
+          groups.byProject[channel.project_id] = [];
+        }
+        groups.byProject[channel.project_id].push(channel);
+      }
+    });
+
+    return groups;
+  }, [channels]);
+
+  const getProjectName = (projectId) => {
+    const project = projects.find(p => p.project_id === projectId);
+    return project?.name || "Unknown Project";
+  };
+
+  const toggleProjectExpand = (projectId) => {
+    setExpandedProjects(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
 
   const handleProjectChange = (newProjectId) => {
     setSelectedProjectId(newProjectId);
@@ -57,19 +83,20 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
           </button>
         </div>
 
-        {/* Project Filter */}
-        <select
-          value={selectedProjectId || ""}
-          onChange={(e) => handleProjectChange(e.target.value || null)}
-          className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/5"
-        >
-          <option value="">All Projects</option>
-          {projects.map((p) => (
-            <option key={p.project_id} value={p.project_id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedProjectId || ""}
+            onChange={(e) => handleProjectChange(e.target.value || null)}
+            className="flex-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/5"
+          >
+            <option value="">All Projects</option>
+            {projects.map((p) => (
+              <option key={p.project_id} value={p.project_id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Channel List */}
@@ -78,24 +105,7 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
           <div className="px-4 py-8 text-center text-gray-400 text-sm">
             Loading...
           </div>
-        ) : channels.length > 0 ? (
-          <div className="space-y-0.5">
-            {channels.map((channel) => (
-              <div
-                key={channel.channel_id}
-                onClick={() => handleChannelClick(channel)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
-              >
-                {channel.is_public ? (
-                  <Hash size={16} className="text-gray-400" />
-                ) : (
-                  <Lock size={16} className="text-gray-400" />
-                )}
-                <span className="truncate">{channel.name}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
+        ) : channels.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className="text-sm text-gray-400 mb-3">No channels yet</p>
             <button
@@ -106,10 +116,63 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
               Create Channel
             </button>
           </div>
+        ) : (
+          <div className="space-y-1">
+            {/* Public Channels (no project) */}
+            {groupedChannels.public.length > 0 && (
+              <div>
+                <div className="px-2 py-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                  <Hash size={12} />
+                  Public
+                </div>
+                {groupedChannels.public.map((channel) => (
+                  <div
+                    key={channel.channel_id}
+                    onClick={() => handleChannelClick(channel)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-700 ml-2"
+                  >
+                    <Hash size={16} className="text-gray-400" />
+                    <span className="truncate">{channel.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Channels by Project */}
+            {Object.entries(groupedChannels.byProject).map(([projectId, projectChannels]) => (
+              <div key={projectId}>
+                <div 
+                  className="px-2 py-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 cursor-pointer hover:bg-gray-100 rounded"
+                  onClick={() => toggleProjectExpand(projectId)}
+                >
+                  {expandedProjects[projectId] ? (
+                    <ChevronDown size={12} />
+                  ) : (
+                    <ChevronRight size={12} />
+                  )}
+                  <Folder size={12} />
+                  {getProjectName(projectId)}
+                </div>
+                {expandedProjects[projectId] !== false && projectChannels.map((channel) => (
+                  <div
+                    key={channel.channel_id}
+                    onClick={() => handleChannelClick(channel)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-700 ml-4"
+                  >
+                    {channel.is_public ? (
+                      <Hash size={16} className="text-gray-400" />
+                    ) : (
+                      <Lock size={16} className="text-gray-400" />
+                    )}
+                    <span className="truncate">{channel.name}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Modals placeholder - will be implemented */}
       {showCreateChannel && (
         <CreateChannelModal 
           projectId={selectedProjectId}
@@ -117,7 +180,7 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
           onClose={() => setShowCreateChannel(false)}
           onSuccess={() => {
             setShowCreateChannel(false);
-            fetchChannels(selectedProjectId);
+            fetchChannels(null);
           }}
         />
       )}
@@ -125,7 +188,6 @@ export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) 
   );
 }
 
-// Simple Create Channel Modal
 function CreateChannelModal({ projectId, projects, onClose, onSuccess }) {
   const { primaryColor } = useContext(ThemeContext);
   const { addChannel } = useChannelStore();
@@ -134,19 +196,47 @@ function CreateChannelModal({ projectId, projects, onClose, onSuccess }) {
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || "");
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      getProjectMembersAPI(selectedProjectId).then((data) => {
+        setProjectMembers(data || []);
+      }).catch(() => setProjectMembers([]));
+    } else {
+      setProjectMembers([]);
+      setSelectedMembers([]);
+    }
+  }, [selectedProjectId]);
+
+  const toggleMember = (userId) => {
+    setSelectedMembers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !selectedProjectId) return;
+    if (!name.trim()) return;
     
     try {
       setSaving(true);
-      await addChannel({
+      const newChannel = await addChannel({
         name: name.trim(),
         description: description.trim(),
-        project_id: selectedProjectId,
+        project_id: selectedProjectId || null,
         is_public: isPublic,
       });
+
+      if (newChannel && selectedMembers.length > 0) {
+        const { addChannelMember } = await import("@/services/channel.service");
+        for (const userId of selectedMembers) {
+          await addChannelMember(newChannel.channel_id, userId, "member");
+        }
+      }
       onSuccess();
     } catch (error) {
       console.error("Failed to create channel:", error);
@@ -206,15 +296,17 @@ function CreateChannelModal({ projectId, projects, onClose, onSuccess }) {
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
-              Project
+              Project (optional)
             </label>
             <select
               value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
+              onChange={(e) => {
+                setSelectedProjectId(e.target.value);
+                setSelectedMembers([]);
+              }}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-              required
             >
-              <option value="">Select project</option>
+              <option value="">No project (Public)</option>
               {projects?.map((p) => (
                 <option key={p.project_id} value={p.project_id}>
                   {p.name}
@@ -222,6 +314,37 @@ function CreateChannelModal({ projectId, projects, onClose, onSuccess }) {
               ))}
             </select>
           </div>
+
+          {selectedProjectId && projectMembers.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Add Members (optional)
+              </label>
+              <div className="border border-gray-200 rounded-lg max-h-32 overflow-y-auto p-2 space-y-1">
+                {projectMembers.map((member) => (
+                  <label
+                    key={member.user_id}
+                    className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedMembers.includes(member.user_id)}
+                      onChange={() => toggleMember(member.user_id)}
+                      className="rounded"
+                    />
+                    {member.avatar_url ? (
+                      <img src={member.avatar_url} alt={member.full_name} className="w-5 h-5 rounded-full" />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px]">
+                        {member.full_name?.[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm">{member.full_name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -233,7 +356,7 @@ function CreateChannelModal({ projectId, projects, onClose, onSuccess }) {
             </button>
             <button
               type="submit"
-              disabled={saving || !name.trim() || !selectedProjectId}
+              disabled={saving || !name.trim()}
               className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
               style={{ backgroundColor: primaryColor }}
             >

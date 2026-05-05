@@ -2,10 +2,15 @@ import { useState, useEffect, useContext } from "react";
 import { ThemeContext } from "@/context/themeContext";
 import { useChannelStore } from "@/stores/chat/channelStore";
 import { channelPostAPI } from "@/services/channelPost.service";
-import { Send, Pin, MessageCircle, Trash2, X, ChevronDown, ChevronUp } from "lucide-react";
+import { getChannelMembersAPI, getChannelAPI } from "@/services/channel.service";
+import { getProjectMembersAPI } from "@/services/project.service";
+import { getUsersAPI } from "@/services/auth.service";
+import { Send, Pin, MessageCircle, Trash2, X, ChevronDown, ChevronUp, ArrowLeft, Users } from "lucide-react";
+import { MentionInput } from "@/components/common/MentionInput";
+import { ChannelMembersModal } from "./ChannelMembersModal";
 import useChannelSocket from "@/hooks/useChannelSocket";
 
-export function ChannelView({ channelId, channelName }) {
+export function ChannelView({ channelId, channelName, onBack }) {
   const { primaryColor } = useContext(ThemeContext);
   const storePosts = useChannelStore(state => state.posts);
   const [loading, setLoading] = useState(true);
@@ -16,6 +21,9 @@ export function ChannelView({ channelId, channelName }) {
   const [expandedReplies, setExpandedReplies] = useState({});
   const [expandedRepliesData, setExpandedRepliesData] = useState({});
   const [replyInputs, setReplyInputs] = useState({});
+  const [members, setMembers] = useState([]);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState([]);
 
   const { setPosts } = useChannelStore();
 
@@ -29,6 +37,9 @@ export function ChannelView({ channelId, channelName }) {
   useEffect(() => {
     if (channelId) {
       loadPosts();
+      getChannelMembersAPI(channelId).then((data) => {
+        setMembers(data || []);
+      }).catch(() => setMembers([]));
     }
   }, [channelId]);
 
@@ -49,7 +60,7 @@ export function ChannelView({ channelId, channelName }) {
   };
 
   const handleCreatePost = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!newPost.trim() || !channelId) return;
 
     try {
@@ -151,12 +162,48 @@ export function ChannelView({ channelId, channelName }) {
     return storePost?.replies || [];
   };
 
+  const handleOpenMembersModal = async () => {
+    try {
+      const channel = await getChannelAPI(channelId);
+      if (channel.project_id) {
+        const projMembers = await getProjectMembersAPI(channel.project_id);
+        const existingIds = members.map(m => m.user_id);
+        const available = (projMembers || []).filter(m => !existingIds.includes(m.user_id));
+        setAvailableUsers(available);
+      } else {
+        const allUsers = await getUsersAPI();
+        const existingIds = members.map(m => m.user_id);
+        const available = (allUsers || []).filter(u => !existingIds.includes(u.user_id));
+        setAvailableUsers(available);
+      }
+      setShowMembersModal(true);
+    } catch (error) {
+      console.error("Error loading add members:", error);
+    }
+  };
+
   return (
     <div key={refreshKey} className="flex h-full w-full overflow-y-auto">
       <div className="flex-1 flex flex-col border-r border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-black text-gray-900"># {channelName || "Channel"}</h2>
-          <p className="text-sm text-gray-500">Posts & Threads</p>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded">
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <div>
+              <h2 className="text-lg font-black text-gray-900"># {channelName || "Channel"}</h2>
+              <p className="text-sm text-gray-500">Posts & Threads</p>
+            </div>
+          </div>
+          <button
+            onClick={handleOpenMembersModal}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <Users size={16} />
+            <span>{members.length} members</span>
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[75vh]">
@@ -258,13 +305,13 @@ export function ChannelView({ channelId, channelName }) {
 
         <form onSubmit={handleCreatePost} className="px-6 py-4 border-b border-gray-100">
           <div className="flex gap-3">
-            <div className="flex-1">
-              <textarea
+            <div className="flex-1 border border-gray-200 rounded-xl p-2">
+              <MentionInput
                 value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                placeholder="Create a post..."
-                className="w-full h-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/5 resize-none"
-                rows={2}
+                onChange={setNewPost}
+                onSend={() => { if (newPost.trim()) handleCreatePost({ preventDefault: () => {} }); }}
+                placeholder="Create a post... (@ to mention)"
+                members={members}
               />
             </div>
             <button
@@ -342,6 +389,16 @@ export function ChannelView({ channelId, channelName }) {
           </div>
         </div>
       )}
+
+      <ChannelMembersModal
+        isOpen={showMembersModal}
+        onClose={() => setShowMembersModal(false)}
+        channelId={channelId}
+        currentUserId={currentUser?.uid}
+        members={members}
+        availableUsers={availableUsers}
+        onMembersChange={setMembers}
+      />
     </div>
   );
 }

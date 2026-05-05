@@ -22,12 +22,11 @@ const createChannelValidation = [
     .isLength({ min: 1, max: 100 })
     .withMessage("Channel name must be 1-100 characters"),
   body("project_id")
-    .notEmpty()
-    .withMessage("Project ID is required")
+    .optional({ nullable: true, checkFalsy: true })
     .isUUID()
     .withMessage("Invalid project ID format"),
   body("category_id")
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isUUID()
     .withMessage("Invalid category ID format"),
   body("is_public")

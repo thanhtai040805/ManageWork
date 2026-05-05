@@ -1,16 +1,26 @@
-import React, { useContext, useState, useRef } from "react";
+import React, { useContext, useState, useRef, useEffect } from "react";
 import { emitTyping, emitSendMessage } from "@/socket/socketEmit";
 import { useMessageStore } from "@/stores/chat/messageStore";
 import { useChatUIStore } from "@/stores/chat/chatUIStore";
 import { ThemeContext } from "@/context/themeContext";
 import { Image as ImageIcon, Paperclip, Send, Smile, X, Reply, File, Upload } from "lucide-react";
 import { uploadFileAPI } from "@/services/file.service";
+import { MentionInput } from "@/components/common/MentionInput";
+import { getProjectMembersAPI } from "@/services/project.service";
+import { getUsersAPI } from "@/services/auth.service";
 
 export const MessageInput = ({ room }) => {
   const { primaryColor } = useContext(ThemeContext);
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    setCurrentUser(user);
+  }, []);
+  const [members, setMembers] = useState([]);
   const typingRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -19,28 +29,23 @@ export const MessageInput = ({ room }) => {
   const store = useMessageStore();
   const { replyingToMessage, clearReply } = useChatUIStore();
 
-  const adjustHeight = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = "auto";
-    textarea.style.height = Math.min(textarea.scrollHeight, 150) + "px";
-  };
+  useEffect(() => {
+    if (room?.members && room.members.length > 0) {
+      const otherMembers = room.members.filter(m => m.user_id !== currentUser?.uid);
+      setMembers(otherMembers);
+    } else if (room?.project_id) {
+      getProjectMembersAPI(room.project_id).then((data) => {
+        setMembers(data || []);
+      }).catch(() => setMembers([]));
+    } else if (currentUser) {
+      getUsersAPI().then((data) => {
+        const otherUsers = (data || []).filter(u => u.user_id !== currentUser.uid);
+        setMembers(otherUsers);
+      }).catch(() => setMembers([]));
+    }
+  }, [room?.members, room?.project_id, currentUser]);
 
-  const handleChange = (e) => {
-    const value = e.target.value;
-    setMessage(value);
-    adjustHeight();
-
-    if (!room?.room_id) return;
-    if (typingRef.current) return;
-
-    emitTyping(room.room_id);
-    typingRef.current = setTimeout(() => {
-      typingRef.current = null;
-    }, 500);
-  };
-
-const handleSendMessage = async () => {
+  const handleSendMessage = async () => {
     if (!message.trim() && attachments.length === 0) return;
 
     try {
@@ -198,14 +203,20 @@ const handleSendMessage = async () => {
             </div>
           )}
 
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            placeholder="Type a message..."
+          <MentionInput
             value={message}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent border-none focus:ring-0 py-3 text-[14px] resize-none max-h-[150px] scrollbar-hide font-medium placeholder:text-gray-400"
+            onChange={(val) => {
+              setMessage(val);
+              if (!room?.room_id) return;
+              if (typingRef.current) return;
+              emitTyping(room.room_id);
+              typingRef.current = setTimeout(() => {
+                typingRef.current = null;
+              }, 500);
+            }}
+            onSend={handleSendMessage}
+            placeholder="Type a message... (@ to mention)"
+            members={members}
           />
 
           <div className="flex items-center gap-1 pb-1">

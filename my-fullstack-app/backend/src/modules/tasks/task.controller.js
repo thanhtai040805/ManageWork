@@ -11,6 +11,8 @@ const ActivityLog = require("../../shared/models/activityLog.model");
 const { emitTaskUpdated, emitTaskReordered } = require("../../shared/sockets/socketEmitter");
 const TaskOrderService = require("../../shared/services/taskOrder.service");
 const TaskCacheService = require("../../shared/services/taskCache.service");
+const pool = require("../../shared/config/database");
+const Project = require("../projects/project.model");
 
 const createTask = async (req, res, next) => {
   try {
@@ -28,6 +30,36 @@ const createTask = async (req, res, next) => {
       repeatUntil = null,
       projectId = null,
     } = req.body;
+    
+    // Permission check: User must be project member (owner, admin, member)
+    if (projectId) {
+      const result = await pool.query(
+        `SELECT pm.role, p.owner_id FROM project_members pm
+         JOIN projects p ON pm.project_id = p.project_id
+         WHERE pm.project_id = $1 AND pm.user_id = $2`,
+        [projectId, userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(403).json({ error: "Not a project member" });
+      }
+
+      const { role, owner_id } = result.rows[0];
+      const effectiveRole = owner_id === userId ? 'owner' : role;
+
+      if (!['owner', 'admin', 'member'].includes(effectiveRole)) {
+        return res.status(403).json({ error: "Insufficient permissions to create tasks in this project" });
+      }
+
+      // If assignee is provided, verify they are also a member of the project
+      if (assignedUserId) {
+        const members = await Project.getProjectMembers(projectId);
+        const isMember = members.some(m => m.user_id === assignedUserId);
+        if (!isMember) {
+          return res.status(400).json({ message: "Assignee must be a project member" });
+        }
+      }
+    }
 
     const tasks = await createRecurringTasksService(
       title,
@@ -123,7 +155,34 @@ const updateTaskByID = async (req, res, next) => {
     const { applyTo, ...updateData } = req.body;
 
     const currentTask = await taskModel.findById(taskId);
-    
+    if (!currentTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Permission check: User must be project member (owner, admin, member)
+    if (currentTask.project_id) {
+      const result = await pool.query(
+        `SELECT pm.role, p.owner_id FROM project_members pm
+         JOIN projects p ON pm.project_id = p.project_id
+         WHERE pm.project_id = $1 AND pm.user_id = $2`,
+        [currentTask.project_id, userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(403).json({ error: "Not a project member" });
+      }
+
+      const { role, owner_id } = result.rows[0];
+      const effectiveRole = owner_id === userId ? 'owner' : role;
+
+      if (!['owner', 'admin', 'member'].includes(effectiveRole)) {
+        return res.status(403).json({ error: "Insufficient permissions to edit tasks in this project" });
+      }
+    } else if (currentTask.created_by !== userId) {
+      // Personal task: only creator can edit
+      return res.status(403).json({ error: "Insufficient permissions to edit this task" });
+    }
+
     if (currentTask?.recurring_task_id && applyTo === 'future') {
       const updatedTask = await updateTaskWithRecurringOptionService(
         taskId,
@@ -136,6 +195,15 @@ const updateTaskByID = async (req, res, next) => {
     const updatedTask = await updateTaskByIDService(taskId, updateData);
     
     if (updatedTask) {
+      // If assignee changed, verify the new assignee is a member of the project
+      if (updateData.assignedUserId && updatedTask.project_id) {
+        const members = await Project.getProjectMembers(updatedTask.project_id);
+        const isMember = members.some(m => m.user_id === updateData.assignedUserId);
+        if (!isMember) {
+          return res.status(400).json({ message: "New assignee must be a project member" });
+        }
+      }
+
       await ActivityLog.logTaskUpdated(userId, taskId, updatedTask.title);
       if (updatedTask.project_id) {
         await TaskCacheService.invalidateProject(updatedTask.project_id);
@@ -157,6 +225,36 @@ const updateTaskStatus = async (req, res, next) => {
     const userId = req.user.uid;
     const { taskId } = req.params;
     const { status, previousStatus } = req.body;
+
+    const currentTask = await taskModel.findById(taskId);
+    if (!currentTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Permission check: User must be project member (owner, admin, member)
+    if (currentTask.project_id) {
+      const result = await pool.query(
+        `SELECT pm.role, p.owner_id FROM project_members pm
+         JOIN projects p ON pm.project_id = p.project_id
+         WHERE pm.project_id = $1 AND pm.user_id = $2`,
+        [currentTask.project_id, userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(403).json({ error: "Not a project member" });
+      }
+
+      const { role, owner_id } = result.rows[0];
+      const effectiveRole = owner_id === userId ? 'owner' : role;
+
+      if (!['owner', 'admin', 'member'].includes(effectiveRole)) {
+        return res.status(403).json({ error: "Insufficient permissions to update tasks in this project" });
+      }
+    } else if (currentTask.created_by !== userId && currentTask.assigned_to !== userId) {
+      // Personal task: only creator or assignee can update status
+      return res.status(403).json({ error: "Insufficient permissions to update this task's status" });
+    }
+
     const updatedTask = await updateTaskStatusService(taskId, status);
     
     if (updatedTask) {

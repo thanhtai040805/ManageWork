@@ -21,6 +21,7 @@ const updateTaskValidation = [
   body("priority").optional({ nullable: true }).isIn(["low", "medium", "high", "urgent"]),
   body("startDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
   body("dueDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
+  body("assignedUserId").optional({ nullable: true }).matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^[0-9]+$/),
 ];
 
 const updateStatusValidation = [

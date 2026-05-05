@@ -1,14 +1,17 @@
-import { 
-  X, 
-  Calendar, 
-  User, 
-  Clock, 
-  Flag, 
-  FileText, 
+import {
+  X,
+  Calendar,
+  User,
+  Clock,
+  Flag,
+  FileText,
   CheckCircle2,
   Circle,
-  Star
+  Star,
+  UserPlus
 } from "lucide-react";
+import { useContext } from "react";
+import { AuthContext } from "../../context/authContext";
 import ReactMarkdown from "react-markdown";
 import { SubtaskList } from "./SubtaskList";
 import { TaskComments } from "./TaskComments";
@@ -18,18 +21,18 @@ import { DependencyManager } from "./DependencyManager";
 import { TimeTracker } from "./TimeTracker";
 import { useTaskDetail } from "./hooks/useTaskDetail";
 import { TaskApplyToModal } from "./components/TaskApplyToModal";
-import { 
-  normalizeEnum, 
-  formatDate, 
-  formatUser, 
-  getStatusColor, 
-  getPriorityColor 
+import {
+  normalizeEnum,
+  formatDate,
+  formatUser,
+  getStatusColor,
+  getPriorityColor
 } from "./utils/formatters";
 import { getStatusBadgeClass, getStatusLabel, STATUS_OPTIONS, PRIORITY_OPTIONS } from "../../utils/taskColors";
 import { formatDateTimeLocal } from "./hooks/useTaskForm";
 
 export const TaskDetail = ({
-  onClose = () => {},
+  onClose = () => { },
   task,
   onUpdate,
   myDayTaskIdsSet,
@@ -39,6 +42,7 @@ export const TaskDetail = ({
     isEditing,
     setIsEditing,
     formData,
+    projectMembers,
     isSaving,
     showApplyToModal,
     setShowApplyToModal,
@@ -50,6 +54,10 @@ export const TaskDetail = ({
     handleFieldFocus,
     handleSave,
   } = useTaskDetail(task, onUpdate);
+
+  const { auth } = useContext(AuthContext);
+  const currentUser = auth?.user;
+  const isAssignedToMe = String(formData.assigned_to) === String(currentUser?.uid);
 
   const isInMyDay = myDayTaskIdsSet?.has(String(task?.task_id));
   const description = formData.description?.trim() || "No description provided.";
@@ -294,8 +302,66 @@ export const TaskDetail = ({
                       <User size={14} />
                       Assignee
                     </label>
-                    <div className="px-3 py-2 rounded-md border border-slate-200 bg-white text-sm text-slate-700">
-                      {formatUser(task?.assignee_name, task?.assignee_username)}
+                    <div>
+                      {isEditing.assignee ? (
+                        <select
+                          value={formData.assigned_to || ""}
+                          onChange={(e) => {
+                            const newValue = e.target.value || null;
+                            handleFieldChange("assigned_to", newValue);
+                            setIsEditing((prev) => ({ ...prev, assignee: false }));
+                            handleSave("this", { ...formData, assigned_to: newValue });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+                          autoFocus
+                        >
+                          {currentUser && !isAssignedToMe && (
+                            <option value={currentUser.uid}>
+                              Assign to me
+                            </option>
+                          )}
+                          {projectMembers
+                            .filter(member => String(member.user_id) !== String(currentUser?.uid))
+                            .map((member) => (
+                              <option key={member.user_id} value={member.user_id}>
+                                {member.full_name || member.username}
+                              </option>
+                            ))}
+                        </select>
+                      ) : (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFieldFocus("assigned_to");
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-md border border-slate-200 bg-white text-sm font-medium cursor-pointer hover:bg-slate-50 transition flex items-center gap-2"
+                        >
+                          <User size={14} className="text-slate-400" />
+                          <span className="text-slate-700">
+                            {formData.assigned_to
+                              ? projectMembers.find((m) => m.user_id === formData.assigned_to)?.full_name ||
+                              projectMembers.find((m) => m.user_id === formData.assigned_to)?.username ||
+                              formatUser(task?.assignee_name, task?.assignee_username)
+                              : "Unassigned"}
+                          </span>
+                          {!formData.assigned_to && currentUser && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newAssignedTo = currentUser.uid;
+                                handleFieldChange("assigned_to", newAssignedTo);
+                                handleSave("this", { ...formData, assigned_to: newAssignedTo });
+                              }}
+                              className="ml-auto flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors"
+                            >
+                              <UserPlus size={12} />
+                              Me
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -339,8 +405,8 @@ export const TaskDetail = ({
                         >
                           {formData.start_date
                             ? formatDate(formData.start_date, {
-                                withTime: true,
-                              })
+                              withTime: true,
+                            })
                             : "None"}
                         </button>
                       )}
@@ -426,7 +492,7 @@ export const TaskDetail = ({
         </div>
       </div>
 
-      <TaskApplyToModal 
+      <TaskApplyToModal
         show={showApplyToModal && isRecurringTask}
         isSaving={isSaving}
         applyToOption={applyToOption}

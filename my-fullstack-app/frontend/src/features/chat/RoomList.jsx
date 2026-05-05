@@ -1,4 +1,5 @@
 import React, { useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import RoomItem from "./RoomItem";
 import { UserItem } from "./userItem";
 import { useChatRooms } from "@/hooks/chat_hook/useChatRooms";
@@ -14,6 +15,7 @@ import { Plus, Search, MessageSquare } from "lucide-react";
 
 export const RoomList = () => {
   const { primaryColor } = useContext(ThemeContext);
+  const navigate = useNavigate();
   const { rooms, loading } = useChatRooms();
   const { keyword, setKeyword, isSearchMode, roomsResult, usersResult } =
     useChatSearch(rooms);
@@ -30,6 +32,7 @@ export const RoomList = () => {
     emitOpenRoom(room.room_id);
     const res = await loadMessagesAPI({ roomId: room.room_id });
     setMessages(room.room_id, res.messages);
+    navigate(`/chat/rooms/${room.room_id}`);
   };
 
   React.useEffect(() => {

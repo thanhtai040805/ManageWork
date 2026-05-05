@@ -101,7 +101,10 @@ function App() {
             <Route path="/my-task" element={<MyTasks />} />
             <Route path="/settings" element={<Settings />} />
 
-            <Route path="/chat" element={<Chat />} />
+            <Route path="/chat" element={<Chat />}>
+              <Route path="channels/:channelId" element={<Chat />} />
+              <Route path="rooms/:roomId" element={<Chat />} />
+            </Route>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/activity" element={<ActivityLog />} />
           </Route>

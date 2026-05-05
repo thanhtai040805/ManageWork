@@ -111,11 +111,17 @@ class Project {
   static async getProjectMembers(projectId) {
     const query = `
       SELECT u.user_id, u.username, u.full_name, u.email, u.avatar_url,
-             pm.role, pm.joined_at
-      FROM project_members pm
-      JOIN users u ON pm.user_id = u.user_id
-      WHERE pm.project_id = $1
-      ORDER BY pm.joined_at ASC
+             COALESCE(pm.role, 'owner') as role, pm.joined_at
+      FROM users u
+      LEFT JOIN project_members pm ON pm.user_id = u.user_id AND pm.project_id = $1
+      WHERE u.user_id IN (
+        SELECT owner_id FROM projects WHERE project_id = $1
+        UNION
+        SELECT user_id FROM project_members WHERE project_id = $1
+      )
+      ORDER BY 
+        CASE WHEN pm.role = 'owner' OR pm.role IS NULL THEN 0 ELSE 1 END,
+        pm.joined_at ASC
     `;
     
     try {

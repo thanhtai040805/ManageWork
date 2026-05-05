@@ -57,7 +57,7 @@ class Channel {
       FROM channels c
       LEFT JOIN projects p ON c.project_id = p.project_id
       LEFT JOIN channel_members cm ON c.channel_id = cm.channel_id AND cm.user_id = $1
-      WHERE (c.is_public = true OR cm.user_id = $1)
+      WHERE cm.user_id = $1
     `;
     const values = [userId];
 
