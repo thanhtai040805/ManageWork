@@ -1,0 +1,990 @@
+{
+  "D:\\ManageWork\\my-fullstack-app\\backend\\scripts\\migrate-003.js": {
+    "mtime": 1777650728.5029387,
+    "hash": "d4e9a61ca4ea86a03f3b9c59ce59d8ac"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\scripts\\run-005-migration.js": {
+    "mtime": 1777537357.850636,
+    "hash": "f2a9cbc5034ca8a6436c0148af933502"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\scripts\\run-migration.js": {
+    "mtime": 1777700445.2521822,
+    "hash": "f9ee5a1fc7fd0008bdb8958a98702285"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\scripts\\seed-data.js": {
+    "mtime": 1777908329.8745806,
+    "hash": "371a0707e8e7fb7fc27dfa9796d515d6"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\scripts\\setup-db.js": {
+    "mtime": 1777907588.4021535,
+    "hash": "508f5ad0e14b0d0583cadafa611383ac"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\server.js": {
+    "mtime": 1777702292.8448298,
+    "hash": "57443a477e6b59c3a9afd28be5d35013"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\001_init_schema.sql": {
+    "mtime": 1777535101.5264597,
+    "hash": "4e8143bc801d10335412a9e90a617baf"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\002_chat_enhancements.sql": {
+    "mtime": 1777535101.542943,
+    "hash": "fa8cf317be697f6ab23c67102d715bab"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\003_task_full_text_search.sql": {
+    "mtime": 1777535101.563713,
+    "hash": "e22e2d74b73e6eb7b317a825e32b4ddd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\004_task_dependencies.sql": {
+    "mtime": 1777535101.5756874,
+    "hash": "68498fedb5bb5e57fb1ae31cfdec6db4"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\005_cloudinary_files.sql": {
+    "mtime": 1777537347.9588923,
+    "hash": "53195121667419cfc409c209b2d101c1"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\006_recurring_tasks_nullable_project.sql": {
+    "mtime": 1777654622.2821238,
+    "hash": "50a18002e2a4c65197a8ba3f544ff65a"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\008_templates_time_tracking.sql": {
+    "mtime": 1777822729.279922,
+    "hash": "f0ca886d8483723075ca42de7cd58e0b"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\009_channels.sql": {
+    "mtime": 1777699170.65604,
+    "hash": "bcd9e431e9b7bf14b9bcbbe10944f8d0"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\010_message_read_status.sql": {
+    "mtime": 1777700036.270018,
+    "hash": "acb85173c156be66d2d45287f36875bd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\012_mute_block_users.sql": {
+    "mtime": 1777700224.626161,
+    "hash": "1931d06792ce913bb6328fa2f26fec01"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\013_channel_unique_name.sql": {
+    "mtime": 1777907446.4818,
+    "hash": "72feb2c0a38055ea6c8b388da94ebe61"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\014_seed_test_data.sql": {
+    "mtime": 1777908317.5794394,
+    "hash": "72ae0a2727cf3302500884a390b085ea"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\015_add_pin_feature.sql": {
+    "mtime": 1777909053.7642908,
+    "hash": "010e0d745f373b79993bfe85cfa91689"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\migrations\\016_channel_posts_replies.sql": {
+    "mtime": 1777909258.5101893,
+    "hash": "9b5c01b647e46cb28c2b4bed17645c86"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\activity\\activity.controller.js": {
+    "mtime": 1777824626.97309,
+    "hash": "771b17b186c088eff02ad14bdcf7d632"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\activity\\activity.routes.js": {
+    "mtime": 1777702097.4954789,
+    "hash": "f550031dc06be2a57e095e50152e942d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\analytics\\analytics.controller.js": {
+    "mtime": 1777825635.844766,
+    "hash": "10d40a6788e0e9a762a5f3295e5a86b4"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\analytics\\analytics.routes.js": {
+    "mtime": 1777650728.5059967,
+    "hash": "5dccdbbf552a2f2455d5741c44801839"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channel.controller.js": {
+    "mtime": 1778050424.1267908,
+    "hash": "5e75b2e3433188fc8739c538dcdd60a2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channel.model.js": {
+    "mtime": 1777994100.3830888,
+    "hash": "81c2de0531a2ef43c20f77d0b312c553"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channel.routes.js": {
+    "mtime": 1777977434.5976427,
+    "hash": "a4379093890aed5eea46d347b0cd08a1"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channel.validation.js": {
+    "mtime": 1777996297.735758,
+    "hash": "a48b613cc9b979261c9a15da7185f2e2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channelCategory.model.js": {
+    "mtime": 1777699182.1041815,
+    "hash": "67b67074cd30c1e745dcfe7d45bc9b41"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channelPost.controller.js": {
+    "mtime": 1778050447.379457,
+    "hash": "69819ea2ce566b1efdedf08edb5d3e8a"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channelPost.model.js": {
+    "mtime": 1777979856.0137599,
+    "hash": "a8ebe456909260e8fec9667dac9b06cc"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channelPost.routes.js": {
+    "mtime": 1777977171.0624554,
+    "hash": "71d90528e7696944b531a2e68b3aac52"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\channels\\channelReply.model.js": {
+    "mtime": 1777909276.5689013,
+    "hash": "81e6d03e989ffac9bd1fee1a8ef21b29"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\chat.controller.js": {
+    "mtime": 1777909099.0817873,
+    "hash": "b1decc8aaab79fe7aad915ace6e022e9"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\chat.routes.js": {
+    "mtime": 1777909106.7223165,
+    "hash": "0377b4a1ca069a2393cb6852dc422cf9"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\chat.service.js": {
+    "mtime": 1778048633.4520352,
+    "hash": "8476912c2428b78987b98b99b3f972c2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\chat.validation.js": {
+    "mtime": 1777884569.478119,
+    "hash": "fb9de6e0f1e05d67379d6155bc563ecf"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\models\\chatRoom.model.js": {
+    "mtime": 1777909074.305299,
+    "hash": "4a17c813db30bc62cbe95efa5267da95"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\models\\chatRoomMember.model.js": {
+    "mtime": 1777650728.5088913,
+    "hash": "1ec81264f6f8e32947199eff6f8af8b9"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\models\\message.model.js": {
+    "mtime": 1777700030.4665442,
+    "hash": "d2908d515101e015a9a7664ecc60a67b"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\models\\messageAttachment.model.js": {
+    "mtime": 1777650728.5103981,
+    "hash": "04dfe22d77fc0d291bbd5bbae2107ffa"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\chat\\models\\messageReaction.model.js": {
+    "mtime": 1777650728.5109234,
+    "hash": "d812dd621798107e61bd9fede2736327"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\files\\file.controller.js": {
+    "mtime": 1777653698.4977498,
+    "hash": "dbc58e39d465404ddde56fda7f1e53b9"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\files\\file.routes.js": {
+    "mtime": 1777653684.350523,
+    "hash": "12679f852a3cecb192f62d3f2f603f35"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\files\\file.validation.js": {
+    "mtime": 1777652063.0762951,
+    "hash": "1932bb9bbdfd61489f028eac7ebe1552"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\files\\models\\file.model.js": {
+    "mtime": 1777653707.7321172,
+    "hash": "1cd2ee1470c70529009527021139311a"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\notifications\\notification.controller.js": {
+    "mtime": 1777650728.5134575,
+    "hash": "81156e492817e4b8c348523d733d5008"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\notifications\\notification.model.js": {
+    "mtime": 1777650728.5148454,
+    "hash": "749d98a8c0487134f3c58e704b0bf891"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\notifications\\notification.routes.js": {
+    "mtime": 1777652105.3324583,
+    "hash": "dd0ef9b75e91758228f92eb77e11128d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\notifications\\notification.validation.js": {
+    "mtime": 1777652084.9915986,
+    "hash": "e28944f074bd6199408a3ed37ef5f3ed"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\projects\\project.controller.js": {
+    "mtime": 1778048648.878811,
+    "hash": "96d3cc5a6ecd05988d06ee024ea697d6"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\projects\\project.model.js": {
+    "mtime": 1777998281.1500874,
+    "hash": "270b565bd0d51e5a595c04f64425fd55"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\projects\\project.routes.js": {
+    "mtime": 1777652104.1298835,
+    "hash": "7076657f8dd0c9cd77995f0f894c2d17"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\projects\\project.validation.js": {
+    "mtime": 1777881345.3754284,
+    "hash": "7cbda1ed160489b8f5668a98616d7fb5"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\search\\search.controller.js": {
+    "mtime": 1777650728.5183725,
+    "hash": "2327a7f169a14a40643e7a34cf0b3a23"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\search\\search.routes.js": {
+    "mtime": 1777650728.5194194,
+    "hash": "06bd886f71bdd09198f4b5c953354554"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\automation.service.js": {
+    "mtime": 1777650728.5204284,
+    "hash": "44eb548e93aa674057b8aaacbdc54f58"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\comment.controller.js": {
+    "mtime": 1778048853.311859,
+    "hash": "23beb5740820d9d5bdc47b361976f86c"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\comment.routes.js": {
+    "mtime": 1777650728.5220606,
+    "hash": "105446776fe07bbbb197954c4f2ffd1d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\comment.validation.js": {
+    "mtime": 1777650728.5220606,
+    "hash": "358a3a771beff87c1b95213efad1a993"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\subtask.controller.js": {
+    "mtime": 1777650728.526471,
+    "hash": "20514c2e68ad1345d41a356dd0ca5016"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\subtask.routes.js": {
+    "mtime": 1777650728.5269778,
+    "hash": "9ae4b49644f64482d2755df671a221b8"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\subtask.validation.js": {
+    "mtime": 1777650728.5269778,
+    "hash": "faea938ea415185beded360ef65bab38"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\tag.controller.js": {
+    "mtime": 1777650728.5288253,
+    "hash": "f906638006b007ecaf4315bf292e27d0"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\tag.routes.js": {
+    "mtime": 1777650728.529466,
+    "hash": "cc57af972c530c04849420aa0c76f5f0"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\tag.validation.js": {
+    "mtime": 1777650728.5302165,
+    "hash": "b3b41e167daa82697791add1930714b7"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\task.controller.js": {
+    "mtime": 1778051495.0184405,
+    "hash": "0b7d505cfc17d901c92e4255a92754d1"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\task.model.js": {
+    "mtime": 1777879937.2617545,
+    "hash": "4a1abc562a67d8ac11202dcd7e260f4f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\task.routes.js": {
+    "mtime": 1777877561.510388,
+    "hash": "0537fac21324332cc57b787b5226dc1b"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\task.service.js": {
+    "mtime": 1778048626.7972827,
+    "hash": "a856aaefecbb38823ae4ef7ea4e2c47d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\task.validation.js": {
+    "mtime": 1777998504.1113393,
+    "hash": "57a4e58e032156e8dae9ebae4e54d17d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\task_dependency.controller.js": {
+    "mtime": 1777650728.5347676,
+    "hash": "07683427d35444a92042409750b31d23"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\task_dependency.routes.js": {
+    "mtime": 1777652104.5385187,
+    "hash": "7bb4d1341067785d31266366e31f8430"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\task_dependency.validation.js": {
+    "mtime": 1777652052.6878946,
+    "hash": "cfdc67f2d0378587ae3541f2a36df421"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\models\\comment.model.js": {
+    "mtime": 1777650728.5230825,
+    "hash": "03e5533ace5fa8cd7dcccedd95f6da31"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\models\\recurringTask.model.js": {
+    "mtime": 1777650728.523603,
+    "hash": "6949eae0d7204bc950f8ba585eeb7c27"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\models\\subtask.model.js": {
+    "mtime": 1777650728.523603,
+    "hash": "b28b68dd9c62fd1a7336d13ebdc65e64"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\models\\tag.model.js": {
+    "mtime": 1777650728.523603,
+    "hash": "d5f9de6fe77f2c6aaf17be840315d41f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\tasks\\models\\task_dependency.model.js": {
+    "mtime": 1777650728.5251255,
+    "hash": "70dded9a64da208ebcf564d77805fefd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\time-tracking\\timeEntry.controller.js": {
+    "mtime": 1777697932.7117507,
+    "hash": "3cb1df429ce5ba59963c775049a9a19c"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\time-tracking\\timeEntry.model.js": {
+    "mtime": 1777697927.2598403,
+    "hash": "8d8c104c889525b9de8a37723dbf342e"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\time-tracking\\timeEntry.routes.js": {
+    "mtime": 1777697939.1684227,
+    "hash": "b39119a0534471d22234f9d44cdbb2fb"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\users\\account.routes.js": {
+    "mtime": 1777650728.5347676,
+    "hash": "6bbe0a69c98137f71a373d8fca26e3aa"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\users\\user.controller.js": {
+    "mtime": 1777650728.5347676,
+    "hash": "c7fdecdb56e2287a366a3da95e302558"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\users\\user.model.js": {
+    "mtime": 1777906857.3023229,
+    "hash": "004f4e175e59eaf0bf40b8b0943dec7b"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\users\\user.routes.js": {
+    "mtime": 1777650728.5373743,
+    "hash": "682e6b204d288259251462e39de073d5"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\users\\user.service.js": {
+    "mtime": 1777883583.4289958,
+    "hash": "74aca910813bc15045a292c79d1d9ccd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\modules\\users\\user.validation.js": {
+    "mtime": 1777653442.6536887,
+    "hash": "9bad056940394efbb917c3d113052bf6"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\routes\\index.js": {
+    "mtime": 1777977479.3036537,
+    "hash": "67726953fef13a8a9aadd51861c737c5"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\sentry.js": {
+    "mtime": 1777702273.9228823,
+    "hash": "3b2e4a1333813f2ca114a7ce70544c67"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\config\\database.js": {
+    "mtime": 1777650728.5422926,
+    "hash": "2ee3c9d734b9d2990b66d793b7992fb9"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\config\\swagger.js": {
+    "mtime": 1777702255.6603873,
+    "hash": "6c557d5671f34cfea182821d9a5923aa"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\config\\viewEngine.js": {
+    "mtime": 1777650728.5434682,
+    "hash": "5dce36a0f9f1bf84bdfacb699b866bf3"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\cron\\index.js": {
+    "mtime": 1777650728.5434682,
+    "hash": "9a7769dd4bf508cf2af287dc3186d6e2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\cron\\taskOverdue.job.js": {
+    "mtime": 1777702234.6852176,
+    "hash": "ac5e66b034617b70d50362991831b104"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\middlewares\\auth.js": {
+    "mtime": 1777650728.5450118,
+    "hash": "fa914a7aacb9182f09005dee12ca3ae1"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\middlewares\\delay.js": {
+    "mtime": 1777650728.5450118,
+    "hash": "4530f872992e06b447a53fa54e2ba26f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\middlewares\\errorHandler.js": {
+    "mtime": 1777702287.7645159,
+    "hash": "fe1b09b2adfda2c34a837046136cd737"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\middlewares\\permission.middleware.js": {
+    "mtime": 1777696352.691683,
+    "hash": "6cc50be94daf3d240620fca3674ba4b2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\middlewares\\socketAuth.js": {
+    "mtime": 1777702225.7251112,
+    "hash": "a5f50088ecebd662162697f923ce3489"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\middlewares\\validation.middleware.js": {
+    "mtime": 1777884522.8654487,
+    "hash": "102601ceeecf2c57f8357f0cc23ae90d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\migrations\\001_init_schema.sql": {
+    "mtime": 1777650728.5465274,
+    "hash": "4e8143bc801d10335412a9e90a617baf"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\migrations\\002_chat_enhancements.sql": {
+    "mtime": 1777650728.5485513,
+    "hash": "fa8cf317be697f6ab23c67102d715bab"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\migrations\\003_task_full_text_search.sql": {
+    "mtime": 1777650728.5491474,
+    "hash": "e22e2d74b73e6eb7b317a825e32b4ddd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\migrations\\004_task_dependencies.sql": {
+    "mtime": 1777535069.267917,
+    "hash": "68498fedb5bb5e57fb1ae31cfdec6db4"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\models\\activityLog.model.js": {
+    "mtime": 1777824633.585575,
+    "hash": "3bc8eb39cdff801e00c232dd6db645e5"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\models\\event.model.js": {
+    "mtime": 1777650728.5491474,
+    "hash": "dd31c5268b503030c426ccaec2f39e12"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\models\\file.model.js": {
+    "mtime": 1777650728.5511682,
+    "hash": "22315b47266e41aff9cf7666688519ba"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\redis\\redis.js": {
+    "mtime": 1777702211.9546676,
+    "hash": "302d2d0cfb70148fd41293d8f408a814"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\services\\cloudinary.service.js": {
+    "mtime": 1777537230.9427257,
+    "hash": "eb6cc2472e9e87398d8bbe8173d6c94c"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\services\\taskCache.service.js": {
+    "mtime": 1777879914.532761,
+    "hash": "35a0fb73d639a92cc91f80db4688d8c7"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\services\\taskOrder.service.js": {
+    "mtime": 1777881595.0833633,
+    "hash": "b1c66ddb7ef8d66692a2dbc756fe0d0f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\sockets\\presenceSubscriber.js": {
+    "mtime": 1777650728.5531864,
+    "hash": "2f2f5380e8b582a4e9cf17b807f43e11"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\sockets\\socket.js": {
+    "mtime": 1777879425.4058578,
+    "hash": "22ad423ba7219f19370c707e411fc819"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\sockets\\socketEmitter.js": {
+    "mtime": 1778048202.5592237,
+    "hash": "da84a30541bd9be7511c84478e142646"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\sockets\\socketEvents.js": {
+    "mtime": 1777979181.1223896,
+    "hash": "f9f651be3144d28d47fcf417aaf0fee8"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\sockets\\socketService.js": {
+    "mtime": 1777699948.5113604,
+    "hash": "38bd9544a16357481d28663d0ddfd341"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\utils\\logger.js": {
+    "mtime": 1777650728.5552487,
+    "hash": "aa56523d02ef147acb335d1f5ce17082"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\backend\\src\\shared\\utils\\mentionUtils.js": {
+    "mtime": 1778048827.9106712,
+    "hash": "65da87a6ccc499d4c50c88f75c03aac5"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\eslint.config.js": {
+    "mtime": 1777650728.5600216,
+    "hash": "8417143b4f635ebd40e8f6c4858a6a00"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\vite.config.js": {
+    "mtime": 1777650728.653189,
+    "hash": "ab031b08111104812978df2b32a7c10e"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\App.jsx": {
+    "mtime": 1778047769.5677955,
+    "hash": "4160f1fed840bd46added27b785b6555"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\main.jsx": {
+    "mtime": 1777877933.3330474,
+    "hash": "0a9239d8fff84860429d5a356f0c2bb9"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\common\\ConfirmModal.jsx": {
+    "mtime": 1777803585.208011,
+    "hash": "5c0b8e029d88d32cb2ba5e2355aac002"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\common\\ErrorBoundary.jsx": {
+    "mtime": 1777650728.577999,
+    "hash": "497752cb84fe1a6dc3c7ee406889feb6"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\common\\Header.jsx": {
+    "mtime": 1778051874.4982588,
+    "hash": "20ef436f2b64fbf45f44e00ad95de41d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\common\\index.js": {
+    "mtime": 1777650728.5800095,
+    "hash": "580e9370668c06260afb94758e7e3aae"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\common\\MentionInput.jsx": {
+    "mtime": 1777997848.1877508,
+    "hash": "bfa727236d08a89ec9f840a1131a46e2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\common\\SkeletonLoader.jsx": {
+    "mtime": 1777650728.5800095,
+    "hash": "492fc2f42af74a1696f992c66822348a"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\common\\StatCard.jsx": {
+    "mtime": 1777532912.9695516,
+    "hash": "980d206ef81221a2c1a6c929a60e8eba"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\navigation\\index.js": {
+    "mtime": 1777650728.5800095,
+    "hash": "2a4cc77a54ed5b4ed0bde02765b51d0b"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\components\\navigation\\VerticalNav.jsx": {
+    "mtime": 1778047779.6185906,
+    "hash": "e2c6dac16804843fbe275ad5b048f9f8"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\context\\authContext.jsx": {
+    "mtime": 1777650728.582019,
+    "hash": "81e834d801680518afa0a9f832fa1557"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\context\\socketContext.jsx": {
+    "mtime": 1777701332.1813173,
+    "hash": "ae07bae65e9010d36ecc0a3dfa18aec7"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\context\\themeContext.jsx": {
+    "mtime": 1777650728.584028,
+    "hash": "71a34453adb9e697b74663d222aa3448"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\calendar\\index.js": {
+    "mtime": 1777805050.3700004,
+    "hash": "76393f6e51118f2d075f89530ba037ba"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\calendar\\KanBanView.jsx": {
+    "mtime": 1778052521.4472697,
+    "hash": "075129a1d18549e0e2f3a9115991a0ed"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\calendar\\MonthView.jsx": {
+    "mtime": 1777704323.6877897,
+    "hash": "91f6a8c6e907b4395f4191c2fbc6fcbd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\calendar\\WeekView.jsx": {
+    "mtime": 1777810764.9473312,
+    "hash": "2611d82cd170730f23b216d12c291734"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\CategoryItem.jsx": {
+    "mtime": 1777699285.2942903,
+    "hash": "bebdb324356d69ceb31ded41d23e024e"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\ChannelItem.jsx": {
+    "mtime": 1777699281.456344,
+    "hash": "0291dc143c7fb4c8aa5826bccb5f6859"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\ChannelMembersModal.jsx": {
+    "mtime": 1777997020.7346375,
+    "hash": "c573ab5c2c8ed9d43704673a950913ae"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\ChannelSidebar.jsx": {
+    "mtime": 1778057165.718998,
+    "hash": "647ca797c4eaa55ffca3c6e3d986d0c3"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\ChannelView.jsx": {
+    "mtime": 1778052822.6851337,
+    "hash": "ccfeacf86b79b57d83d0bd0cf653e03d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\ChatPanel.jsx": {
+    "mtime": 1778057158.0259411,
+    "hash": "ba8a6f03973639793cc48d9e765c9a59"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\EmptyRoom.jsx": {
+    "mtime": 1777650728.587349,
+    "hash": "8c3ae100365798328d5ebd58b3aba8eb"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\index.js": {
+    "mtime": 1777650728.5962636,
+    "hash": "ebbf2f023ed0ce206369c7c39ffb2e16"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\MessageInput.jsx": {
+    "mtime": 1777997495.6486745,
+    "hash": "33c54881d5da512bf75a68281a40d339"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\MessageItem.jsx": {
+    "mtime": 1777803738.100535,
+    "hash": "714dab0973d6e4d5b2458ff03de1655c"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\MessageList.jsx": {
+    "mtime": 1778057000.0108132,
+    "hash": "e86db9fb616bc391a5906dbcfb9de6b3"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\PinnedMessagesDialog.jsx": {
+    "mtime": 1777650728.5913694,
+    "hash": "ed0a9b04b16409fb86c2f1d4cd03af30"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\RoomItem.jsx": {
+    "mtime": 1777909701.776533,
+    "hash": "a52d63c5301f85af43caebb307eec2c3"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\RoomList.jsx": {
+    "mtime": 1778057199.6836054,
+    "hash": "b3fc8566325686c95502c49991fd27ee"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\TypingDots.jsx": {
+    "mtime": 1777650728.5949488,
+    "hash": "9321c12cdc5fd4588e445d47fad38820"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\TypingIndicator.jsx": {
+    "mtime": 1777650728.5962636,
+    "hash": "da40f54a3e8541c7c036c06e9f34dbc8"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\userItem.jsx": {
+    "mtime": 1777650728.5962636,
+    "hash": "df7848426e11ef59e9e7cde5917cbe91"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\chat\\utils\\messageGrouping.js": {
+    "mtime": 1777532893.9105308,
+    "hash": "800b0be1fb1965c22fdccf314fa110dd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\projects\\ProjectActivity.jsx": {
+    "mtime": 1778047807.0573575,
+    "hash": "74d728fb673f04fa0189bbc1579b77ee"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\AddTask.jsx": {
+    "mtime": 1777877253.7000568,
+    "hash": "a08da7e4fab3e10f695ee63ed001c9bd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\AttachmentManager.jsx": {
+    "mtime": 1777651797.558489,
+    "hash": "4e2d419f233f9714abaf3b9107000cd2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\CompletedTaskCard.jsx": {
+    "mtime": 1777704017.4122105,
+    "hash": "678ee3a5a6257ff279282663ae362c56"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\DependencyManager.jsx": {
+    "mtime": 1777651788.445635,
+    "hash": "c2d23db145e71ffb5ed2055bd9a0e1fb"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\index.js": {
+    "mtime": 1777704058.378851,
+    "hash": "6adc18a80a9ce3a9c57d5d4b2d2f68af"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\MyTasksHeader.jsx": {
+    "mtime": 1777824329.0048695,
+    "hash": "63e0a3be22ac70fba1cb84a510a292e1"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\ProjectTaskFilters.jsx": {
+    "mtime": 1777876948.5018568,
+    "hash": "c0f5cabb25c19748d4123afbe3664eaa"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\SubtaskItem.jsx": {
+    "mtime": 1777650728.6005144,
+    "hash": "dfbf2183896dcd77a7425dcf4f809b28"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\SubtaskList.jsx": {
+    "mtime": 1777650728.6035528,
+    "hash": "f2077e3328b69a401b59b83562112170"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TagManager.jsx": {
+    "mtime": 1777652381.3894353,
+    "hash": "af43a7739966bde8190c099f49adfb45"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskActivity.jsx": {
+    "mtime": 1778047735.1107845,
+    "hash": "8310cbf447f9f1ab34febd4177ed1d64"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskCard.jsx": {
+    "mtime": 1777825823.766366,
+    "hash": "e9e6d4a0f571c66683f27ab521187e76"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskComments.jsx": {
+    "mtime": 1777654017.8331378,
+    "hash": "b1519522d7dcdcfe6e15438dfcc9026c"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskDetail.jsx": {
+    "mtime": 1778051910.481293,
+    "hash": "f62fd663a4591b2b46ca325a7a9e17a2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskDetailHeader.jsx": {
+    "mtime": 1777703244.1111727,
+    "hash": "5538987b69cc24202b7ebdab11b5e68c"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskDetailsSidebar.jsx": {
+    "mtime": 1777703863.8669019,
+    "hash": "0e0146f8de1996ec918db9157c5f760d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskFilters.jsx": {
+    "mtime": 1777819173.1997998,
+    "hash": "17ac223693b147e326befb2097b46882"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskStatus.jsx": {
+    "mtime": 1777704008.0091422,
+    "hash": "9b9ed1651d0f99bdacde162ec42519db"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TaskTemplates.jsx": {
+    "mtime": 1777906864.581817,
+    "hash": "2d4a0b574d837b826d47794550dc28ce"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\TimeLog.jsx": {
+    "mtime": 1778050022.8128817,
+    "hash": "66f9727d688cf36ef9f027097c0405cd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\components\\RecurrenceSection.jsx": {
+    "mtime": 1777650728.6246939,
+    "hash": "6daf43ca1e8d924a8f6579a93a33b86b"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\components\\TaskApplyToModal.jsx": {
+    "mtime": 1777650728.6252062,
+    "hash": "fcf0740aa22e3ea900ad1338de2173ff"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\hooks\\useTaskDetail.js": {
+    "mtime": 1777998753.0097847,
+    "hash": "f905771dc25a09f980d10730233fbfe1"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\hooks\\useTaskForm.js": {
+    "mtime": 1777698428.080021,
+    "hash": "495a6a185a77cdfe46cc516912bb7b52"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\hooks\\useTaskRealtime.js": {
+    "mtime": 1777880843.7299838,
+    "hash": "71dc32812f7ab225406e86274382a1bd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\features\\tasks\\utils\\formatters.js": {
+    "mtime": 1777650728.6283386,
+    "hash": "f13adddbe433338342dd82b6a2efd795"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\hooks\\useChannelSocket.js": {
+    "mtime": 1777991525.1607378,
+    "hash": "0bf899a198b80d89df78ba0d8b64fa3d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\hooks\\useSocket.js": {
+    "mtime": 1777701324.1905725,
+    "hash": "a5a46c731d5a802034f225a80baf0c90"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\hooks\\useSocketRegister.js": {
+    "mtime": 1778048244.9548974,
+    "hash": "6223aa69ad2017958c701c7fdbf57364"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\hooks\\chat_hook\\useChatRooms.js": {
+    "mtime": 1777650728.6283386,
+    "hash": "075ac8c4745b0d88e18aa061def50a78"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\hooks\\chat_hook\\useChatSearch.js": {
+    "mtime": 1777650728.6294925,
+    "hash": "f7772c3bacf3a9c379431211e9de8f4f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\hooks\\chat_hook\\usePrivateChat.js": {
+    "mtime": 1777650728.6294925,
+    "hash": "c7078950fd41162a3984a005f31d09b4"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\hooks\\chat_hook\\useSelectRoom.js": {
+    "mtime": 1777650728.6294925,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\hooks\\chat_hook\\useSendMessage.js": {
+    "mtime": 1777650728.6294925,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\layouts\\Layout.jsx": {
+    "mtime": 1778057124.449971,
+    "hash": "fd343992287c656939c95c03521a5e10"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\activity\\ActivityLog.jsx": {
+    "mtime": 1777824700.214828,
+    "hash": "2f679ff482d8d31ea4e042b0e3865cee"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\auth\\Login.jsx": {
+    "mtime": 1777822013.2328324,
+    "hash": "2d5084cd2ab0afb312dfac9c8a515ab6"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\auth\\Register.jsx": {
+    "mtime": 1777822103.9282663,
+    "hash": "9be87a03d2373ac7526bdac9b66cbbd8"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\chat\\Chat.jsx": {
+    "mtime": 1778057143.8690302,
+    "hash": "65127de1fe6cabd8e627dac7dd759f67"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\dashboard\\Dashboard.jsx": {
+    "mtime": 1777827198.6764026,
+    "hash": "d342439636d7af6d28d660b30e764751"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\home\\Home.jsx": {
+    "mtime": 1778051886.6172812,
+    "hash": "df53292e4fcc06ad039b72d595cd7032"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\people\\PeopleDirectory.jsx": {
+    "mtime": 1778051930.001127,
+    "hash": "2a71e5672917a31a2788a56efc2aa914"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\projects\\ProjectDetail.jsx": {
+    "mtime": 1778047821.5264509,
+    "hash": "886e75c3c73336f304a43ed638a90343"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\projects\\Projects.jsx": {
+    "mtime": 1777877067.545643,
+    "hash": "92795add934be16ae6c122803480fe2f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\projects\\ProjectSettings.jsx": {
+    "mtime": 1777803715.8173487,
+    "hash": "0f91db142b677da5723e821ce322d767"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\settings\\Settings.jsx": {
+    "mtime": 1778052220.2871506,
+    "hash": "47b871dc0f9b820145cff9dab60d838d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\pages\\tasks\\MyTasks.jsx": {
+    "mtime": 1777880881.032554,
+    "hash": "0f922d737380381a18ce73f4877bc056"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\activity.service.js": {
+    "mtime": 1777696281.0599995,
+    "hash": "91d2b216bf5ed756deb1dbdf2d3dc3f3"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\analytics.service.js": {
+    "mtime": 1777701480.0702882,
+    "hash": "f96f2b8f41bbf6387ba6e160e152e763"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\apiClient.js": {
+    "mtime": 1777650728.6430387,
+    "hash": "79417af6d40235b276b5ab782ee3c315"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\auth.service.js": {
+    "mtime": 1777650728.64357,
+    "hash": "94272aa0173e3cfe996e85325645e0f7"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\channel.service.js": {
+    "mtime": 1777906568.7374315,
+    "hash": "4150bea60401833bd80575ae62adec17"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\channelPost.service.js": {
+    "mtime": 1777977545.9421067,
+    "hash": "e2670a2ace042fc7927deb3196835d78"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\chat-room.service.js": {
+    "mtime": 1777650728.64357,
+    "hash": "74a1a7cb9a9142d8b629a14b7554f14d"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\file.service.js": {
+    "mtime": 1777699982.5214677,
+    "hash": "7e5a1e35bd9660447949b85bb9d46dbd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\message.service.js": {
+    "mtime": 1777650728.64357,
+    "hash": "6320628a202cbf6d7a97078f02b2c29a"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\notification.service.js": {
+    "mtime": 1777650728.6455925,
+    "hash": "cdb413ce1a01a18caa826ee893b4657b"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\project.service.js": {
+    "mtime": 1777650728.6455925,
+    "hash": "a789f6d95865a9f6898f5bcf35d2bd3a"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\subtaskService.js": {
+    "mtime": 1777650728.6455925,
+    "hash": "545322b4debbb53b0a561d54f530d773"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\task.service.js": {
+    "mtime": 1777808917.1452997,
+    "hash": "613d1bc01f58dc0baf9f4a66063e1b74"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\services\\time.service.js": {
+    "mtime": 1778048683.651418,
+    "hash": "ae642ef32f07e688e2ea4126766e5cbb"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\socket\\socket.js": {
+    "mtime": 1777991530.8831396,
+    "hash": "f5c3428aa2a556cb29a84d85bc36662f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\socket\\socketEmit.js": {
+    "mtime": 1777650728.6476028,
+    "hash": "419662048a3dc12f7d0fdb7acdbaa46f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\socket\\socketEvents.js": {
+    "mtime": 1778048254.6545422,
+    "hash": "3aaca1a1325495c2c50f0c65b96d8630"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\stores\\taskStore.js": {
+    "mtime": 1777884275.6151855,
+    "hash": "4cbc9ceb29c60a25bf20c117f2203d73"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\stores\\chat\\channelStore.js": {
+    "mtime": 1777992153.196761,
+    "hash": "c1da2cc83a705dc8adbf65c00f93cb1b"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\stores\\chat\\chatStore.js": {
+    "mtime": 1777650728.6476028,
+    "hash": "29f9690b973ee6fe3f4898d5d1757c66"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\stores\\chat\\chatUIStore.js": {
+    "mtime": 1777650728.649612,
+    "hash": "5a530133c54b639539edb3ecbac6afd4"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\stores\\chat\\index.js": {
+    "mtime": 1777650728.649612,
+    "hash": "b356c87850d84df5ee5098b957aedf7a"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\stores\\chat\\messageStore.js": {
+    "mtime": 1777650728.649612,
+    "hash": "edb0376fe4fecfd05578382469293d74"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\stores\\chat\\typingStore.js": {
+    "mtime": 1777650728.649612,
+    "hash": "05efe2967e75554579acddb1e4cc1f44"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\stores\\chat\\useOnlineStore.js": {
+    "mtime": 1777650728.649612,
+    "hash": "7409b1cd7ad765fa315af2cab290b76f"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\utils\\dateHelpers.js": {
+    "mtime": 1777650728.651681,
+    "hash": "aefb5df32fd78342d6688b7326fa7ec2"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\utils\\formatDateLabel.js": {
+    "mtime": 1777650728.653189,
+    "hash": "a8cbf939afb9f658f129ac0ad311f1ed"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\utils\\taskColors.js": {
+    "mtime": 1777819323.801394,
+    "hash": "dd9155b5927b77574ad5d696c1d70456"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\scratch\\aggregate_graph.py": {
+    "mtime": 1778077407.546355,
+    "hash": "67dd752d49fab2286eec84fa465124ae"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\scratch\\inline_graph.py": {
+    "mtime": 1778078338.9272494,
+    "hash": "40d9a72acd7bd1ee369177eddea4f716"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\scratch\\normalize_ids.py": {
+    "mtime": 1778078269.540156,
+    "hash": "3262dc380ab6fbfc0b5377bf91fd43ec"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\AGENTS.md": {
+    "mtime": 1777908272.621338,
+    "hash": "a20eca3174c52a6f4dc4e8e8ce1616bd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\docker-compose.dev.yml": {
+    "mtime": 1777650728.5567577,
+    "hash": "01d204bf3c1e7a926160dbe8382b7ffe"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\docker-compose.yml": {
+    "mtime": 1777650728.5577831,
+    "hash": "ee6ce57eae5bcd6baf5a53d082dd2cbb"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\README.md": {
+    "mtime": 1777650728.4974802,
+    "hash": "c0c39c4750c9840b5841be5bbbadedf0"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\index.html": {
+    "mtime": 1777650728.5600216,
+    "hash": "eab319df9239f981c999ab095e649ed4"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\README.md": {
+    "mtime": 1777650728.559451,
+    "hash": "ee81a88a8793ad8698476da1705f7a92"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\public\\BackgroundImage.png": {
+    "mtime": 1777650728.5707643,
+    "hash": "59086c7dc41c8d117ade72598c8e32fd"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\public\\Login.png": {
+    "mtime": 1777650728.5722744,
+    "hash": "517e2502f6b22492d4c1c5d3c2f82e74"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\public\\Register.png": {
+    "mtime": 1777650728.5747578,
+    "hash": "73791d11fe4a6d6d6b8dfed907453ce6"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\public\\vite.svg": {
+    "mtime": 1777650728.5766048,
+    "hash": "8e3a10e157f75ada21ab742c022d5430"
+  },
+  "D:\\ManageWork\\my-fullstack-app\\frontend\\src\\assets\\react.svg": {
+    "mtime": 1777650728.577999,
+    "hash": "f0402b67b6ce880f65666bb49e841696"
+  }
+}
