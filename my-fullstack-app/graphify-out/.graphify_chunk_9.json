@@ -1,0 +1,20 @@
+{
+  "nodes": [
+    {"id": "frontend_src_features_tasks_tasktemplates_jsx", "label": "TaskTemplates.jsx", "file_type": "code", "source_file": "frontend/src/features/tasks/TaskTemplates.jsx"},
+    {"id": "frontend_src_features_tasks_timelog_jsx", "label": "TimeLog.jsx", "file_type": "code", "source_file": "frontend/src/features/tasks/TimeLog.jsx"},
+    {"id": "frontend_src_features_tasks_components_recurrencesection_jsx", "label": "RecurrenceSection.jsx", "file_type": "code", "source_file": "frontend/src/features/tasks/components/RecurrenceSection.jsx"},
+    {"id": "frontend_src_features_tasks_components_taskapplytomodal_jsx", "label": "TaskApplyToModal.jsx", "file_type": "code", "source_file": "frontend/src/features/tasks/components/TaskApplyToModal.jsx"},
+    {"id": "frontend_src_features_tasks_hooks_usetaskdetail_js", "label": "useTaskDetail.js", "file_type": "code", "source_file": "frontend/src/features/tasks/hooks/useTaskDetail.js"},
+    {"id": "concept_local_storage_persistence", "label": "Local Storage Persistence Strategy", "file_type": "rationale", "source_file": "frontend/src/features/tasks/TaskTemplates.jsx"},
+    {"id": "concept_recurring_update_logic", "label": "Recurring Task Update Logic", "file_type": "rationale", "source_file": "frontend/src/features/tasks/components/TaskApplyToModal.jsx"}
+  ],
+  "edges": [
+    {"source": "frontend_src_features_tasks_tasktemplates_jsx", "target": "concept_local_storage_persistence", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/features/tasks/TaskTemplates.jsx"},
+    {"source": "frontend_src_features_tasks_components_taskapplytomodal_jsx", "target": "concept_recurring_update_logic", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/features/tasks/components/TaskApplyToModal.jsx"},
+    {"source": "frontend_src_features_tasks_hooks_usetaskdetail_js", "target": "frontend_src_features_tasks_components_taskapplytomodal_jsx", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/features/tasks/hooks/useTaskDetail.js"},
+    {"source": "frontend_src_features_tasks_timelog_jsx", "target": "concept_time_tracking_logic", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "frontend/src/features/tasks/TimeLog.jsx"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 16000,
+  "output_tokens": 1300
+}

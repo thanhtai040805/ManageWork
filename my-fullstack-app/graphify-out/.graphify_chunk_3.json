@@ -1,0 +1,26 @@
+{
+  "nodes": [
+    {"id": "backend_src_modules_files_file_validation_js", "label": "file.validation.js", "file_type": "code", "source_file": "backend/src/modules/files/file.validation.js"},
+    {"id": "backend_src_modules_files_models_file_model_js", "label": "file.model.js", "file_type": "code", "source_file": "backend/src/modules/files/models/file.model.js"},
+    {"id": "backend_src_modules_notifications_notification_controller_js", "label": "notification.controller.js", "file_type": "code", "source_file": "backend/src/modules/notifications/notification.controller.js"},
+    {"id": "backend_src_modules_notifications_notification_model_js", "label": "notification.model.js", "file_type": "code", "source_file": "backend/src/modules/notifications/notification.model.js"},
+    {"id": "backend_src_modules_notifications_notification_routes_js", "label": "notification.routes.js", "file_type": "code", "source_file": "backend/src/modules/notifications/notification.routes.js"},
+    {"id": "backend_src_modules_notifications_notification_validation_js", "label": "notification.validation.js", "file_type": "code", "source_file": "backend/src/modules/notifications/notification.validation.js"},
+    {"id": "backend_src_modules_projects_project_controller_js", "label": "project.controller.js", "file_type": "code", "source_file": "backend/src/modules/projects/project.controller.js"},
+    {"id": "backend_src_modules_projects_project_model_js", "label": "project.model.js", "file_type": "code", "source_file": "backend/src/modules/projects/project.model.js"},
+    {"id": "concept_file_attachment_management", "label": "File Attachment Management", "file_type": "rationale", "source_file": "backend/src/modules/files/models/file.model.js"},
+    {"id": "concept_notification_lifecycle", "label": "Notification Lifecycle", "file_type": "rationale", "source_file": "backend/src/modules/notifications/notification.model.js"},
+    {"id": "concept_project_ownership_model", "label": "Project Ownership & Membership Model", "file_type": "rationale", "source_file": "backend/src/modules/projects/project.model.js"}
+  ],
+  "edges": [
+    {"source": "backend_src_modules_notifications_notification_routes_js", "target": "backend_src_modules_notifications_notification_controller_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/notifications/notification.routes.js"},
+    {"source": "backend_src_modules_projects_project_controller_js", "target": "backend_src_modules_projects_project_model_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/projects/project.controller.js"},
+    {"source": "backend_src_modules_projects_project_controller_js", "target": "backend_src_modules_notifications_notification_model_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/projects/project.controller.js"},
+    {"source": "backend_src_modules_projects_project_controller_js", "target": "concept_project_ownership_model", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.95, "source_file": "backend/src/modules/projects/project.controller.js"},
+    {"source": "backend_src_modules_notifications_notification_model_js", "target": "concept_notification_lifecycle", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "backend/src/modules/notifications/notification.model.js"},
+    {"source": "backend_src_modules_files_models_file_model_js", "target": "concept_file_attachment_management", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": "backend/src/modules/files/models/file.model.js"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 14000,
+  "output_tokens": 1100
+}

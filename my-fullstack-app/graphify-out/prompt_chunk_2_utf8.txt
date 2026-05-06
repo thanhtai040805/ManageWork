@@ -1,0 +1,2346 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 2 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\analytics\analytics.controller.js ---
+const pool = require("../../shared/config/database");
+
+const getVelocityChart = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { projectId } = req.query;
+    
+    // Velocity: Number of tasks completed per week for the last 12 weeks
+    let query = `
+      WITH RECURSIVE weeks AS (
+        SELECT date_trunc('week', NOW() - INTERVAL '11 weeks') as week_start
+        UNION ALL
+        SELECT week_start + INTERVAL '1 week'
+        FROM weeks
+        WHERE week_start < date_trunc('week', NOW())
+      )
+      SELECT 
+        to_char(w.week_start, 'YYYY-MM-DD') as week_start,
+        COUNT(t.task_id) as completed_tasks
+      FROM weeks w
+      LEFT JOIN tasks t ON date_trunc('week', t.updated_at) = w.week_start 
+        AND t.status = 'done'
+    `;
+    
+    const params = [];
+    
+    if (projectId) {
+      query += ` AND t.project_id = $1`;
+      params.push(projectId);
+    } else {
+      query += ` AND t.assigned_to = $1`;
+      params.push(userId);
+    }
+    
+    query += ` GROUP BY w.week_start ORDER BY w.week_start ASC`;
+    
+    const result = await pool.query(query, params);
+    
+    res.status(200).json({ status: "success", data: result.rows });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getBurndownChart = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    
+    // Simple burndown: just get task counts per day
+    const query = `
+      SELECT 
+        to_char(DATE(created_at), 'YYYY-MM-DD') as date,
+        COUNT(*) as total_tasks,
+        COUNT(*) FILTER (WHERE status != 'done') as remaining_tasks
+      FROM tasks 
+      WHERE project_id = $1
+        AND created_at >= DATE_TRUNC('day', NOW() - INTERVAL '30 days')
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `;
+    
+    const result = await pool.query(query, [projectId]);
+    res.status(200).json({ status: "success", data: result.rows });
+  } catch (error) {
+    console.error("Burndown error:", error);
+    next(error);
+  }
+};
+
+const getPerformanceMetrics = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { projectId } = req.query;
+    
+    let overdueQuery = `
+      SELECT COUNT(*) as count 
+      FROM tasks 
+      WHERE status != 'done' AND due_date < NOW()
+    `;
+    
+    let totalQuery = `
+      SELECT COUNT(*) as count FROM tasks WHERE 1=1
+    `;
+    
+    let leadTimeQuery = `
+      SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/86400) as avg_lead_time_days
+      FROM tasks 
+      WHERE status = 'done'
+    `;
+    
+    const params = [];
+    if (projectId) {
+      overdueQuery += ` AND project_id = $1`;
+      totalQuery += ` AND project_id = $1`;
+      leadTimeQuery += ` AND project_id = $1`;
+      params.push(projectId);
+    } else {
+      overdueQuery += ` AND assigned_to = $1`;
+      totalQuery += ` AND assigned_to = $1`;
+      leadTimeQuery += ` AND assigned_to = $1`;
+      params.push(userId);
+    }
+    
+    const [overdueRes, totalRes, leadTimeRes] = await Promise.all([
+      pool.query(overdueQuery, params),
+      pool.query(totalQuery, params),
+      pool.query(leadTimeQuery, params)
+    ]);
+    
+    const overdueCount = parseInt(overdueRes.rows[0].count);
+    const totalCount = parseInt(totalRes.rows[0].count);
+    const overdueRate = totalCount > 0 ? (overdueCount / totalCount) * 100 : 0;
+    
+    const avgLeadTime = leadTimeRes.rows[0].avg_lead_time_days ? parseFloat(leadTimeRes.rows[0].avg_lead_time_days).toFixed(1) : 0;
+    
+    res.status(200).json({
+      status: "success",
+      data: {
+        overdueRate: parseFloat(overdueRate.toFixed(1)),
+        avgLeadTimeDays: parseFloat(avgLeadTime),
+        totalTasks: totalCount,
+        overdueTasks: overdueCount
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getVelocityChart,
+  getBurndownChart,
+  getPerformanceMetrics
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\analytics\analytics.routes.js ---
+const express = require("express");
+const router = express.Router();
+const auth = require("../../shared/middlewares/auth");
+
+const {
+  getVelocityChart,
+  getBurndownChart,
+  getPerformanceMetrics
+} = require("./analytics.controller");
+
+router.get("/velocity", auth, getVelocityChart);
+router.get("/metrics", auth, getPerformanceMetrics);
+router.get("/project/:projectId/burndown", auth, getBurndownChart);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channel.controller.js ---
+const Channel = require("./channel.model");
+const ChannelCategory = require("./channelCategory.model");
+
+// ============ CATEGORIES ============
+
+const createCategory = async (req, res, next) => {
+  try {
+    const { name, project_id, position } = req.body;
+    const userId = req.user.uid;
+
+    const category = await ChannelCategory.create({
+      name,
+      projectId: project_id,
+      createdBy: userId,
+      position: position || 0,
+    });
+
+    res.status(201).json(category);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCategoriesByProject = async (req, res, next) => {
+  try {
+    const { project_id } = req.query;
+    
+    if (!project_id) {
+      return res.status(400).json({ message: "project_id is required" });
+    }
+
+    const categories = await ChannelCategory.getByProject(project_id);
+    res.json(categories);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateCategory = async (req, res, next) => {
+  try {
+    const { categoryId } = req.params;
+    const { name, position } = req.body;
+
+    const category = await ChannelCategory.update(categoryId, { name, position });
+    res.json(category);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteCategory = async (req, res, next) => {
+  try {
+    const { categoryId } = req.params;
+    await ChannelCategory.delete(categoryId);
+    res.json({ message: "Category deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============ CHANNELS ============
+
+const createChannel = async (req, res, next) => {
+  try {
+    const { name, project_id, is_public, description } = req.body;
+    const userId = req.user.uid;
+
+    const channel = await Channel.create({
+      name,
+      projectId: project_id,
+      isPublic: is_public !== false,
+      description: description || null,
+      createdBy: userId,
+    });
+
+    // Auto-add creator as admin
+    await Channel.addMember(channel.channel_id, userId, 'admin');
+
+    res.status(201).json(channel);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getChannelsByProject = async (req, res, next) => {
+  try {
+    const { project_id } = req.query;
+    const userId = req.user.uid;
+
+    if (!project_id) {
+      return res.status(400).json({ message: "project_id is required" });
+    }
+
+    const channels = await Channel.getUserChannels(userId, project_id);
+    res.json(channels);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMyChannels = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { project_id } = req.query;
+
+    const channels = await Channel.getUserChannels(userId, project_id || null);
+    res.json(channels);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getChannelById = async (req, res, next) => {
+  try {
+    const { channelId } = req.params;
+    const channel = await Channel.getById(channelId);
+
+    if (!channel) {
+      return res.status(404).json({ message: "Channel not found" });
+    }
+
+    const members = await Channel.getMembers(channelId);
+    res.json({ ...channel, member_list: members });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateChannel = async (req, res, next) => {
+  try {
+    const { channelId } = req.params;
+    const { name, description, is_public } = req.body;
+
+    const channel = await Channel.update(channelId, {
+      name,
+      description,
+      isPublic: is_public,
+    });
+
+    res.json(channel);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteChannel = async (req, res, next) => {
+  try {
+    const { channelId } = req.params;
+    await Channel.delete(channelId);
+    res.json({ message: "Channel deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============ MEMBERS ============
+
+const addChannelMember = async (req, res, next) => {
+  try {
+    const { channelId } = req.params;
+    const { user_id, role } = req.body;
+
+    const member = await Channel.addMember(channelId, user_id, role || 'member');
+    
+    // Notify user
+    const channel = await Channel.getById(channelId);
+    const Notification = require("../notifications/notification.model");
+    const socketEmitter = require("../../shared/sockets/socketEmitter");
+    
+    const notification = await Notification.createSystemNotification(
+      user_id,
+      `You have been added to channel #${channel.name}`
+    );
+    socketEmitter.emitNotification(user_id, notification);
+
+    res.json(member);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const removeChannelMember = async (req, res, next) => {
+  try {
+    const { channelId, userId } = req.params;
+    await Channel.removeMember(channelId, userId);
+    res.json({ message: "Member removed successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getChannelMembers = async (req, res, next) => {
+  try {
+    const { channelId } = req.params;
+    const members = await Channel.getMembers(channelId);
+    res.json(members);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  // Categories
+  createCategory,
+  getCategoriesByProject,
+  updateCategory,
+  deleteCategory,
+  // Channels
+  createChannel,
+  getChannelsByProject,
+  getMyChannels,
+  getChannelById,
+  updateChannel,
+  deleteChannel,
+  // Members
+  addChannelMember,
+  removeChannelMember,
+  getChannelMembers,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channel.model.js ---
+const pool = require("../../shared/config/database");
+
+class Channel {
+  static async create({ name, projectId, isPublic = true, description = null, createdBy }) {
+    const query = `
+      INSERT INTO channels (name, project_id, is_public, description, created_by)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `;
+    const values = [name, projectId, isPublic, description, createdBy];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async getByProject(projectId) {
+    const query = `
+      SELECT 
+        c.*,
+        (
+          SELECT json_agg(
+            jsonb_build_object(
+              'user_id', u.user_id,
+              'full_name', u.full_name,
+              'avatar_url', u.avatar_url
+            )
+          ) FROM channel_members cm
+          JOIN users u ON cm.user_id = u.user_id
+          WHERE cm.channel_id = c.channel_id
+        ) as members
+      FROM channels c
+      WHERE c.project_id = $1
+      ORDER BY c.created_at ASC
+    `;
+    const { rows } = await pool.query(query, [projectId]);
+    return rows;
+  }
+
+  static async getById(channelId) {
+    const query = `
+      SELECT 
+        c.*,
+        p.name as project_name
+      FROM channels c
+      LEFT JOIN projects p ON c.project_id = p.project_id
+      WHERE c.channel_id = $1
+    `;
+    const { rows } = await pool.query(query, [channelId]);
+    return rows[0];
+  }
+
+  static async getUserChannels(userId, projectId = null) {
+    let query = `
+      SELECT 
+        c.*,
+        p.name as project_name,
+        cm.role as member_role
+      FROM channels c
+      LEFT JOIN projects p ON c.project_id = p.project_id
+      LEFT JOIN channel_members cm ON c.channel_id = cm.channel_id AND cm.user_id = $1
+      WHERE cm.user_id = $1
+    `;
+    const values = [userId];
+
+    if (projectId) {
+      query += ` AND c.project_id = $2`;
+      values.push(projectId);
+    }
+
+    query += ` ORDER BY c.created_at ASC`;
+
+    const { rows } = await pool.query(query, values);
+    return rows;
+  }
+
+  static async update(channelId, { name, description, isPublic }, client = pool) {
+    const query = `
+      UPDATE channels 
+      SET name = COALESCE($2, name),
+          description = COALESCE($3, description),
+          is_public = COALESCE($4, is_public)
+      WHERE channel_id = $1
+      RETURNING *
+    `;
+    const values = [channelId, name, description, isPublic];
+    const { rows } = await client.query(query, values);
+    return rows[0];
+  }
+
+  static async delete(channelId, client = pool) {
+    const query = `DELETE FROM channels WHERE channel_id = $1 RETURNING *`;
+    const { rows } = await client.query(query, [channelId]);
+    return rows[0];
+  }
+
+  static async addMember(channelId, userId, role = 'member', client = pool) {
+    const query = `
+      INSERT INTO channel_members (channel_id, user_id, role)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (channel_id, user_id) 
+      DO UPDATE SET role = $3
+      RETURNING *
+    `;
+    const values = [channelId, userId, role];
+    const { rows } = await client.query(query, values);
+    return rows[0];
+  }
+
+  static async removeMember(channelId, userId, client = pool) {
+    const query = `DELETE FROM channel_members WHERE channel_id = $1 AND user_id = $2`;
+    await client.query(query, [channelId, userId]);
+    return true;
+  }
+
+  static async getMembers(channelId) {
+    const query = `
+      SELECT 
+        u.user_id,
+        u.full_name,
+        u.email,
+        u.avatar_url,
+        cm.role,
+        cm.joined_at
+      FROM channel_members cm
+      JOIN users u ON cm.user_id = u.user_id
+      WHERE cm.channel_id = $1
+      ORDER BY cm.joined_at ASC
+    `;
+    const { rows } = await pool.query(query, [channelId]);
+    return rows;
+  }
+}
+
+module.exports = Channel;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channel.routes.js ---
+const express = require("express");
+const router = express.Router();
+
+const {
+  createCategory,
+  getCategoriesByProject,
+  updateCategory,
+  deleteCategory,
+  createChannel,
+  getChannelsByProject,
+  getMyChannels,
+  getChannelById,
+  updateChannel,
+  deleteChannel,
+  addChannelMember,
+  removeChannelMember,
+  getChannelMembers,
+} = require("./channel.controller");
+
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const {
+  createCategoryValidation,
+  createChannelValidation,
+  updateChannelValidation,
+  channelIdParamValidation,
+  categoryIdParamValidation,
+  addMemberValidation,
+} = require("./channel.validation");
+
+// Category routes
+router.post("/categories", auth, validate(createCategoryValidation), createCategory);
+router.get("/categories", auth, getCategoriesByProject);
+router.put("/categories/:categoryId", auth, validate(categoryIdParamValidation), updateCategory);
+router.delete("/categories/:categoryId", auth, validate(categoryIdParamValidation), deleteCategory);
+
+// Channel routes - specific paths BEFORE :channelId parameter
+router.post("/", auth, validate(createChannelValidation), createChannel);
+router.get("/my", auth, getMyChannels);
+router.get("/by-project", auth, getChannelsByProject);
+router.get("/:channelId", auth, validate(channelIdParamValidation), getChannelById);
+router.put("/:channelId", auth, validate(channelIdParamValidation), validate(updateChannelValidation), updateChannel);
+router.delete("/:channelId", auth, validate(channelIdParamValidation), deleteChannel);
+
+// Member routes
+router.post("/:channelId/members", auth, validate(channelIdParamValidation), validate(addMemberValidation), addChannelMember);
+router.delete("/:channelId/members/:userId", auth, validate(channelIdParamValidation), removeChannelMember);
+router.get("/:channelId/members", auth, validate(channelIdParamValidation), getChannelMembers);
+
+module.exports = router;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channel.validation.js ---
+const { body, param, query } = require("express-validator");
+
+const createCategoryValidation = [
+  body("name")
+    .trim()
+    .notEmpty()
+    .withMessage("Category name is required")
+    .isLength({ max: 100 })
+    .withMessage("Category name must be at most 100 characters"),
+  body("project_id")
+    .notEmpty()
+    .withMessage("Project ID is required")
+    .isUUID()
+    .withMessage("Invalid project ID format"),
+];
+
+const createChannelValidation = [
+  body("name")
+    .trim()
+    .notEmpty()
+    .withMessage("Channel name is required")
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Channel name must be 1-100 characters"),
+  body("project_id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isUUID()
+    .withMessage("Invalid project ID format"),
+  body("category_id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isUUID()
+    .withMessage("Invalid category ID format"),
+  body("is_public")
+    .optional()
+    .isBoolean()
+    .withMessage("is_public must be a boolean"),
+  body("description")
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage("Description must be at most 500 characters"),
+];
+
+const updateChannelValidation = [
+  body("name")
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Channel name must be 1-100 characters"),
+  body("description")
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage("Description must be at most 500 characters"),
+  body("is_public")
+    .optional()
+    .isBoolean()
+    .withMessage("is_public must be a boolean"),
+  body("category_id")
+    .optional()
+    .isUUID()
+    .withMessage("Invalid category ID format")
+    .custom((value) => {
+      if (value === "null") return true; // Allow setting to null
+      return true;
+    }),
+];
+
+const channelIdParamValidation = [
+  param("channelId")
+    .isUUID()
+    .withMessage("Invalid channel ID format"),
+];
+
+const categoryIdParamValidation = [
+  param("categoryId")
+    .isUUID()
+    .withMessage("Invalid category ID format"),
+];
+
+const addMemberValidation = [
+  body("user_id")
+    .notEmpty()
+    .withMessage("User ID is required")
+    .isUUID()
+    .withMessage("Invalid user ID format"),
+  body("role")
+    .optional()
+    .isIn(["member", "admin"])
+    .withMessage("Role must be either 'member' or 'admin'"),
+];
+
+module.exports = {
+  createCategoryValidation,
+  createChannelValidation,
+  updateChannelValidation,
+  channelIdParamValidation,
+  categoryIdParamValidation,
+  addMemberValidation,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channelCategory.model.js ---
+const pool = require("../../shared/config/database");
+
+class ChannelCategory {
+  static async create({ name, projectId, createdBy, position = 0 }) {
+    const query = `
+      INSERT INTO channel_categories (name, project_id, created_by, position)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `;
+    const values = [name, projectId, createdBy, position];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async getByProject(projectId) {
+    const query = `
+      SELECT 
+        cc.*,
+        (
+          SELECT json_agg(
+            jsonb_build_object(
+              'channel_id', c.channel_id,
+              'name', c.name,
+              'is_public', c.is_public,
+              'description', c.description
+            )
+          )
+          FROM channels c
+          WHERE c.category_id = cc.category_id
+        ) as channels
+      FROM channel_categories cc
+      WHERE cc.project_id = $1
+      ORDER BY cc.position ASC
+    `;
+    const { rows } = await pool.query(query, [projectId]);
+    return rows;
+  }
+
+  static async getById(categoryId) {
+    const query = `SELECT * FROM channel_categories WHERE category_id = $1`;
+    const { rows } = await pool.query(query, [categoryId]);
+    return rows[0];
+  }
+
+  static async update(categoryId, { name, position }, client = pool) {
+    const query = `
+      UPDATE channel_categories 
+      SET name = COALESCE($2, name),
+          position = COALESCE($3, position)
+      WHERE category_id = $1
+      RETURNING *
+    `;
+    const values = [categoryId, name, position];
+    const { rows } = await client.query(query, values);
+    return rows[0];
+  }
+
+  static async delete(categoryId, client = pool) {
+    const query = `DELETE FROM channel_categories WHERE category_id = $1 RETURNING *`;
+    const { rows } = await client.query(query, [categoryId]);
+    return rows[0];
+  }
+
+  static async getNextPosition(projectId) {
+    const query = `SELECT COALESCE(MAX(position), -1) + 1 as next_position 
+                   FROM channel_categories WHERE project_id = $1`;
+    const { rows } = await pool.query(query, [projectId]);
+    return rows[0]?.next_position || 0;
+  }
+}
+
+module.exports = ChannelCategory;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channelPost.controller.js ---
+const ChannelPost = require("./channelPost.model");
+const ChannelReply = require("./channelReply.model");
+const { getIO, emitNotification } = require("../../shared/sockets/socketEmitter");
+const Notification = require("../notifications/notification.model");
+const { notifyMentions } = require("../../shared/utils/mentionUtils");
+
+const createPost = async (req, res, next) => {
+  try {
+    const { channel_id, content } = req.body;
+    const authorId = req.user.uid;
+    
+    const post = await ChannelPost.create({
+      channelId: channel_id,
+      authorId,
+      content,
+    });
+    
+    // Handle mentions in post
+    await notifyMentions(
+      content, 
+      authorId, 
+      'chat', 
+      `New mention in channel: ${content.substring(0, 50)}...`
+    );
+
+    // Notify all channel members about new post
+    const channel = await require("./channel.model").getById(channel_id);
+    const members = await require("./channel.model").getMembers(channel_id);
+    
+    for (const member of members) {
+      if (String(member.user_id) === String(authorId)) continue;
+      
+      const notification = await Notification.createChatNotification(
+        member.user_id,
+        `#${channel.name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
+      );
+      socketEmitter.emitNotification(member.user_id, notification);
+    }
+    
+    return res.status(201).json(post);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPostsByChannel = async (req, res, next) => {
+  try {
+    const { channelId } = req.params;
+    const { limit = 50 } = req.query;
+    
+    const posts = await ChannelPost.getByChannel(channelId, parseInt(limit));
+    return res.status(200).json(posts);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPostById = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    
+    const post = await ChannelPost.getById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    
+    const replies = await ChannelReply.getByPost(postId);
+    return res.status(200).json({ ...post, replies });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const togglePinPost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const { is_pinned } = req.body;
+    
+    const post = await ChannelPost.togglePin(postId, is_pinned);
+    return res.status(200).json(post);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updatePost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const { content } = req.body;
+    const authorId = req.user.uid;
+    
+    const post = await ChannelPost.update(postId, authorId, content);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found or unauthorized" });
+    }
+    return res.status(200).json(post);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deletePost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const authorId = req.user.uid;
+    
+    const post = await ChannelPost.delete(postId, authorId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found or unauthorized" });
+    }
+    return res.status(200).json({ message: "Post deleted" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createReply = async (req, res, next) => {
+  try {
+    const { post_id, content } = req.body;
+    const authorId = req.user.uid;
+    
+    const reply = await ChannelReply.create({
+      postId: post_id,
+      authorId,
+      content,
+    });
+    
+    // Notify post author
+    const post = await ChannelPost.getById(post_id);
+    if (post && String(post.author_id) !== String(authorId)) {
+      const notification = await Notification.createChatNotification(
+        post.author_id,
+        `New reply on your post: ${content.substring(0, 50)}...`
+      );
+      emitNotification(post.author_id, notification);
+    }
+
+    // Handle mentions in reply
+    await notifyMentions(
+      content, 
+      authorId, 
+      'chat', 
+      `You were mentioned in a reply: ${content.substring(0, 50)}...`
+    );
+    
+    return res.status(201).json(reply);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getRepliesByPost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    
+    const replies = await ChannelReply.getByPost(postId);
+    return res.status(200).json(replies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateReply = async (req, res, next) => {
+  try {
+    const { replyId } = req.params;
+    const { content } = req.body;
+    const authorId = req.user.uid;
+    
+    const reply = await ChannelReply.update(replyId, authorId, content);
+    if (!reply) {
+      return res.status(404).json({ message: "Reply not found or unauthorized" });
+    }
+    return res.status(200).json(reply);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteReply = async (req, res, next) => {
+  try {
+    const { replyId } = req.params;
+    const authorId = req.user.uid;
+    
+    const reply = await ChannelReply.delete(replyId, authorId);
+    if (!reply) {
+      return res.status(404).json({ message: "Reply not found or unauthorized" });
+    }
+    return res.status(200).json({ message: "Reply deleted" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createPost,
+  getPostsByChannel,
+  getPostById,
+  togglePinPost,
+  updatePost,
+  deletePost,
+  createReply,
+  getRepliesByPost,
+  updateReply,
+  deleteReply,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channelPost.model.js ---
+const pool = require("../../shared/config/database");
+
+class ChannelPost {
+  static async create({ channelId, authorId, content }) {
+    const query = `
+      INSERT INTO channel_posts (channel_id, author_id, content)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+    const values = [channelId, authorId, content];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async getByChannel(channelId, limit = 50) {
+    const query = `
+      SELECT 
+        p.*,
+        u.username as author_username,
+        u.full_name as author_name,
+        u.avatar_url as author_avatar,
+        (SELECT COUNT(*) FROM channel_replies WHERE post_id = p.post_id) as reply_count
+      FROM channel_posts p
+      JOIN users u ON p.author_id = u.user_id
+      WHERE p.channel_id = $1
+      ORDER BY p.is_pinned DESC, p.created_at ASC
+      LIMIT $2
+    `;
+    const { rows } = await pool.query(query, [channelId, limit]);
+    return rows;
+  }
+
+  static async getById(postId) {
+    const query = `
+      SELECT 
+        p.*,
+        u.username as author_username,
+        u.full_name as author_name,
+        u.avatar_url as author_avatar
+      FROM channel_posts p
+      JOIN users u ON p.author_id = u.user_id
+      WHERE p.post_id = $1
+    `;
+    const { rows } = await pool.query(query, [postId]);
+    return rows[0];
+  }
+
+  static async togglePin(postId, isPinned) {
+    const query = `
+      UPDATE channel_posts 
+      SET is_pinned = $2, updated_at = NOW()
+      WHERE post_id = $1
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [postId, isPinned]);
+    return rows[0];
+  }
+
+  static async update(postId, authorId, content) {
+    const query = `
+      UPDATE channel_posts 
+      SET content = $3, updated_at = NOW()
+      WHERE post_id = $1 AND author_id = $2
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [postId, authorId, content]);
+    return rows[0];
+  }
+
+  static async delete(postId, authorId) {
+    const query = `
+      DELETE FROM channel_posts 
+      WHERE post_id = $1 AND author_id = $2
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [postId, authorId]);
+    return rows[0];
+  }
+}
+
+module.exports = ChannelPost;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channelPost.routes.js ---
+const express = require("express");
+const router = express.Router();
+
+const {
+  createPost,
+  getPostsByChannel,
+  getPostById,
+  togglePinPost,
+  updatePost,
+  deletePost,
+  createReply,
+  getRepliesByPost,
+  updateReply,
+  deleteReply,
+} = require("./channelPost.controller");
+
+const auth = require("../../shared/middlewares/auth");
+
+// Posts routes - use specific paths BEFORE the :channelId parameter
+router.get("/posts-by-channel/:channelId", auth, getPostsByChannel);
+router.post("/posts", auth, createPost);
+router.get("/posts-by-id/:postId", auth, getPostById);
+router.put("/posts/:postId/pin", auth, togglePinPost);
+router.put("/posts/:postId", auth, updatePost);
+router.delete("/posts/:postId", auth, deletePost);
+
+// Replies routes
+router.post("/replies", auth, createReply);
+router.get("/replies/:postId", auth, getRepliesByPost);
+router.put("/replies/:replyId", auth, updateReply);
+router.delete("/replies/:replyId", auth, deleteReply);
+
+module.exports = router;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\channels\channelReply.model.js ---
+const pool = require("../../shared/config/database");
+
+class ChannelReply {
+  static async create({ postId, authorId, content }) {
+    const query = `
+      INSERT INTO channel_replies (post_id, author_id, content)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+    const values = [postId, authorId, content];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async getByPost(postId) {
+    const query = `
+      SELECT 
+        r.*,
+        u.username as author_username,
+        u.full_name as author_name,
+        u.avatar_url as author_avatar
+      FROM channel_replies r
+      JOIN users u ON r.author_id = u.user_id
+      WHERE r.post_id = $1
+      ORDER BY r.created_at ASC
+    `;
+    const { rows } = await pool.query(query, [postId]);
+    return rows;
+  }
+
+  static async update(replyId, authorId, content) {
+    const query = `
+      UPDATE channel_replies 
+      SET content = $3, updated_at = NOW()
+      WHERE reply_id = $1 AND author_id = $2
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [replyId, authorId, content]);
+    return rows[0];
+  }
+
+  static async delete(replyId, authorId) {
+    const query = `
+      DELETE FROM channel_replies 
+      WHERE reply_id = $1 AND author_id = $2
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [replyId, authorId]);
+    return rows[0];
+  }
+}
+
+module.exports = ChannelReply;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\chat.controller.js ---
+const chatRoomService = require("./chat.service");
+
+const createChatRoom = async (req, res, next) => {
+  try {
+    const { room_name, is_group, member_ids = [] } = req.body;
+    console.log("[createChatRoom] Request body:", req.body);
+    console.log("[createChatRoom] member_ids:", member_ids);
+    const createdBy = req.user.uid;
+    const chatRoom = await chatRoomService.createChatRoom({
+      name: room_name,
+      isGroup: is_group,
+      createdBy,
+      members: member_ids,
+    });
+    return res.status(200).json(chatRoom);
+  } catch (error) {
+    console.error("[createChatRoom] Error:", error.message);
+    next(error);
+  }
+};
+
+const addMemberToChatRoom = async (req, res, next) => {
+  try {
+    const { roomId, memberId, role, requesterRole } = req.body;
+    const addedBy = req.user.uid;
+    const member = await chatRoomService.addMemberToChatRoom({
+      roomId,
+      memberId,
+      role,
+      requesterRole,
+      addedBy,
+    });
+    if (!member) {
+      return res.status(400).json({
+        error: "Failed to add member to chat room or member already exists",
+      });
+    }
+
+    return res.status(200).json(member);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMyChatRoom = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const chatRooms = await chatRoomService.getChatRoomsByUser(userId);
+    return res.status(200).json(chatRooms || []);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getChatRoomByNameAndUserName = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { keyword } = req.query;
+    const results = await chatRoomService.searchChatRoomsAndUsers(
+      keyword,
+      userId,
+    );
+    if (!results || results.length === 0) return res.status(204).json([]);
+    return res.status(200).json(results);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMessages = async (req, res, next) => {
+  try {
+    const { roomId, cursorMessageId, cursorCreatedAt } = req.query;
+
+    let messages;
+
+    if (!cursorMessageId || !cursorCreatedAt) {
+      messages = await chatRoomService.firsTimeGetMessages({
+        roomId,
+        limit: 30,
+      });
+    } else {
+      messages = await chatRoomService.getMessagesByCursor({
+        roomId,
+        cursorCreatedAt,
+        cursorMessageId,
+        limit: 30,
+      });
+    }
+
+    return res.status(200).json({ messages });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const searchMessages = async (req, res, next) => {
+  try {
+    const { roomId, query } = req.query; 
+
+    const messages = await chatRoomService.searchMessages({ roomId, query });
+
+    return res.status(200).json({ messages });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPinnedMessages = async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const messages = await chatRoomService.getPinnedMessages(roomId);
+    return res.status(200).json({ messages });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateChatRoom = async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const { room_name, avatar_url, description } = req.body;
+    
+    // Check if user is admin
+    const userId = req.user.uid;
+    const role = await chatRoomService.getMemberRole({ roomId, userId });
+    if (role !== 'admin') {
+        return res.status(403).json({ error: "Only admins can update room info" });
+    }
+
+    const updatedRoom = await chatRoomService.updateChatRoom(roomId, {
+        name: room_name,
+        avatarUrl: avatar_url,
+        description
+    });
+    
+    return res.status(200).json(updatedRoom);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const togglePinChatRoom = async (req, res, next) => {
+  try {
+    const { roomId } = req.params;
+    const { is_pinned } = req.body;
+    const updatedRoom = await chatRoomService.togglePinChatRoom(roomId, is_pinned);
+    return res.status(200).json(updatedRoom);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createChatRoom,
+  addMemberToChatRoom,
+  getMyChatRoom,
+  getChatRoomByNameAndUserName,
+  getMessages,
+  searchMessages,
+  getPinnedMessages,
+  updateChatRoom,
+  togglePinChatRoom,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\chat.routes.js ---
+const express = require("express");
+const router = express.Router();
+
+const {
+  createChatRoom,
+  addMemberToChatRoom,
+  getMyChatRoom,
+  getChatRoomByNameAndUserName,
+  getMessages,
+  searchMessages,
+  getPinnedMessages,
+  updateChatRoom,
+  togglePinChatRoom,
+} = require("./chat.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const {
+  createChatRoomValidation,
+  addMemberValidation,
+  roomIdParamValidation,
+  getMessagesValidation,
+  searchMessagesValidation,
+} = require("./chat.validation");
+
+// Chat Room Routes
+router.post("/rooms/create", auth, validate(createChatRoomValidation), createChatRoom);
+router.post("/rooms/add-member", auth, validate(addMemberValidation), addMemberToChatRoom);
+router.get("/rooms/my", auth, getMyChatRoom);
+router.get("/rooms/search", auth, getChatRoomByNameAndUserName);
+router.get("/rooms/:roomId/pinned", auth, validate(roomIdParamValidation), getPinnedMessages);
+router.put("/rooms/:roomId/update", auth, validate(roomIdParamValidation), updateChatRoom);
+router.put("/rooms/:roomId/pin", auth, validate(roomIdParamValidation), togglePinChatRoom);
+
+// Message Routes
+router.get("/messages/load", auth, validate(getMessagesValidation), getMessages);
+router.get("/messages/search", auth, validate(searchMessagesValidation), searchMessages);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\chat.service.js ---
+const chatRoomModel = require("./models/chatRoom.model");
+const chatRoomMemberModel = require("./models/chatRoomMember.model");
+const messageModel = require("./models/message.model");
+const messageAttachmentModel = require("./models/messageAttachment.model");
+const messageReactionModel = require("./models/messageReaction.model");
+const pool = require("../../shared/config/database");
+const Notification = require("../notifications/notification.model");
+const socketEmitter = require("../../shared/sockets/socketEmitter");
+
+const sendSystemMessage = async ({ roomId, content, senderId = null, client = pool }) => {
+    // For system messages, we need to allow NULL sender_id or use a valid system user
+    // Using NULL for system messages since there's no system user in the users table
+    const query = `
+      Insert into messages (room_id, sender_id, content, message_type, created_at) 
+      VALUES ($1, $2, $3, 'system', NOW()) 
+      RETURNING *
+    `;
+    const result = await client.query(query, [roomId, senderId, content]);
+    return result.rows[0];
+};
+
+const createChatRoom = async ({ name, isGroup, createdBy, members = [], avatarUrl, description }) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const chatRoom = await chatRoomModel.create({ name, isGroup, createdBy, avatarUrl, description }, client);
+    
+    // Add the creator as a admin of the chat room
+    await chatRoomMemberModel.addMember(chatRoom.room_id, createdBy, "admin", client);
+    
+    // Add other members
+    if (Array.isArray(members)) {
+      for (const memberId of members) {
+        if (memberId === createdBy) continue;
+        await chatRoomMemberModel.addMember(chatRoom.room_id, memberId, "member", client);
+      }
+    }
+
+    // System message
+    await sendSystemMessage({ 
+        roomId: chatRoom.room_id, 
+        content: `Chat room "${name || 'New Room'}" created`,
+        senderId: createdBy,
+        client 
+    });
+
+    // Notify other members that they have been added to a new chat room
+    if (Array.isArray(members)) {
+      for (const memberId of members) {
+        if (memberId === createdBy) continue;
+        const notification = await Notification.createSystemNotification(
+          memberId,
+          `You have been added to a new chat room: ${name || 'New Room'}`
+        );
+        socketEmitter.emitNotification(memberId, notification);
+      }
+    }
+
+    await client.query('COMMIT');
+    return chatRoom;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error("[createChatRoom] Service error:", error.message);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const updateChatRoom = async (roomId, updateData) => {
+    return await chatRoomModel.updateRoom(roomId, updateData);
+}
+
+const getChatRoomsByUser = async (userId) => {
+  return await chatRoomModel.getRoomsByUser(userId);
+};
+
+const getChatRoomById = async (roomId) => {
+  return await chatRoomModel.getRoomById(roomId);
+};
+
+const getLastMessageId = async (roomId) => {
+  return await chatRoomModel.getLastMessageId(roomId);
+};
+
+const searchChatRoomsAndUsers = async (keyword, userId) => {
+  return await chatRoomModel.searchChatRoomsAndUsers(keyword, userId);
+};
+
+const addMemberToChatRoom = async ({ roomId, memberId, role, requesterRole, addedBy }) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const member = await chatRoomMemberModel.addMember(roomId, memberId, role, client);
+        if (member) {
+            await sendSystemMessage({ 
+                roomId, 
+                content: `Member added to room`,
+                senderId: addedBy || memberId,
+                client 
+            });
+
+            // Notify the added member
+            const notification = await Notification.createSystemNotification(
+              memberId,
+              `You have been added to a chat room`
+            );
+            socketEmitter.emitNotification(memberId, notification);
+        }
+        await client.query('COMMIT');
+        return member;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+const sendMessage = async ({roomId, senderId, content , messageType, attachments = [], parentMessageId = null}) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const message = await messageModel.create({roomId, senderId, content , messageType, parentMessageId}, client);
+        
+        if (attachments.length > 0) {
+            await Promise.all(attachments.map(attr => 
+                messageAttachmentModel.create(message.message_id, attr.attachmentUrl, attr.fileType, client)
+            ))
+        }
+        
+        await chatRoomModel.updateLastMessage(roomId, message.message_id, client);
+        await chatRoomMemberModel.increaseUnreadCount(roomId, senderId, client);
+        
+        await client.query('COMMIT');
+        
+        // Fetch full message with sender info
+        const fullMessage = await messageModel.getFullMessage(message.message_id);
+
+        // Notify other members about the new message
+        const members = await chatRoomMemberModel.getMembersByRoom(roomId);
+        for (const member of members) {
+          if (member.user_id === senderId) continue;
+          
+          const notification = await Notification.createChatNotification(
+            member.user_id,
+            `New message from ${fullMessage.sender_name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
+          );
+          socketEmitter.emitNotification(member.user_id, notification);
+        }
+
+        return fullMessage;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+const firsTimeGetMessages = async ({roomId, limit}) => {
+    return await messageModel.firstTimeGetMessages({roomId, limit});
+}
+
+const getMessagesByCursor = async ({ roomId, cursorCreatedAt, cursorMessageId, limit }) => {
+  return await messageModel.getMessagesByCursor({ roomId, cursorCreatedAt, cursorMessageId, limit });
+};
+
+const toggleReaction = async ({ messageId, userId, reactionType }) => {
+    return await messageReactionModel.toggle({ messageId, userId, reactionType });
+}
+
+const togglePinMessage = async (messageId, isPinned) => {
+    return await messageModel.togglePin(messageId, isPinned);
+}
+
+const getPinnedMessages = async (roomId) => {
+    return await messageModel.getPinnedMessages(roomId);
+}
+
+const updateMessageContent = async ( {messageId, newContent , senderId}) => {
+    const message = await messageModel.findById(messageId);
+    if(!message || message.sender_id !== senderId) {
+        throw new Error('Message not found or unauthorized');
+    }
+    return messageModel.updateContent({ messageId, newContent });
+}
+
+const softDeleteMessage = async (messageId, senderId) => {
+  const message = await messageModel.findById(messageId);
+  if (!message || message.sender_id !== senderId) {
+    throw new Error("Message not found or unauthorized");
+  }
+  return messageModel.softDeleteMessage(messageId);
+};
+
+const searchMessages = async ({ roomId, query}) => {
+  return await messageModel.searchMessages({ roomId, queryText: query});
+}
+
+const getMembersOfChatRoom = async(roomId) => {
+    return await chatRoomMemberModel.getMembersByRoom(roomId);
+}
+
+const isMemberOfChatRoom = async ({roomId, userId}) => {
+    return await chatRoomMemberModel.isMember(roomId, userId);
+}
+
+const leaveChatRoom = async ({roomId, userId}) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const success = await chatRoomMemberModel.leaveRoom(roomId, userId, client);
+        if (success) {
+            await sendSystemMessage({ 
+                roomId, 
+                content: `A member left the room`,
+                senderId: userId,
+                client 
+            });
+        }
+        await client.query('COMMIT');
+        return success;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+const getMemberRole = async ({roomId, userId}) => {
+    return await chatRoomMemberModel.getRole(roomId, userId);
+}
+
+const updateMemberRole = async ({roomId, userId, newRole}) => {
+    return await chatRoomMemberModel.updateRole(roomId, userId, newRole);
+}
+
+const markMessagesAsRead = async ({roomId, userId, messagesId}) => {
+    return await chatRoomMemberModel.markAsRead(roomId, userId, messagesId);
+}
+
+const getUnreadMessagesCount = async ({roomId, userId}) => {
+    return await chatRoomMemberModel.getUnreadCount(roomId, userId);
+}
+
+const getFriends = async ({ userId }) => {
+    return await chatRoomMemberModel.getMemberFriends(userId);
+}
+
+const togglePinChatRoom = async (roomId, isPinned) => {
+    return await chatRoomModel.togglePin(roomId, isPinned);
+}
+
+module.exports = {
+  createChatRoom,
+  getChatRoomsByUser,
+  getChatRoomById,
+  getLastMessageId,
+  searchChatRoomsAndUsers,
+  addMemberToChatRoom,
+  sendMessage,
+  firsTimeGetMessages,
+  getMessagesByCursor,
+  updateMessageContent,
+  softDeleteMessage,
+  searchMessages,
+  getMembersOfChatRoom,
+  isMemberOfChatRoom,
+  leaveChatRoom,
+  getMemberRole,
+  updateMemberRole,
+  markMessagesAsRead,
+  getUnreadMessagesCount,
+  getFriends,
+  toggleReaction,
+  togglePinMessage,
+  getPinnedMessages,
+  updateChatRoom,
+  togglePinChatRoom,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\chat.validation.js ---
+const { body, param, query } = require("express-validator");
+
+const createChatRoomValidation = [
+  body("room_name").optional({ nullable: true }),
+  body("is_group").optional({ nullable: true }),
+  body("member_ids").optional({ nullable: true }),
+];
+
+const addMemberValidation = [
+  body("roomId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid room ID"),
+  body("userId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid user ID"),
+];
+
+const roomIdParamValidation = [
+  param("roomId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid room ID"),
+];
+
+const getMessagesValidation = [
+  query("roomId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid room ID"),
+  query("before").optional().isISO8601(),
+  query("limit").optional().isInt({ min: 1, max: 100 }),
+];
+
+const searchMessagesValidation = [
+  query("roomId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid room ID"),
+  query("q").trim().notEmpty().withMessage("Search query is required"),
+];
+
+module.exports = {
+  createChatRoomValidation,
+  addMemberValidation,
+  roomIdParamValidation,
+  getMessagesValidation,
+  searchMessagesValidation,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\models\chatRoom.model.js ---
+const pool = require("../../../shared/config/database");
+
+class ChatRoom {
+  static async create({ name, isGroup, createdBy, avatarUrl = null, description = null }) {
+    const query = `Insert into chat_rooms (name, is_group , created_by, avatar_url, description) values ($1 , $2 , $3, $4, $5) returning *`;
+    const values = [name, isGroup, createdBy, avatarUrl, description];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async getRoomsByUser(userId) {
+    const query = `
+    SELECT 
+      r.room_id,
+      r.name,
+      r.is_group,
+      r.created_by,
+      r.last_message_at,
+      r.avatar_url,
+      r.description,
+      r.is_pinned,
+      m.last_read_message_id,
+      m.last_read_at,
+      m.role,
+      m.unread_count,
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'user_id', u.user_id,
+            'name', u.full_name,
+            'avatar_url', u.avatar_url
+          )
+        ) FILTER (WHERE u.user_id IS NOT NULL),
+        '[]'
+      ) AS members,
+      (
+        ARRAY_AGG(u.user_id) 
+        FILTER (WHERE u.user_id != $1)
+      )[1] AS partner_id,
+
+      (
+        ARRAY_AGG(u.full_name) 
+        FILTER (WHERE u.user_id != $1)
+      )[1] AS partner_name,
+      
+      (
+        ARRAY_AGG(u.avatar_url) 
+        FILTER (WHERE u.user_id != $1)
+      )[1] AS partner_avatar,
+      lm.content as last_message_content,
+      lmu.full_name as last_message_sender_name,
+      CASE 
+        WHEN r.is_group = false THEN (
+          ARRAY_AGG(u.full_name) FILTER (WHERE u.user_id != $1)
+        )[1]
+        ELSE r.name
+      END AS display_name
+    FROM chat_rooms r
+    JOIN chat_room_members m 
+      ON r.room_id = m.room_id
+      AND m.user_id = $1
+    JOIN chat_room_members am
+      ON am.room_id = r.room_id
+    JOIN users u
+      ON u.user_id = am.user_id
+    LEFT JOIN messages lm
+      ON r.last_message_id = lm.message_id
+    LEFT JOIN users lmu
+      ON lm.sender_id = lmu.user_id
+    GROUP BY 
+      r.room_id, r.name, r.is_group, r.created_by, r.last_message_at, r.avatar_url, r.description, r.is_pinned,
+      m.last_read_message_id, m.last_read_at, m.role, m.unread_count,
+      lm.content, lmu.full_name
+    ORDER BY r.is_pinned DESC, r.last_message_at DESC;
+    `;
+
+    const { rows } = await pool.query(query, [userId]);
+    return rows;
+  }
+
+  static async togglePin(roomId, isPinned) {
+    const query = `
+      UPDATE chat_rooms 
+      SET is_pinned = $2, pinned_at = CASE WHEN $2 = true THEN NOW() ELSE NULL END
+      WHERE room_id = $1
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [roomId, isPinned]);
+    return rows[0];
+  }
+
+  static async getRoomById(roomId) {
+    const query = `SELECT * FROM chat_rooms where room_id = $1`;
+    const values = [roomId];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async updateRoom(roomId, { name, avatarUrl, description }, client = pool) {
+    const query = `
+      UPDATE chat_rooms 
+      SET name = COALESCE($2, name), 
+          avatar_url = COALESCE($3, avatar_url), 
+          description = COALESCE($4, description) 
+      WHERE room_id = $1 
+      RETURNING *
+    `;
+    const values = [roomId, name, avatarUrl, description];
+    const { rows } = await client.query(query, values);
+    return rows[0];
+  }
+
+  static async updateLastMessage(roomId, lastMessageId, client = pool) {
+    const query =
+      "UPDATE chat_rooms set last_message_at = NOW() , last_message_id = $2 WHERE room_id = $1";
+    const values = [roomId, lastMessageId];
+    await client.query(query, values);
+    return true;
+  }
+
+  static async getLastMessageId(roomId) {
+    const query = `SELECT last_message_id FROM chat_rooms WHERE room_id = $1`;
+    const values = [roomId];
+    const { rows } = await pool.query(query, values);
+    return rows?.[0]?.last_message_id || null;
+  }
+
+  static async searchChatRoomsAndUsers(keyword, userId) {
+    const query = `
+    SELECT 
+      c.room_id,
+      c.name AS room_name,
+      NULL AS user_id,
+      NULL AS full_name,
+      'room' AS type
+    FROM chat_rooms c
+    WHERE c.name ILIKE $1
+
+    UNION
+
+    SELECT
+      NULL AS room_id,
+      NULL AS room_name,
+      u.user_id,
+      u.full_name,
+      'user' AS type
+    FROM users u
+    WHERE u.full_name ILIKE $1
+    AND u.user_id != $2
+
+    ORDER BY type ASC;
+  `;
+
+    const values = [`%${keyword}%`, userId];
+    const result = await pool.query(query, values);
+    return result.rows;
+  }
+}
+
+module.exports = ChatRoom;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\models\chatRoomMember.model.js ---
+const pool = require("../../../shared/config/database");
+
+class ChatRoomMembers {
+  static async addMember(roomId, userId, role = "member", client = pool) {
+    const query =
+      "INSERT INTO chat_room_members (room_id, user_id, role) VALUES ($1, $2, $3)  ON CONFLICT (room_id, user_id) DO NOTHING RETURNING room_id , user_id, role";
+    const values = [roomId, userId, role];
+    const result = await client.query(query, values);
+    return result.rows[0] || null;
+  }
+
+  static async getMembersByRoom(roomId) {
+    const query = `SELECT  u.user_id, u.full_name, u.avatar_url, m.role, m.joined_at
+    FROM chat_room_members m JOIN users u ON m.user_id = u.user_id where room_id = $1`;
+    const values = [roomId];
+    const { rows } = await pool.query(query, values);
+    return rows;
+  }
+
+  static async isMember(roomId, userId) {
+    const query = `SELECT 1 FROM chat_room_members WHERE room_id = $1 AND user_id = $2`;
+    const values = [roomId, userId];
+    const { rowCount } = await pool.query(query, values);
+    return rowCount > 0;
+  }
+
+  static async leaveRoom(roomId, userId, client = pool) {
+    const query = `DELETE FROM chat_room_members where room_id = $1 AND user_id = $2`;
+    const values = [roomId, userId];
+    const result = await client.query(query, values);
+    return result.rowCount > 0;
+  }
+
+  static async getRole(roomId, userId) {
+    const query =
+      "SELECT role FROM chat_room_members where room_id = $1 AND user_id = $2";
+    const values = [roomId, userId];
+    const { rows } = await pool.query(query, values);
+    return rows[0]?.role || null;
+  }
+
+  static async updateRole(roomId, userId, newRole) {
+    const query = `UPDATE chat_room_members set role = $1 where room_id = $2 AND user_id = $3 RETURNING role`
+    const values = [newRole, roomId, userId];
+    const { rows } = await pool.query(query, values);
+    return rows[0]?.role || null;
+  }
+
+  static async markAsRead(roomId, userId , messageId) {
+    const query = `UPDATE chat_room_members
+    SET last_read_message_id = $1 , last_read_at = NOW(), unread_count = 0
+    WHERE room_id = $2 AND user_id = $3 RETURNING last_read_message_id , last_read_at, unread_count`
+    const values = [messageId , roomId , userId];
+    const { rows } = await pool.query(query, values);
+    return rows[0] || null;
+  }
+
+  static async getUnreadCount(roomId, userId) {
+    const query = ` SELECT unread_count
+    FROM chat_room_members
+    WHERE room_id = $1 AND user_id = $2`;
+    const values = [roomId, userId];
+    const { rows} = await pool.query(query, values);
+    return rows[0]?.unread_count || null;
+  }
+
+  static async increaseUnreadCount(roomId, senderId, client = pool) {
+    const query = `UPDATE chat_room_members set unread_count = unread_count + 1 
+    WHERE room_id = $1 AND user_id <> $2`
+    const values = [roomId, senderId];
+    const { rows } = await client.query(query, values)
+    return rows?.[0] || null;
+  }
+
+  static async getMemberFriends( userId) {
+    const query = `SELECT DISTINCT crm2.user_id
+      FROM chat_room_members crm1
+      JOIN chat_room_members crm2
+      ON crm1.room_id = crm2.room_id
+      WHERE crm1.user_id = $1
+      AND crm2.user_id <> $1`
+    const values = [userId];
+    const { rows } = await pool.query(query, values);
+    return rows?.map(r => r.user_id) || [];
+  }
+}
+
+module.exports = ChatRoomMembers;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\models\message.model.js ---
+const pool = require("../../../shared/config/database");
+
+class Message {
+  static async create({ roomId, senderId, content, messageType = "text", parentMessageId = null }, client = pool) {
+    const query = `
+      Insert into messages (room_id, sender_id, content, message_type, parent_message_id, created_at) 
+      VALUES ($1, $2, $3, $4, $5, NOW()) 
+      RETURNING *
+    `;
+    const values = [roomId, senderId, content, messageType, parentMessageId];
+    const result = await client.query(query, values);
+    return result.rows[0];
+  }
+
+  static async firstTimeGetMessages({ roomId, limit = 50 }) {
+    const query = `
+      SELECT 
+        m.*, 
+        u.full_name as sender_name,
+        u.avatar_url as sender_avatar,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'reaction_type', mr.reaction_type,
+              'user_id', mr.user_id
+            )
+          ) FILTER (WHERE mr.reaction_id IS NOT NULL),
+          '[]'
+        ) AS reactions,
+        (
+          SELECT jsonb_build_object(
+            'message_id', pm.message_id,
+            'content', pm.content,
+            'sender_id', pm.sender_id,
+            'sender_name', pu.full_name
+          )
+          FROM messages pm
+          JOIN users pu ON pm.sender_id = pu.user_id
+          WHERE pm.message_id = m.parent_message_id
+        ) AS parent_message
+      FROM messages m
+      JOIN users u ON m.sender_id = u.user_id
+      LEFT JOIN message_reactions mr ON m.message_id = mr.message_id
+      WHERE m.room_id = $1
+      GROUP BY m.message_id, u.user_id
+      ORDER BY m.created_at DESC
+      LIMIT $2
+    `;
+    const { rows } = await pool.query(query, [roomId, limit]);
+    return rows.reverse();
+  }
+
+  static async getMessagesByCursor({
+    roomId,
+    cursorCreatedAt,
+    cursorMessageId,
+    limit = 50,
+  }) {
+    const query = `
+      SELECT 
+        m.*, 
+        u.full_name as sender_name,
+        u.avatar_url as sender_avatar,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'reaction_type', mr.reaction_type,
+              'user_id', mr.user_id
+            )
+          ) FILTER (WHERE mr.reaction_id IS NOT NULL),
+          '[]'
+        ) AS reactions,
+        (
+          SELECT jsonb_build_object(
+            'message_id', pm.message_id,
+            'content', pm.content,
+            'sender_id', pm.sender_id,
+            'sender_name', pu.full_name
+          )
+          FROM messages pm
+          JOIN users pu ON pm.sender_id = pu.user_id
+          WHERE pm.message_id = m.parent_message_id
+        ) AS parent_message,
+        COALESCE(
+          (
+            SELECT json_agg(
+              jsonb_build_object(
+                'attachment_id', ma.attachment_id,
+                'attachment_url', ma.attachment_url,
+                'attachment_type', ma.attachment_type
+              )
+            )
+            FROM message_attachments ma
+            WHERE ma.message_id = m.message_id
+          ),
+          '[]'
+        ) AS attachments
+      FROM messages m
+      JOIN users u ON m.sender_id = u.user_id
+      LEFT JOIN message_reactions mr ON m.message_id = mr.message_id
+      WHERE m.room_id = $1
+        AND (
+          m.created_at < $2
+          OR (m.created_at = $2 AND m.message_id < $3)
+        )
+      GROUP BY m.message_id, u.user_id
+      ORDER BY m.created_at DESC, m.message_id DESC
+      LIMIT $4
+    `;
+    const values = [roomId, cursorCreatedAt, cursorMessageId, limit];
+    const { rows } = await pool.query(query, values);
+    return rows.reverse();
+  }
+
+  static async togglePin(messageId, isPinned) {
+    const query = `UPDATE messages SET is_pinned = $2 WHERE message_id = $1 RETURNING *`;
+    const { rows } = await pool.query(query, [messageId, isPinned]);
+    return rows[0];
+  }
+
+  static async getPinnedMessages(roomId) {
+    const query = `SELECT * FROM messages WHERE room_id = $1 AND is_pinned = TRUE ORDER BY created_at DESC`;
+    const { rows } = await pool.query(query, [roomId]);
+    return rows;
+  }
+
+  static async updateContent({
+    messageId,
+    newContent
+  }) {
+    const query = `
+    UPDATE messages set content = $2
+    WHERE message_id = $1
+    RETURNING *
+  `;
+    const values = [messageId, newContent];
+    const { rows } = await pool.query(query, values);
+    return rows?.[0] || null;
+  }
+
+  static async findById(messageId) {
+    const query = `
+    SELECT * FROM messages WHERE message_id = $1`
+    const values = [messageId];
+    const { rows} = await pool.query(query, values)
+    return rows?.[0] || null;
+  }
+
+  static async softDeleteMessage(messageId) {
+    const query = `
+    UPDATE messages set is_deleted = TRUE
+    WHERE message_id = $1`;
+    const values = [messageId];
+    const { rows } = await pool.query(query, values);
+    return rows?.[0] || null;
+  }
+
+  static async getFullMessage(messageId) {
+    const query = `
+      SELECT 
+        m.*, 
+        u.full_name as sender_name,
+        u.avatar_url as sender_avatar,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'reaction_type', mr.reaction_type,
+              'user_id', mr.user_id
+            )
+          ) FILTER (WHERE mr.reaction_id IS NOT NULL),
+          '[]'
+        ) AS reactions,
+        (
+          SELECT jsonb_build_object(
+            'message_id', pm.message_id,
+            'content', pm.content,
+            'sender_id', pm.sender_id,
+            'sender_name', pu.full_name
+          )
+          FROM messages pm
+          JOIN users pu ON pm.sender_id = pu.user_id
+          WHERE pm.message_id = m.parent_message_id
+        ) AS parent_message,
+        COALESCE(
+          (
+            SELECT json_agg(
+              jsonb_build_object(
+                'attachment_id', ma.attachment_id,
+                'attachment_url', ma.attachment_url,
+                'attachment_type', ma.attachment_type
+              )
+            )
+            FROM message_attachments ma
+            WHERE ma.message_id = m.message_id
+          ),
+          '[]'
+        ) AS attachments
+      FROM messages m
+      JOIN users u ON m.sender_id = u.user_id
+      LEFT JOIN message_reactions mr ON m.message_id = mr.message_id
+      WHERE m.message_id = $1
+      GROUP BY m.message_id, u.user_id
+    `;
+    const { rows } = await pool.query(query, [messageId]);
+    return rows[0] || null;
+  }
+
+  static async searchMessages({ roomId, queryText}) {
+    const query = `
+    SELECT * FROM messages 
+    WHERE room_id = $1 AND content LIKE $2
+    `;
+    const values = [roomId, `%${queryText}%` ];
+    const { rows } = await pool.query(query, values);
+    return rows
+  }
+}
+
+module.exports = Message;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\models\messageAttachment.model.js ---
+const pool = require("../../../shared/config/database");
+
+class MessageAttachment {
+  static async create(messageId, attachmentUrl, attachmentType, client = pool) {
+    const query = `
+      INSERT INTO message_attachments (message_id, attachment_url, attachment_type)
+      VALUES ($1, $2, $3)
+      RETURNING *`;
+    const values = [messageId, attachmentUrl, attachmentType];
+    const result = await client.query(query, values);
+    return result.rows[0];
+  }
+
+  static async findByMessageId(messageId) {
+    const query = `
+      SELECT * FROM message_attachments
+      WHERE message_id = $1`;
+    const values = [messageId];
+    const result = await pool.query(query, values);
+    return result.rows;
+  }
+}
+
+module.exports = MessageAttachment;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\chat\models\messageReaction.model.js ---
+const pool = require("../../../shared/config/database");
+
+class MessageReaction {
+  static async toggle({ messageId, userId, reactionType }) {
+    // Check if reaction already exists
+    const checkQuery = `
+      SELECT reaction_id FROM message_reactions 
+      WHERE message_id = $1 AND user_id = $2 AND reaction_type = $3
+    `;
+    const checkResult = await pool.query(checkQuery, [messageId, userId, reactionType]);
+
+    if (checkResult.rows.length > 0) {
+      // Remove reaction if it exists
+      const deleteQuery = `DELETE FROM message_reactions WHERE reaction_id = $1`;
+      await pool.query(deleteQuery, [checkResult.rows[0].reaction_id]);
+      return { action: "removed", reactionType };
+    } else {
+      // Add reaction if it doesn't exist
+      const insertQuery = `
+        INSERT INTO message_reactions (message_id, user_id, reaction_type)
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `;
+      const result = await pool.query(insertQuery, [messageId, userId, reactionType]);
+      return { action: "added", reaction: result.rows[0] };
+    }
+  }
+
+  static async getByMessage(messageId) {
+    const query = `
+      SELECT mr.*, u.full_name, u.username 
+      FROM message_reactions mr
+      JOIN users u ON mr.user_id = u.user_id
+      WHERE mr.message_id = $1
+      ORDER BY mr.created_at ASC
+    `;
+    const { rows } = await pool.query(query, [messageId]);
+    return rows;
+  }
+
+  static async getReactionsCount(messageId) {
+    const query = `
+      SELECT reaction_type, COUNT(*) as count 
+      FROM message_reactions 
+      WHERE message_id = $1 
+      GROUP BY reaction_type
+    `;
+    const { rows } = await pool.query(query, [messageId]);
+    return rows;
+  }
+}
+
+module.exports = MessageReaction;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\files\file.controller.js ---
+const File = require("./models/file.model");
+const logger = require("../../shared/utils/logger");
+const { deleteFile: deleteCloudinaryFile } = require("../../shared/services/cloudinary.service");
+const path = require("path");
+const fs = require("fs");
+
+const uploadFile = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ status: "error", message: "No file uploaded" });
+    }
+
+    const { taskId, messageId } = req.body;
+    const userId = req.user.uid;
+    
+    // Cloudinary stores the file info in req.file
+    // The path field contains the uploaded file path that cloudinary used
+    const fileUrl = req.file.path || req.file.secure_url || "";
+    const fileType = req.file.mimetype;
+    const cloudinaryPublicId = req.file.public_id || null;
+    const fileSize = req.file.size || null;
+    const originalFilename = req.file.originalname || null;
+
+    const fileRecord = await File.create({
+      fileUrl,
+      fileType,
+      uploadedBy: userId,
+      taskId: taskId || null,
+      messageId: messageId || null,
+      cloudinaryPublicId,
+      fileSize,
+      originalFilename
+    });
+
+    logger.info(`File uploaded to Cloudinary: ${fileRecord.file_id} by user ${userId}`);
+    res.status(201).json({
+      status: "success",
+      data: fileRecord
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskFiles = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const files = await File.findByTaskId(taskId);
+    res.status(200).json({
+      status: "success",
+      data: files
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteFile = async (req, res, next) => {
+  try {
+    const { fileId } = req.params;
+    const userId = req.user.uid;
+    
+    const record = await File.delete(fileId);
+    if (record) {
+      // Delete from Cloudinary if public_id exists
+      if (record.cloudinary_public_id) {
+        await deleteCloudinaryFile(record.cloudinary_public_id);
+        logger.info(`Deleted from Cloudinary: ${record.cloudinary_public_id}`);
+      } else {
+        // Fallback to local file delete
+        const filePath = path.join(__dirname, "../../../", record.file_url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "File deleted successfully"
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  uploadFile,
+  getTaskFiles,
+  deleteFile
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\files\file.routes.js ---
+const express = require("express");
+const router = express.Router();
+const multer = require("multer");
+const { uploadFile, getTaskFiles, deleteFile } = require("./file.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const { taskIdParamValidation, fileIdParamValidation } = require("./file.validation");
+const { createStorage, getFileSizeLimit } = require("../../shared/services/cloudinary.service");
+
+// Multer storage config - use cloudinary
+const storage = createStorage("task");
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: getFileSizeLimit("task") }
+});
+
+router.post("/upload", auth, upload.single("file"), uploadFile);
+router.get("/task/:taskId", auth, validate(taskIdParamValidation), getTaskFiles);
+router.delete("/:fileId", auth, validate(fileIdParamValidation), deleteFile);
+
+module.exports = router;
+
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_2.json using write_to_file tool.

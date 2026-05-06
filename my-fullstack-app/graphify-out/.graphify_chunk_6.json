@@ -1,0 +1,26 @@
+{
+  "nodes": [
+    {"id": "backend_src_shared_services_taskcache_service_js", "label": "TaskCacheService", "file_type": "code", "source_file": "backend/src/shared/services/taskCache.service.js"},
+    {"id": "backend_src_shared_services_taskorder_service_js", "label": "TaskOrderService", "file_type": "code", "source_file": "backend/src/shared/services/taskOrder.service.js"},
+    {"id": "backend_src_shared_sockets_presencesubscriber_js", "label": "presenceSubscriber.js", "file_type": "code", "source_file": "backend/src/shared/sockets/presenceSubscriber.js"},
+    {"id": "backend_src_shared_sockets_socket_js", "label": "socket.js", "file_type": "code", "source_file": "backend/src/shared/sockets/socket.js"},
+    {"id": "backend_src_shared_sockets_socketemitter_js", "label": "socketEmitter.js", "file_type": "code", "source_file": "backend/src/shared/sockets/socketEmitter.js"},
+    {"id": "backend_src_shared_sockets_socketevents_js", "label": "socketEvents.js", "file_type": "code", "source_file": "backend/src/shared/sockets/socketEvents.js"},
+    {"id": "backend_src_shared_sockets_socketservice_js", "label": "socketService.js", "file_type": "code", "source_file": "backend/src/shared/sockets/socketService.js"},
+    {"id": "concept_realtime_presence_tracking", "label": "Real-time Presence Tracking", "file_type": "rationale", "source_file": "backend/src/shared/sockets/presenceSubscriber.js"},
+    {"id": "concept_distributed_socket_architecture", "label": "Distributed Socket Architecture", "file_type": "rationale", "source_file": "backend/src/shared/sockets/socket.js"},
+    {"id": "concept_redis_backed_cache_invalidation", "label": "Redis-backed Cache Invalidation", "file_type": "rationale", "source_file": "backend/src/shared/services/taskCache.service.js"}
+  ],
+  "edges": [
+    {"source": "backend_src_shared_sockets_socket_js", "target": "backend_src_shared_sockets_presencesubscriber_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/shared/sockets/socket.js"},
+    {"source": "backend_src_shared_sockets_socket_js", "target": "backend_src_shared_sockets_socketemitter_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/shared/sockets/socket.js"},
+    {"source": "backend_src_shared_sockets_socketevents_js", "target": "backend_src_shared_sockets_socketservice_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/shared/sockets/socketEvents.js"},
+    {"source": "backend_src_shared_sockets_socketservice_js", "target": "backend_src_shared_services_taskcache_service_js", "relation": "references", "confidence": "INFERRED", "confidence_score": 0.8, "source_file": "backend/src/shared/sockets/socketService.js"},
+    {"source": "backend_src_shared_sockets_presencesubscriber_js", "target": "concept_realtime_presence_tracking", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.95, "source_file": "backend/src/shared/sockets/presenceSubscriber.js"},
+    {"source": "backend_src_shared_sockets_socket_js", "target": "concept_distributed_socket_architecture", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "backend/src/shared/sockets/socket.js"},
+    {"source": "backend_src_shared_services_taskcache_service_js", "target": "concept_redis_backed_cache_invalidation", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "backend/src/shared/services/taskCache.service.js"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 16500,
+  "output_tokens": 1350
+}

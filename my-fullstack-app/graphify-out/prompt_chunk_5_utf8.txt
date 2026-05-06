@@ -1,0 +1,1680 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 5 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\routes\index.js ---
+const express = require("express");
+const router = express.Router();
+const auth = require("../shared/middlewares/auth");
+
+const userRoutes = require("../modules/users/user.routes");
+const accountRoutes = require("../modules/users/account.routes");
+const projectRoutes = require("../modules/projects/project.routes");
+const taskRoutes = require("../modules/tasks/task.routes");
+const chatRoutes = require("../modules/chat/chat.routes");
+const searchRoutes = require("../modules/search/search.routes");
+const notificationRoutes = require("../modules/notifications/notification.routes");
+const subtaskRoutes = require("../modules/tasks/subtask.routes");
+const commentRoutes = require("../modules/tasks/comment.routes");
+const tagRoutes = require("../modules/tasks/tag.routes");
+const dependencyRoutes = require("../modules/tasks/task_dependency.routes");
+const fileRoutes = require("../modules/files/file.routes");
+const analyticsRoutes = require("../modules/analytics/analytics.routes");
+const activityRoutes = require("../modules/activity/activity.routes");
+
+const timeRoutes = require("../modules/time-tracking/timeEntry.routes");
+const channelRoutes = require("../modules/channels/channel.routes");
+const channelPostRoutes = require("../modules/channels/channelPost.routes");
+
+// User routes (includes public login/register)
+router.use("/users", userRoutes);
+
+// Protected routes
+router.use("/account", accountRoutes);
+router.use("/projects", auth, projectRoutes);
+router.use("/tasks", auth, taskRoutes);
+router.use("/chat", auth, chatRoutes);
+router.use("/search", auth, searchRoutes);
+router.use("/notifications", auth, notificationRoutes);
+router.use("/subtasks", auth, subtaskRoutes);
+router.use("/comments", auth, commentRoutes);
+router.use("/tags", auth, tagRoutes);
+router.use("/dependencies", auth, dependencyRoutes);
+router.use("/files", auth, fileRoutes);
+router.use("/analytics", auth, analyticsRoutes);
+router.use("/activity", auth, activityRoutes);
+router.use("/time", auth, timeRoutes);
+// IMPORTANT: channel post routes must come BEFORE channel routes (specific before param)
+router.use("/channel-posts", auth, channelPostRoutes);
+router.use("/channels", auth, channelRoutes);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\sentry.js ---
+const Sentry = require("@sentry/node");
+const logger = require("./utils/logger");
+
+const initSentry = () => {
+  if (!process.env.SENTRY_DSN) {
+    logger.warn("Sentry DSN not configured - error tracking disabled");
+    return;
+  }
+
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || "development",
+    integrations: [
+      Sentry.httpClientIntegration(),
+    ],
+    tracesSampleRate: 1.0,
+  });
+
+  logger.info("Sentry error tracking initialized");
+};
+
+module.exports = { initSentry, Sentry };
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\config\database.js ---
+// src/config/database.js
+const { Pool } = require("pg");
+require("dotenv").config();
+
+const pool = new Pool({
+  host: process.env.DB_HOST || "localhost",
+  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD, // No default password for security
+  database: process.env.DB_NAME || "managework",
+});
+
+// Fail early if DB password is missing in production
+if (process.env.NODE_ENV === "production" && !process.env.DB_PASSWORD) {
+  console.error("❌ ERROR: DB_PASSWORD is required in production environment!");
+  process.exit(1);
+}
+
+module.exports = pool;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\config\swagger.js ---
+const swaggerJsdoc = require("swagger-jsdoc");
+const swaggerUi = require("swagger-ui-express");
+const logger = require("../utils/logger");
+
+const options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "ManageWork API",
+      version: "1.0.0",
+      description: "API documentation for ManageWork backend application",
+      contact: {
+        name: "API Support",
+      },
+    },
+    servers: [
+      {
+        url: `http://localhost:${process.env.PORT || 8888}`,
+        description: "Development server",
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Enter JWT token",
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
+  },
+  apis: ["./src/routes/*.js", "./src/server.js"], // paths to files containing OpenAPI definitions
+};
+
+const swaggerSpec = swaggerJsdoc(options);
+
+const swaggerDocs = (app) => {
+  // Swagger page
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+  // Docs in JSON format
+  app.get("/api-docs.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.send(swaggerSpec);
+  });
+
+  logger.info(`Swagger docs available at http://localhost:${process.env.PORT || 8888}/api-docs`);
+};
+
+module.exports = { swaggerDocs, swaggerSpec };
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\config\viewEngine.js ---
+const path = require("path");
+const express = require("express");
+
+const configViewEngine = (app) => {
+  app.set("views", path.join("./src", "views"));
+  app.set("view engine", "ejs");
+
+  //config static files: image/css/js
+  app.use(express.static(path.join("./src", "public")));
+};
+
+module.exports = configViewEngine;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\cron\index.js ---
+const { startTaskOverdueJob } = require("./taskOverdue.job");
+
+const initCronJobs = () => {
+  startTaskOverdueJob();
+};
+
+module.exports = {
+  initCronJobs,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\cron\taskOverdue.job.js ---
+const cron = require("node-cron");
+const pool = require("../config/database");
+const logger = require("../utils/logger");
+
+const startTaskOverdueJob = () => {
+  cron.schedule("0 0 * * *", async () => {
+    try {
+      await pool.query(`
+                UPDATE tasks 
+                SET status = 'overdue' WHERE due_date < NOW() AND status IN ('todo', 'in_progress');`);
+      logger.info("Overdue tasks updated successfully");
+    } catch (error) {
+      logger.error("Error getting overdue tasks", { error: error.message });
+    }
+  });
+};
+
+module.exports = {
+  startTaskOverdueJob,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\middlewares\auth.js ---
+const jwt = require("jsonwebtoken");
+// Unused userModel removed as JWT payload is trusted
+
+const auth = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized: No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Minimize DB calls by trusting JWT payload
+    // If you need the latest user info (like theme_color), do it in specific endpoints
+    req.user = {
+      uid: decoded.uid,
+      username: decoded.username,
+      email: decoded.email,
+      role: decoded.role,
+    };
+
+    next();
+  } catch (error) {
+    console.error("Auth error:", error.message);
+    return res.status(401).json({ message: "Invalid token or token expired" });
+  }
+};
+
+module.exports = auth;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\middlewares\delay.js ---
+const delay = (req, res, next) => {
+  setTimeout(() => {
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(" ")[1];
+    }
+    next();
+  }, 3000);
+};
+
+module.exports = delay;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\middlewares\errorHandler.js ---
+const logger = require("../utils/logger");
+const { Sentry } = require("../sentry");
+
+const errorHandler = (err, req, res, next) => {
+  logger.error(err.message, {
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    path: req.path,
+    method: req.method
+  });
+
+  // Capture error to Sentry
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(err);
+  }
+
+  // Handle specific database errors
+  if (err.code === "23505") {
+    return res.status(409).json({
+      status: "error",
+      message: "Duplicate entry",
+      error: "Resource already exists",
+    });
+  }
+
+  if (err.code === "23503") {
+    return res.status(400).json({
+      status: "error",
+      message: "Foreign key constraint violation",
+      error: "Referenced resource does not exist",
+    });
+  }
+
+  // Handle JWT errors
+  if (err.name === "JsonWebTokenError") {
+    return res.status(401).json({
+      status: "error",
+      message: "Invalid token",
+      error: "Token is malformed",
+    });
+  }
+
+  if (err.name === "TokenExpiredError") {
+    return res.status(401).json({
+      status: "error",
+      message: "Token expired",
+      error: "Please login again",
+    });
+  }
+
+  // Handle express-validator formatted errors
+  if (err.name === "ValidationError") {
+    return res.status(400).json({
+      status: "error",
+      message: err.message || "Validation failed",
+      errors: err.errors,
+    });
+  }
+
+  // Handle UnauthorizedError (from express-jwt if used)
+  if (err.name === "UnauthorizedError") {
+    return res.status(401).json({
+      status: "error",
+      message: "Unauthorized access",
+    });
+  }
+
+  // Default error
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+
+  return res.status(statusCode).json({
+    status: "error",
+    message,
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
+};
+
+module.exports = errorHandler;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\middlewares\permission.middleware.js ---
+const pool = require("../config/database");
+
+const ROLES = {
+  OWNER: 'owner',
+  ADMIN: 'admin', 
+  MEMBER: 'member',
+  VIEWER: 'viewer'
+};
+
+const PERMISSIONS = {
+  // Project permissions
+  PROJECT_CREATE: ['owner', 'admin'],
+  PROJECT_EDIT: ['owner', 'admin', 'member'],
+  PROJECT_VIEW: ['owner', 'admin', 'member', 'viewer'],
+  PROJECT_DELETE: ['owner'],
+  PROJECT_MANAGE_MEMBERS: ['owner', 'admin'],
+  
+  // Task permissions
+  TASK_CREATE: ['owner', 'admin', 'member'],
+  TASK_EDIT: ['owner', 'admin', 'member'],
+  TASK_VIEW: ['owner', 'admin', 'member', 'viewer'],
+  TASK_DELETE: ['owner', 'admin'],
+  TASK_ASSIGN: ['owner', 'admin', 'member'],
+  
+  // User permissions
+  USER_INVITE: ['owner', 'admin'],
+  USER_MANAGE: ['owner', 'admin'],
+  
+  // Analytics
+  ANALYTICS_VIEW_ADMIN: ['owner', 'admin'],
+  ANALYTICS_VIEW_PERSONAL: ['owner', 'admin', 'member', 'viewer']
+};
+
+const checkPermission = (requiredRoles) => {
+  return async (req, res, next) => {
+    try {
+      const userId = req.user?.uid;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const userRole = req.user?.role || 'member';
+      
+      if (requiredRoles.includes(userRole)) {
+        return next();
+      }
+
+      if (req.params.projectId) {
+        const projectMember = await pool.query(
+          `SELECT role FROM project_members WHERE project_id = $1 AND user_id = $2`,
+          [req.params.projectId, userId]
+        );
+        
+        if (projectMember.rows.length > 0) {
+          const projectRole = projectMember.rows[0].role;
+          if (requiredRoles.includes(projectRole)) {
+            return next();
+          }
+        }
+      }
+
+      return res.status(403).json({ error: "Insufficient permissions" });
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+const checkProjectRole = (allowedRoles) => {
+  return async (req, res, next) => {
+    try {
+      const { projectId } = req.params;
+      const userId = req.user?.uid;
+      
+      if (!projectId) {
+        return res.status(400).json({ error: "Project ID required" });
+      }
+
+      const result = await pool.query(
+        `SELECT pm.role, p.owner_id FROM project_members pm
+         JOIN projects p ON pm.project_id = p.project_id
+         WHERE pm.project_id = $1 AND pm.user_id = $2`,
+        [projectId, userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(403).json({ error: "Not a project member" });
+      }
+
+      const { role, owner_id } = result.rows[0];
+      const effectiveRole = owner_id === userId ? 'owner' : role;
+
+      if (!allowedRoles.includes(effectiveRole)) {
+        return res.status(403).json({ error: "Insufficient project permissions" });
+      }
+
+      req.projectRole = effectiveRole;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+const requireRole = (...allowedRoles) => {
+  return (req, res, next) => {
+    const userRole = req.user?.role || 'member';
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({ error: "Role not allowed" });
+    }
+    next();
+  };
+};
+
+module.exports = {
+  ROLES,
+  PERMISSIONS,
+  checkPermission,
+  checkProjectRole,
+  requireRole
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\middlewares\socketAuth.js ---
+const jwt = require("jsonwebtoken");
+const logger = require("../utils/logger");
+
+const socketAuth = async (socket, next) => {
+  try {
+    const token =
+      socket.handshake.auth?.token ||
+      socket.handshake.headers?.authorization?.split(" ")[1];
+
+    if (!token) {
+      return next(new Error("AUTH_TOKEN_MISSING"));
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    socket.user = {
+      uid: decoded.uid,
+      username: decoded.username,
+      email: decoded.email,
+      role: decoded.role,
+    };
+
+    next();
+  } catch (err) {
+    logger.error("Socket auth error", { error: err.message });
+    next(new Error("INVALID_TOKEN"));
+  }
+};
+
+module.exports = socketAuth;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\middlewares\validation.middleware.js ---
+const { validationResult } = require("express-validator");
+
+/**
+ * Middleware to handle validation results from express-validator
+ * @param {Array} validations - Array of express-validator checks
+ */
+const validate = (validations) => {
+  return async (req, res, next) => {
+    // Run all validations
+    await Promise.all(validations.map((validation) => validation.run(req)));
+
+    const errors = validationResult(req);
+    if (errors.isEmpty()) {
+      return next();
+    }
+
+    // Debug: Log validation errors
+    console.log("[Validation] Errors:", errors.array());
+
+    // Transform errors to a consistent format
+    const formattedErrors = errors.array().map((err) => ({
+      field: err.path,
+      message: err.msg,
+    }));
+
+    return res.status(400).json({
+      status: "error",
+      message: "Validation failed",
+      errors: formattedErrors,
+    });
+  };
+};
+
+module.exports = validate;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\migrations\001_init_schema.sql ---
+BEGIN;
+
+-- Needed for gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Drop in dependency order to allow re-running safely
+DROP TABLE IF EXISTS message_attachments CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS chat_room_members CASCADE;
+DROP TABLE IF EXISTS chat_rooms CASCADE;
+DROP TABLE IF EXISTS files CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS team_members CASCADE;
+DROP TABLE IF EXISTS activity_logs CASCADE;
+DROP TABLE IF EXISTS reminders CASCADE;
+DROP TABLE IF EXISTS events CASCADE;
+DROP TABLE IF EXISTS task_tags CASCADE;
+DROP TABLE IF EXISTS tags CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS subtasks CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+DROP TABLE IF EXISTS project_members CASCADE;
+DROP TABLE IF EXISTS projects CASCADE;
+DROP TABLE IF EXISTS recurring_tasks CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- ==============
+-- Core
+-- ==============
+CREATE TABLE users (
+  user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  avatar_url TEXT,
+  role TEXT NOT NULL DEFAULT 'member',
+  theme_color TEXT NOT NULL DEFAULT '#f87171',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE projects (
+  project_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT,
+  description TEXT,
+  owner_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_projects_owner_id ON projects(owner_id);
+CREATE INDEX idx_projects_created_at ON projects(created_at DESC);
+
+-- Join table for project members
+CREATE TABLE project_members (
+  project_id UUID NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'viewer',
+  joined_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_project_members_project_id ON project_members(project_id);
+CREATE INDEX idx_project_members_user_id ON project_members(user_id);
+
+CREATE TABLE recurring_tasks (
+  recurring_task_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
+  title TEXT,
+  description TEXT,
+  priority TEXT NOT NULL DEFAULT 'medium',
+  start_date TIMESTAMP NOT NULL,
+  end_date TIMESTAMP NOT NULL,
+  repeat_type TEXT NOT NULL,
+  repeat_days INTEGER[] NOT NULL DEFAULT '{}'::integer[],
+  created_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  assigned_to UUID REFERENCES users(user_id) ON DELETE SET NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_recurring_tasks_created_by ON recurring_tasks(created_by);
+CREATE INDEX idx_recurring_tasks_project_id ON recurring_tasks(project_id);
+CREATE INDEX idx_recurring_tasks_is_active ON recurring_tasks(is_active);
+
+CREATE TABLE tasks (
+  task_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES projects(project_id) ON DELETE SET NULL,
+  title TEXT,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'todo',
+  priority TEXT NOT NULL DEFAULT 'medium',
+  start_date TIMESTAMP,
+  due_date TIMESTAMP,
+  order_index INTEGER NOT NULL,
+  created_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  assigned_to UUID REFERENCES users(user_id) ON DELETE SET NULL,
+  recurring_task_id UUID REFERENCES recurring_tasks(recurring_task_id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_tasks_project_id ON tasks(project_id);
+CREATE INDEX idx_tasks_created_by ON tasks(created_by);
+CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
+CREATE INDEX idx_tasks_recurring_task_id ON tasks(recurring_task_id);
+CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+
+CREATE TABLE subtasks (
+  subtask_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  title TEXT,
+  is_done BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_subtasks_task_id ON subtasks(task_id);
+
+CREATE TABLE comments (
+  comment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  content TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_comments_task_id ON comments(task_id);
+CREATE INDEX idx_comments_user_id ON comments(user_id);
+
+CREATE TABLE tags (
+  tag_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT,
+  color TEXT
+);
+
+CREATE INDEX idx_tags_name ON tags(name);
+
+CREATE TABLE task_tags (
+  task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  tag_id UUID NOT NULL REFERENCES tags(tag_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_task_tags_task_id ON task_tags(task_id);
+CREATE INDEX idx_task_tags_tag_id ON task_tags(tag_id);
+
+-- ==============
+-- Calendar/Event
+-- ==============
+CREATE TABLE events (
+  event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  title TEXT,
+  description TEXT,
+  start_time TIMESTAMP,
+  end_time TIMESTAMP,
+  location TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_events_user_id ON events(user_id);
+CREATE INDEX idx_events_start_time ON events(start_time);
+
+CREATE TABLE reminders (
+  reminder_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
+  remind_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_reminders_event_id ON reminders(event_id);
+CREATE INDEX idx_reminders_remind_at ON reminders(remind_at);
+
+-- ==============
+-- Activity / Notifications / Files
+-- ==============
+CREATE TABLE activity_logs (
+  log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  task_id UUID REFERENCES tasks(task_id) ON DELETE SET NULL,
+  action TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
+CREATE INDEX idx_activity_logs_task_id ON activity_logs(task_id);
+CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at DESC);
+
+CREATE TABLE notifications (
+  notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_notifications_user_created_at ON notifications(user_id, created_at DESC);
+CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read);
+
+-- Chat
+CREATE TABLE chat_rooms (
+  room_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT,
+  is_group BOOLEAN,
+  created_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  last_message_at TIMESTAMP,
+  last_message_id UUID
+);
+
+CREATE INDEX idx_chat_rooms_last_message_at ON chat_rooms(last_message_at DESC);
+
+CREATE TABLE chat_room_members (
+  room_id UUID NOT NULL REFERENCES chat_rooms(room_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member',
+  joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  last_read_message_id UUID,
+  last_read_at TIMESTAMP,
+  unread_count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (room_id, user_id)
+);
+
+CREATE INDEX idx_chat_room_members_user_id ON chat_room_members(user_id);
+CREATE INDEX idx_chat_room_members_room_id ON chat_room_members(room_id);
+CREATE INDEX idx_chat_room_members_user_room ON chat_room_members(user_id, room_id);
+
+CREATE TABLE messages (
+  message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id UUID NOT NULL REFERENCES chat_rooms(room_id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  content TEXT,
+  message_type TEXT NOT NULL DEFAULT 'text',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  edited_at TIMESTAMP,
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX idx_messages_room_created ON messages(room_id, created_at DESC, message_id DESC);
+
+CREATE TABLE message_attachments (
+  attachment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id UUID NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
+  attachment_url TEXT NOT NULL,
+  attachment_type TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_message_attachments_message_id ON message_attachments(message_id);
+
+-- File attachments for tasks or messages
+CREATE TABLE files (
+  file_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  file_url TEXT NOT NULL,
+  file_type TEXT NOT NULL,
+  uploaded_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  task_id UUID REFERENCES tasks(task_id) ON DELETE SET NULL,
+  message_id UUID REFERENCES messages(message_id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_files_uploaded_by ON files(uploaded_by);
+CREATE INDEX idx_files_task_id ON files(task_id);
+CREATE INDEX idx_files_message_id ON files(message_id);
+
+-- Minimal table for team activity stats (only referenced by user/activity queries)
+CREATE TABLE team_members (
+  team_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  PRIMARY KEY (team_id, user_id)
+);
+
+CREATE INDEX idx_team_members_user_id ON team_members(user_id);
+
+COMMIT;
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\migrations\002_chat_enhancements.sql ---
+BEGIN;
+
+-- Add columns to messages table
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS parent_message_id UUID REFERENCES messages(message_id) ON DELETE SET NULL;
+
+-- Add columns to chat_rooms table
+ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS description TEXT;
+
+-- Create message_reactions table
+CREATE TABLE IF NOT EXISTS message_reactions (
+    reaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    reaction_type TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(message_id, user_id, reaction_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_reactions_message_id ON message_reactions(message_id);
+
+COMMIT;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\migrations\003_task_full_text_search.sql ---
+BEGIN;
+
+-- Add search_vector column to tasks table
+ALTER TABLE tasks ADD COLUMN search_vector tsvector;
+
+-- Create a GIN index on search_vector
+CREATE INDEX idx_tasks_search_vector ON tasks USING gin(search_vector);
+
+-- Function to update search_vector
+CREATE OR REPLACE FUNCTION tasks_search_vector_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('simple', coalesce(NEW.title, '')), 'A') ||
+    setweight(to_tsvector('simple', coalesce(NEW.description, '')), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+-- Trigger to automatically update search_vector on INSERT or UPDATE
+DROP TRIGGER IF EXISTS trg_tasks_search_vector_update ON tasks;
+CREATE TRIGGER trg_tasks_search_vector_update
+BEFORE INSERT OR UPDATE ON tasks
+FOR EACH ROW
+EXECUTE FUNCTION tasks_search_vector_trigger();
+
+-- Backfill search_vector for existing tasks
+UPDATE tasks SET search_vector = 
+  setweight(to_tsvector('simple', coalesce(title, '')), 'A') ||
+  setweight(to_tsvector('simple', coalesce(description, '')), 'B');
+
+COMMIT;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\migrations\004_task_dependencies.sql ---
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS task_dependencies (
+  dependency_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  depends_on_task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  dependency_type TEXT NOT NULL DEFAULT 'blocking',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_task_dependencies_task_id ON task_dependencies(task_id);
+CREATE INDEX idx_task_dependencies_depends_on_task_id ON task_dependencies(depends_on_task_id);
+CREATE UNIQUE INDEX idx_task_dependencies_unique ON task_dependencies(task_id, depends_on_task_id);
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\models\activityLog.model.js ---
+const pool = require("../config/database");
+
+class ActivityLog {
+  static async create(logData) {
+    const { userId, taskId = null, action } = logData;
+    const query = `
+      INSERT INTO activity_logs (user_id, task_id, action, created_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING log_id, user_id, task_id, action, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId, taskId, action]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating activity log:", error);
+      throw error;
+    }
+  }
+
+  static async findById(logId) {
+    const query = `
+      SELECT al.log_id, al.user_id, al.task_id, al.action, al.created_at,
+             u.username, u.full_name, u.avatar_url,
+             t.title as task_title, p.name as project_name
+      FROM activity_logs al
+      JOIN users u ON al.user_id = u.user_id
+      LEFT JOIN tasks t ON al.task_id = t.task_id
+      LEFT JOIN projects p ON t.project_id = p.project_id
+      WHERE al.log_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [logId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding activity log by id:", error);
+      throw error;
+    }
+  }
+
+  static async getUserActivityLogs(userId, limit = 50, offset = 0, days = null, date = null) {
+    let dateFilter = "";
+    const params = [userId, limit, offset];
+    
+    if (date) {
+      dateFilter = `AND DATE(al.created_at) = $4`;
+      params.push(date);
+    } else if (days) {
+      dateFilter = `AND al.created_at >= NOW() - INTERVAL '${days} days'`;
+    }
+    
+    const query = `
+      SELECT al.log_id, al.user_id, al.task_id, al.action, al.created_at,
+             t.title as task_title, p.name as project_name
+      FROM activity_logs al
+      LEFT JOIN tasks t ON al.task_id = t.task_id
+      LEFT JOIN projects p ON t.project_id = p.project_id
+      WHERE al.user_id = $1 ${dateFilter}
+      ORDER BY al.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    try {
+      const result = await pool.query(query, params);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting user activity logs:", error);
+      throw error;
+    }
+  }
+
+  static async getTaskActivityLogs(taskId, limit = 50, offset = 0) {
+    const query = `
+      SELECT al.log_id, al.user_id, al.task_id, al.action, al.created_at,
+             u.username, u.full_name, u.avatar_url
+      FROM activity_logs al
+      JOIN users u ON al.user_id = u.user_id
+      WHERE al.task_id = $1
+      ORDER BY al.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId, limit, offset]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting task activity logs:", error);
+      throw error;
+    }
+  }
+
+  static async getProjectActivityLogs(projectId, limit = 50, offset = 0) {
+    const query = `
+      SELECT al.log_id, al.user_id, al.task_id, al.action, al.created_at,
+             u.username, u.full_name, u.avatar_url,
+             t.title as task_title
+      FROM activity_logs al
+      JOIN users u ON al.user_id = u.user_id
+      JOIN tasks t ON al.task_id = t.task_id
+      WHERE t.project_id = $1
+      ORDER BY al.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    try {
+      const result = await pool.query(query, [projectId, limit, offset]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting project activity logs:", error);
+      throw error;
+    }
+  }
+
+  static async getTeamActivityLogs(teamId, limit = 50, offset = 0) {
+    const query = `
+      SELECT al.log_id, al.user_id, al.task_id, al.action, al.created_at,
+             u.username, u.full_name, u.avatar_url,
+             t.title as task_title, p.name as project_name
+      FROM activity_logs al
+      JOIN users u ON al.user_id = u.user_id
+      LEFT JOIN tasks t ON al.task_id = t.task_id
+      LEFT JOIN projects p ON t.project_id = p.project_id
+      JOIN team_members tm ON al.user_id = tm.user_id
+      WHERE tm.team_id = $1
+      ORDER BY al.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    try {
+      const result = await pool.query(query, [teamId, limit, offset]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting team activity logs:", error);
+      throw error;
+    }
+  }
+
+  static async delete(logId) {
+    const query = `DELETE FROM activity_logs WHERE log_id = $1`;
+    
+    try {
+      await pool.query(query, [logId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting activity log:", error);
+      throw error;
+    }
+  }
+
+  static async deleteOldLogs(daysOld = 90) {
+    const query = `
+      DELETE FROM activity_logs 
+      WHERE created_at < NOW() - INTERVAL '${daysOld} days'
+    `;
+    
+    try {
+      const result = await pool.query(query);
+      return result.rowCount;
+    } catch (error) {
+      console.error("Error deleting old activity logs:", error);
+      throw error;
+    }
+  }
+
+  static async getActivityStats(userId, days = 30) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_activities,
+        COUNT(CASE WHEN action LIKE '%Created%' OR action LIKE '%created%' THEN 1 END) as created_activities,
+        COUNT(CASE WHEN action LIKE '%Updated%' OR action LIKE '%updated%' THEN 1 END) as updated_activities,
+        COUNT(CASE WHEN action LIKE '%Deleted%' OR action LIKE '%deleted%' THEN 1 END) as deleted_activities,
+        COUNT(CASE WHEN action LIKE '%Completed%' OR action LIKE '%completed%' THEN 1 END) as completed_activities
+      FROM activity_logs 
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting activity stats:", error);
+      throw error;
+    }
+  }
+
+  // Helper methods for common actions
+  static async logTaskCreated(userId, taskId, taskTitle) {
+    return this.create({ userId, taskId, action: `Created task: ${taskTitle}` });
+  }
+
+  static async logTaskUpdated(userId, taskId, taskTitle, description = null) {
+    const action = description 
+      ? `Updated task: ${taskTitle} - ${description}`
+      : `Updated task: ${taskTitle}`;
+    return this.create({ userId, taskId, action });
+  }
+
+  static async logTaskCompleted(userId, taskId, taskTitle) {
+    return this.create({ userId, taskId, action: `Completed task: ${taskTitle}` });
+  }
+
+  static async logTaskDeleted(userId, taskId, taskTitle) {
+    return this.create({ userId, taskId, action: `Deleted task: ${taskTitle}` });
+  }
+
+  static async logProjectCreated(userId, projectName) {
+    return this.create({ userId, action: `Created project: ${projectName}` });
+  }
+
+  static async logTeamJoined(userId, teamName) {
+    return this.create({ userId, action: `Joined team: ${teamName}` });
+  }
+
+  static async logCommentAdded(userId, taskId, taskTitle) {
+    return this.create({ userId, taskId, action: `Added comment to task: ${taskTitle}` });
+  }
+}
+
+module.exports = ActivityLog;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\models\event.model.js ---
+const pool = require("../config/database");
+
+class Event {
+  static async create(eventData) {
+    const { userId, title, description, startTime, endTime, location } = eventData;
+    const query = `
+      INSERT INTO events (user_id, title, description, start_time, end_time, location, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      RETURNING event_id, user_id, title, description, start_time, end_time, location, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId, title, description, startTime, endTime, location]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating event:", error);
+      throw error;
+    }
+  }
+
+  static async findById(eventId) {
+    const query = `
+      SELECT e.event_id, e.user_id, e.title, e.description, e.start_time, e.end_time, e.location, e.created_at,
+             u.username, u.full_name, u.avatar_url
+      FROM events e
+      JOIN users u ON e.user_id = u.user_id
+      WHERE e.event_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [eventId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding event by id:", error);
+      throw error;
+    }
+  }
+
+  static async getUserEvents(userId, startDate = null, endDate = null) {
+    let query = `
+      SELECT e.event_id, e.user_id, e.title, e.description, e.start_time, e.end_time, e.location, e.created_at
+      FROM events e
+      WHERE e.user_id = $1
+    `;
+    const params = [userId];
+
+    if (startDate && endDate) {
+      query += ` AND e.start_time >= $2 AND e.end_time <= $3`;
+      params.push(startDate, endDate);
+    } else if (startDate) {
+      query += ` AND e.start_time >= $2`;
+      params.push(startDate);
+    } else if (endDate) {
+      query += ` AND e.end_time <= $2`;
+      params.push(endDate);
+    }
+
+    query += ` ORDER BY e.start_time ASC`;
+
+    try {
+      const result = await pool.query(query, params);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting user events:", error);
+      throw error;
+    }
+  }
+
+  static async getUpcomingEvents(userId, limit = 10) {
+    const query = `
+      SELECT e.event_id, e.user_id, e.title, e.description, e.start_time, e.end_time, e.location, e.created_at
+      FROM events e
+      WHERE e.user_id = $1 AND e.start_time > NOW()
+      ORDER BY e.start_time ASC
+      LIMIT $2
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId, limit]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting upcoming events:", error);
+      throw error;
+    }
+  }
+
+  static async update(eventId, updateData) {
+    const { title, description, startTime, endTime, location } = updateData;
+    const query = `
+      UPDATE events 
+      SET title = $1, description = $2, start_time = $3, end_time = $4, location = $5
+      WHERE event_id = $6
+      RETURNING event_id, user_id, title, description, start_time, end_time, location, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [title, description, startTime, endTime, location, eventId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating event:", error);
+      throw error;
+    }
+  }
+
+  static async delete(eventId) {
+    const query = `DELETE FROM events WHERE event_id = $1`;
+    
+    try {
+      await pool.query(query, [eventId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      throw error;
+    }
+  }
+
+  static async getEventStats(userId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_events,
+        COUNT(CASE WHEN start_time > NOW() THEN 1 END) as upcoming_events,
+        COUNT(CASE WHEN start_time <= NOW() AND end_time >= NOW() THEN 1 END) as ongoing_events,
+        COUNT(CASE WHEN end_time < NOW() THEN 1 END) as past_events
+      FROM events 
+      WHERE user_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting event stats:", error);
+      throw error;
+    }
+  }
+}
+
+class Reminder {
+  static async create(reminderData) {
+    const { eventId, remindAt } = reminderData;
+    const query = `
+      INSERT INTO reminders (event_id, remind_at, created_at)
+      VALUES ($1, $2, NOW())
+      RETURNING reminder_id, event_id, remind_at, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [eventId, remindAt]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating reminder:", error);
+      throw error;
+    }
+  }
+
+  static async getEventReminders(eventId) {
+    const query = `
+      SELECT reminder_id, event_id, remind_at, created_at
+      FROM reminders 
+      WHERE event_id = $1
+      ORDER BY remind_at ASC
+    `;
+    
+    try {
+      const result = await pool.query(query, [eventId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting event reminders:", error);
+      throw error;
+    }
+  }
+
+  static async getUpcomingReminders(userId, limit = 10) {
+    const query = `
+      SELECT r.reminder_id, r.event_id, r.remind_at, r.created_at,
+             e.title as event_title, e.start_time
+      FROM reminders r
+      JOIN events e ON r.event_id = e.event_id
+      WHERE e.user_id = $1 AND r.remind_at > NOW()
+      ORDER BY r.remind_at ASC
+      LIMIT $2
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId, limit]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting upcoming reminders:", error);
+      throw error;
+    }
+  }
+
+  static async delete(reminderId) {
+    const query = `DELETE FROM reminders WHERE reminder_id = $1`;
+    
+    try {
+      await pool.query(query, [reminderId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting reminder:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = { Event, Reminder };
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\models\file.model.js ---
+const pool = require("../config/database");
+
+class File {
+  static async create(fileData) {
+    const { fileUrl, fileType, uploadedBy, taskId = null, messageId = null } = fileData;
+    const query = `
+      INSERT INTO files (file_url, file_type, uploaded_by, task_id, message_id, created_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      RETURNING file_id, file_url, file_type, uploaded_by, task_id, message_id, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [fileUrl, fileType, uploadedBy, taskId, messageId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating file:", error);
+      throw error;
+    }
+  }
+
+  static async findById(fileId) {
+    const query = `
+      SELECT f.file_id, f.file_url, f.file_type, f.uploaded_by, f.task_id, f.message_id, f.created_at,
+             u.username, u.full_name, u.avatar_url
+      FROM files f
+      JOIN users u ON f.uploaded_by = u.user_id
+      WHERE f.file_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [fileId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding file by id:", error);
+      throw error;
+    }
+  }
+
+  static async getTaskFiles(taskId) {
+    const query = `
+      SELECT f.file_id, f.file_url, f.file_type, f.uploaded_by, f.task_id, f.message_id, f.created_at,
+             u.username, u.full_name, u.avatar_url
+      FROM files f
+      JOIN users u ON f.uploaded_by = u.user_id
+      WHERE f.task_id = $1
+      ORDER BY f.created_at DESC
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting task files:", error);
+      throw error;
+    }
+  }
+
+  static async getMessageFiles(messageId) {
+    const query = `
+      SELECT f.file_id, f.file_url, f.file_type, f.uploaded_by, f.task_id, f.message_id, f.created_at,
+             u.username, u.full_name, u.avatar_url
+      FROM files f
+      JOIN users u ON f.uploaded_by = u.user_id
+      WHERE f.message_id = $1
+      ORDER BY f.created_at DESC
+    `;
+    
+    try {
+      const result = await pool.query(query, [messageId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting message files:", error);
+      throw error;
+    }
+  }
+
+  static async getUserFiles(userId) {
+    const query = `
+      SELECT f.file_id, f.file_url, f.file_type, f.uploaded_by, f.task_id, f.message_id, f.created_at,
+             t.title as task_title, p.name as project_name
+      FROM files f
+      LEFT JOIN tasks t ON f.task_id = t.task_id
+      LEFT JOIN projects p ON t.project_id = p.project_id
+      WHERE f.uploaded_by = $1
+      ORDER BY f.created_at DESC
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting user files:", error);
+      throw error;
+    }
+  }
+
+  static async update(fileId, updateData) {
+    const { fileType } = updateData;
+    const query = `
+      UPDATE files 
+      SET file_type = $1
+      WHERE file_id = $2
+      RETURNING file_id, file_url, file_type, uploaded_by, task_id, message_id, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [fileType, fileId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating file:", error);
+      throw error;
+    }
+  }
+
+  static async delete(fileId) {
+    const query = `DELETE FROM files WHERE file_id = $1`;
+    
+    try {
+      await pool.query(query, [fileId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      throw error;
+    }
+  }
+
+  static async getFileStats(userId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_files,
+        COUNT(CASE WHEN file_type LIKE 'image/%' THEN 1 END) as image_files,
+        COUNT(CASE WHEN file_type LIKE 'application/%' THEN 1 END) as document_files,
+        COUNT(CASE WHEN file_type LIKE 'video/%' THEN 1 END) as video_files,
+        COUNT(CASE WHEN file_type LIKE 'audio/%' THEN 1 END) as audio_files
+      FROM files 
+      WHERE uploaded_by = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting file stats:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = File;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\redis\redis.js ---
+const Redis = require("ioredis");
+const logger = require("../utils/logger");
+
+const isEnabled = process.env.REDIS_ENABLED === "true";
+
+const redisConfig = {
+  host: process.env.REDIS_HOST || "redis",
+  port: process.env.REDIS_PORT || 6379,
+  password: process.env.REDIS_PASSWORD || undefined,
+  maxRetriesPerRequest: 3,
+  retryStrategy(times) {
+    return Math.min(times * 50, 2000);
+  },
+};
+
+let redis = null;
+let pub = null;
+let sub = null;
+let subRealtime = null;
+
+if (isEnabled) {
+  redis = new Redis(redisConfig);
+  pub = new Redis(redisConfig);
+  sub = new Redis(redisConfig);
+  subRealtime = sub.duplicate();
+
+  redis.on("connect", () => logger.info("Redis connected"));
+  pub.on("connect", () => logger.info("Redis PUB connected"));
+  sub.on("connect", () => logger.info("Redis SUB (adapter) connected"));
+  subRealtime.on("connect", () => logger.info("Redis SUB REALTIME connected"));
+
+  redis.on("error", (err) => logger.error("Redis error", { error: err.message }));
+  pub.on("error", (err) => logger.error("Redis PUB error", { error: err.message }));
+  sub.on("error", (err) => logger.error("Redis SUB error", { error: err.message }));
+  subRealtime.on("error", (err) => logger.error("Redis SUB REALTIME error", { error: err.message }));
+} else {
+  logger.warn("Redis disabled");
+}
+
+module.exports = { redis, pub, sub, subRealtime };
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\services\cloudinary.service.js ---
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const path = require("path");
+
+const cloudinaryConfig = () => {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+  return cloudinary;
+};
+
+const FOLDER_MAP = {
+  avatar: "managework/avatars",
+  task: "managework/tasks",
+  chat: "managework/chat",
+  project: "managework/projects",
+  temp: "managework/temp",
+};
+
+const TRANSFORMATIONS = {
+  avatar: {
+    small: { width: 200, height: 200, crop: "fill", gravity: "face" },
+    medium: { width: 400, height: 400, crop: "fill", gravity: "face" },
+  },
+  task: {
+    preview: { width: 1200, crop: "limit" },
+    thumbnail: { width: 300, height: 300, crop: "thumb" },
+  },
+  chat: {
+    preview: { width: 800, crop: "limit" },
+    thumbnail: { width: 200, height: 200, crop: "thumb" },
+  },
+  project: {
+    cover: { width: 1920, height: 400, crop: "fill" },
+    icon: { width: 256, height: 256, crop: "fill" },
+  },
+};
+
+const FILE_LIMITS = {
+  avatar: 5 * 1024 * 1024,
+  task: 20 * 1024 * 1024,
+  chat: 10 * 1024 * 1024,
+  project: 10 * 1024 * 1024,
+  temp: 10 * 1024 * 1024,
+};
+
+const getFolder = (type, id) => {
+  const baseFolder = FOLDER_MAP[type] || "managework/others";
+  return id ? `${baseFolder}/${id}` : baseFolder;
+};
+
+const createStorage = (type, id) => {
+  cloudinaryConfig();
+  const folder = getFolder(type, id);
+  
+  return new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: folder,
+      allowed_formats: ["jpg", "jpeg", "png", "gif", "webp", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "zip", "rar", "mp4", "mov", "avi", "mp3", "wav"],
+      resource_type: "auto",
+      transformation: type === "avatar" ? [{ width: 800, height: 800, crop: "limit" }] : undefined,
+    },
+  });
+};
+
+const uploadSingle = async (file, type, id) => {
+  cloudinaryConfig();
+  const folder = getFolder(type, id);
+  
+  const result = await cloudinary.uploader.upload(file.path, {
+    folder: folder,
+    resource_type: "auto",
+    transformation: type === "avatar" ? [{ width: 800, height: 800, crop: "limit" }] : undefined,
+  });
+  
+  return {
+    publicId: result.public_id,
+    url: result.secure_url,
+    format: result.format,
+    width: result.width,
+    height: result.height,
+    bytes: result.bytes,
+    resourceType: result.resource_type,
+  };
+};
+
+const uploadMultiple = async (files, type, id) => {
+  const uploadPromises = files.map((file) => uploadSingle(file, type, id));
+  return Promise.all(uploadPromises);
+};
+
+const deleteFile = async (publicId) => {
+  cloudinaryConfig();
+  const result = await cloudinary.uploader.destroy(publicId, {
+    resource_type: "auto",
+  });
+  return result.result === "ok";
+};
+
+const getTransformedUrl = (publicId, type, variant = "original") => {
+  cloudinaryConfig();
+  
+  const transformation = TRANSFORMATIONS[type]?.[variant];
+  if (!transformation) {
+    return cloudinary.url(publicId);
+  }
+  
+  return cloudinary.url(publicId, {
+    transformation: [transformation],
+    secure: true,
+  });
+};
+
+const getAvatarUrls = (publicId) => {
+  cloudinaryConfig();
+  return {
+    original: cloudinary.url(publicId, { secure: true }),
+    small: cloudinary.url(publicId, {
+      transformation: [{ width: 200, height: 200, crop: "fill", gravity: "face" }],
+      secure: true,
+    }),
+    medium: cloudinary.url(publicId, {
+      transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }],
+      secure: true,
+    }),
+  };
+};
+
+const getFileSizeLimit = (type) => {
+  return FILE_LIMITS[type] || FILE_LIMITS.temp;
+};
+
+module.exports = {
+  cloudinaryConfig,
+  createStorage,
+  uploadSingle,
+  uploadMultiple,
+  deleteFile,
+  getTransformedUrl,
+  getAvatarUrls,
+  getFileSizeLimit,
+  FILE_LIMITS,
+  TRANSFORMATIONS,
+};
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_5.json using write_to_file tool.

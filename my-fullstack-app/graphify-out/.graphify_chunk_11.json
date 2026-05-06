@@ -1,0 +1,23 @@
+{
+  "nodes": [
+    {"id": "frontend_src_socket_socketemit_js", "label": "socketEmit.js", "file_type": "code", "source_file": "frontend/src/socket/socketEmit.js"},
+    {"id": "frontend_src_socket_socketevents_js", "label": "socketEvents.js", "file_type": "code", "source_file": "frontend/src/socket/socketEvents.js"},
+    {"id": "frontend_src_stores_taskstore_js", "label": "taskStore.js", "file_type": "code", "source_file": "frontend/src/stores/taskStore.js"},
+    {"id": "frontend_src_stores_chat_channelstore_js", "label": "channelStore.js", "file_type": "code", "source_file": "frontend/src/stores/chat/channelStore.js"},
+    {"id": "frontend_src_stores_chat_chatstore_js", "label": "chatStore.js", "file_type": "code", "source_file": "frontend/src/stores/chat/chatStore.js"},
+    {"id": "frontend_src_stores_chat_messagestore_js", "label": "messageStore.js", "file_type": "code", "source_file": "frontend/src/stores/chat/messageStore.js"},
+    {"id": "frontend_src_stores_chat_typingstore_js", "label": "typingStore.js", "file_type": "code", "source_file": "frontend/src/stores/chat/typingStore.js"},
+    {"id": "frontend_src_stores_chat_useonlinestore_js", "label": "useOnlineStore.js", "file_type": "code", "source_file": "frontend/src/stores/chat/useOnlineStore.js"},
+    {"id": "concept_socket_acknowledgement_pattern", "label": "Socket Acknowledgement Pattern", "file_type": "rationale", "source_file": "frontend/src/socket/socketEmit.js"},
+    {"id": "concept_zustand_global_state_management", "label": "Zustand Global State Management", "file_type": "rationale", "source_file": "frontend/src/stores/taskStore.js"}
+  ],
+  "edges": [
+    {"source": "frontend_src_socket_socketemit_js", "target": "concept_socket_acknowledgement_pattern", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/socket/socketEmit.js"},
+    {"source": "frontend_src_stores_taskstore_js", "target": "concept_zustand_global_state_management", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/stores/taskStore.js"},
+    {"source": "frontend_src_socket_socketevents_js", "target": "frontend_src_stores_chat_typingstore_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/socket/socketEvents.js"},
+    {"source": "frontend_src_stores_chat_channelstore_js", "target": "concept_zustand_global_state_management", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/stores/chat/channelStore.js"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 14000,
+  "output_tokens": 1100
+}

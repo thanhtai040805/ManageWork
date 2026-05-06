@@ -1,0 +1,21 @@
+{
+  "nodes": [
+    {"id": "frontend_src_features_chat_typingindicator_jsx", "label": "TypingIndicator.jsx", "file_type": "code", "source_file": "frontend/src/features/chat/TypingIndicator.jsx"},
+    {"id": "frontend_src_features_projects_projectactivity_jsx", "label": "ProjectActivity.jsx", "file_type": "code", "source_file": "frontend/src/features/projects/ProjectActivity.jsx"},
+    {"id": "frontend_src_features_tasks_addtask_jsx", "label": "AddTask.jsx", "file_type": "code", "source_file": "frontend/src/features/tasks/AddTask.jsx"},
+    {"id": "frontend_src_features_tasks_attachmentmanager_jsx", "label": "AttachmentManager.jsx", "file_type": "code", "source_file": "frontend/src/features/tasks/AttachmentManager.jsx"},
+    {"id": "frontend_src_features_tasks_dependencymanager_jsx", "label": "DependencyManager.jsx", "file_type": "code", "source_file": "frontend/src/features/tasks/DependencyManager.jsx"},
+    {"id": "concept_realtime_typing_feedback", "label": "Real-time Typing Feedback", "file_type": "rationale", "source_file": "frontend/src/features/chat/TypingIndicator.jsx"},
+    {"id": "concept_task_recurrence_configuration", "label": "Task Recurrence Configuration", "file_type": "rationale", "source_file": "frontend/src/features/tasks/AddTask.jsx"},
+    {"id": "concept_frontend_api_integration_pattern", "label": "Frontend-API Integration Pattern", "file_type": "rationale", "source_file": "frontend/src/features/tasks/AttachmentManager.jsx"}
+  ],
+  "edges": [
+    {"source": "frontend_src_features_chat_typingindicator_jsx", "target": "concept_realtime_typing_feedback", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/features/chat/TypingIndicator.jsx"},
+    {"source": "frontend_src_features_tasks_addtask_jsx", "target": "concept_task_recurrence_configuration", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/features/tasks/AddTask.jsx"},
+    {"source": "frontend_src_features_tasks_attachmentmanager_jsx", "target": "concept_frontend_api_integration_pattern", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": "frontend/src/features/tasks/AttachmentManager.jsx"},
+    {"source": "frontend_src_features_projects_projectactivity_jsx", "target": "frontend_src_features_projects_projectactivity_jsx", "relation": "references", "confidence": "AMBIGUOUS", "confidence_score": 0.5, "source_file": "frontend/src/features/projects/ProjectActivity.jsx"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 17000,
+  "output_tokens": 1400
+}

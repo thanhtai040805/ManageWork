@@ -1,0 +1,1136 @@
+{
+  "nodes": [
+    {
+      "id": "backend_scripts_migrate_003_js",
+      "label": "migrate-003.js",
+      "file_type": "code",
+      "source_file": "backend/scripts/migrate-003.js"
+    },
+    {
+      "id": "backend_scripts_run_005_migration_js",
+      "label": "run-005-migration.js",
+      "file_type": "code",
+      "source_file": "backend/scripts/run-005-migration.js"
+    },
+    {
+      "id": "backend_scripts_run_migration_js",
+      "label": "run-migration.js",
+      "file_type": "code",
+      "source_file": "backend/scripts/run-migration.js"
+    },
+    {
+      "id": "backend_scripts_seed_data_js",
+      "label": "seed-data.js",
+      "file_type": "code",
+      "source_file": "backend/scripts/seed-data.js"
+    },
+    {
+      "id": "backend_scripts_setup_db_js",
+      "label": "setup-db.js",
+      "file_type": "code",
+      "source_file": "backend/scripts/setup-db.js"
+    },
+    {
+      "id": "backend_src_server_js",
+      "label": "server.js",
+      "file_type": "code",
+      "source_file": "backend/src/server.js"
+    },
+    {
+      "id": "backend_src_migrations_001_init_schema_sql",
+      "label": "001_init_schema.sql",
+      "file_type": "document",
+      "source_file": "backend/src/migrations/001_init_schema.sql"
+    },
+    {
+      "id": "backend_src_migrations_002_chat_enhancements_sql",
+      "label": "002_chat_enhancements.sql",
+      "file_type": "document",
+      "source_file": "backend/src/migrations/002_chat_enhancements.sql"
+    },
+    {
+      "id": "backend_src_migrations_003_task_full_text_search_sql",
+      "label": "003_task_full_text_search.sql",
+      "file_type": "document",
+      "source_file": "backend/src/migrations/003_task_full_text_search.sql"
+    },
+    {
+      "id": "concept_database_initialization",
+      "label": "Database Initialization",
+      "file_type": "rationale",
+      "source_file": "backend/src/migrations/001_init_schema.sql"
+    },
+    {
+      "id": "concept_full_text_search_impl",
+      "label": "Full-Text Search Implementation",
+      "file_type": "rationale",
+      "source_file": "backend/src/migrations/003_task_full_text_search.sql"
+    },
+    {
+      "id": "concept_socket_io_integration",
+      "label": "Socket.IO Integration",
+      "file_type": "rationale",
+      "source_file": "backend/src/server.js"
+    },
+    {
+      "id": "backend_src_modules_analytics_analytics_controller_js",
+      "label": "analytics.controller.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/analytics/analytics.controller.js"
+    },
+    {
+      "id": "backend_src_modules_analytics_analytics_routes_js",
+      "label": "analytics.routes.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/analytics/analytics.routes.js"
+    },
+    {
+      "id": "backend_src_modules_channels_channel_controller_js",
+      "label": "channel.controller.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/channels/channel.controller.js"
+    },
+    {
+      "id": "backend_src_modules_channels_channel_model_js",
+      "label": "channel.model.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/channels/channel.model.js"
+    },
+    {
+      "id": "backend_src_modules_channels_channel_routes_js",
+      "label": "channel.routes.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/channels/channel.routes.js"
+    },
+    {
+      "id": "backend_src_modules_channels_channel_validation_js",
+      "label": "channel.validation.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/channels/channel.validation.js"
+    },
+    {
+      "id": "backend_src_modules_channels_channelcategory_model_js",
+      "label": "channelCategory.model.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/channels/channelCategory.model.js"
+    },
+    {
+      "id": "backend_src_modules_channels_channelpost_controller_js",
+      "label": "channelPost.controller.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/channels/channelPost.controller.js"
+    },
+    {
+      "id": "concept_analytics_engine",
+      "label": "Analytics Engine",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/analytics/analytics.controller.js"
+    },
+    {
+      "id": "concept_channel_hierarchy",
+      "label": "Channel & Category Hierarchy",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/channels/channelCategory.model.js"
+    },
+    {
+      "id": "concept_realtime_notifications",
+      "label": "Real-time Notifications",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/channels/channel.controller.js"
+    },
+    {
+      "id": "backend_src_modules_files_file_validation_js",
+      "label": "file.validation.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/files/file.validation.js"
+    },
+    {
+      "id": "backend_src_modules_files_models_file_model_js",
+      "label": "file.model.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/files/models/file.model.js"
+    },
+    {
+      "id": "backend_src_modules_notifications_notification_controller_js",
+      "label": "notification.controller.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/notifications/notification.controller.js"
+    },
+    {
+      "id": "backend_src_modules_notifications_notification_model_js",
+      "label": "notification.model.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/notifications/notification.model.js"
+    },
+    {
+      "id": "backend_src_modules_notifications_notification_routes_js",
+      "label": "notification.routes.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/notifications/notification.routes.js"
+    },
+    {
+      "id": "backend_src_modules_notifications_notification_validation_js",
+      "label": "notification.validation.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/notifications/notification.validation.js"
+    },
+    {
+      "id": "backend_src_modules_projects_project_controller_js",
+      "label": "project.controller.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/projects/project.controller.js"
+    },
+    {
+      "id": "backend_src_modules_projects_project_model_js",
+      "label": "project.model.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/projects/project.model.js"
+    },
+    {
+      "id": "concept_file_attachment_management",
+      "label": "File Attachment Management",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/files/models/file.model.js"
+    },
+    {
+      "id": "concept_notification_lifecycle",
+      "label": "Notification Lifecycle",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/notifications/notification.model.js"
+    },
+    {
+      "id": "concept_project_ownership_model",
+      "label": "Project Ownership & Membership Model",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/projects/project.model.js"
+    },
+    {
+      "id": "backend_src_modules_tasks_task_controller_js",
+      "label": "task.controller.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/tasks/task.controller.js"
+    },
+    {
+      "id": "backend_src_modules_tasks_task_model_js",
+      "label": "task.model.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/tasks/task.model.js"
+    },
+    {
+      "id": "backend_src_modules_tasks_task_routes_js",
+      "label": "task.routes.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/tasks/task.routes.js"
+    },
+    {
+      "id": "backend_src_modules_tasks_task_service_js",
+      "label": "task.service.js",
+      "file_type": "code",
+      "source_file": "backend/src/modules/tasks/task.service.js"
+    },
+    {
+      "id": "concept_task_caching_strategy",
+      "label": "Task Caching Strategy",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/tasks/task.model.js"
+    },
+    {
+      "id": "concept_recurring_task_logic",
+      "label": "Recurring Task Logic",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/tasks/task.service.js"
+    },
+    {
+      "id": "concept_task_reordering_system",
+      "label": "Task Reordering System",
+      "file_type": "rationale",
+      "source_file": "backend/src/modules/tasks/task.controller.js"
+    },
+    {
+      "id": "backend_src_routes_index_js",
+      "label": "routes/index.js",
+      "file_type": "code",
+      "source_file": "backend/src/routes/index.js"
+    },
+    {
+      "id": "backend_src_shared_sentry_js",
+      "label": "sentry.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/sentry.js"
+    },
+    {
+      "id": "backend_src_shared_config_database_js",
+      "label": "database.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/config/database.js"
+    },
+    {
+      "id": "backend_src_shared_config_swagger_js",
+      "label": "swagger.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/config/swagger.js"
+    },
+    {
+      "id": "backend_src_shared_cron_index_js",
+      "label": "cron/index.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/cron/index.js"
+    },
+    {
+      "id": "backend_src_shared_cron_taskoverdue_job_js",
+      "label": "taskOverdue.job.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/cron/taskOverdue.job.js"
+    },
+    {
+      "id": "backend_src_shared_middlewares_auth_js",
+      "label": "auth.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/middlewares/auth.js"
+    },
+    {
+      "id": "backend_src_shared_middlewares_errorhandler_js",
+      "label": "errorHandler.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/middlewares/errorHandler.js"
+    },
+    {
+      "id": "backend_src_shared_middlewares_permission_middleware_js",
+      "label": "permission.middleware.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/middlewares/permission.middleware.js"
+    },
+    {
+      "id": "concept_central_routing_table",
+      "label": "Central Routing Table",
+      "file_type": "rationale",
+      "source_file": "backend/src/routes/index.js"
+    },
+    {
+      "id": "concept_error_propagation_strategy",
+      "label": "Error Propagation & Tracking Strategy",
+      "file_type": "rationale",
+      "source_file": "backend/src/shared/middlewares/errorHandler.js"
+    },
+    {
+      "id": "concept_rbac_model",
+      "label": "Role-Based Access Control (RBAC) Model",
+      "file_type": "rationale",
+      "source_file": "backend/src/shared/middlewares/permission.middleware.js"
+    },
+    {
+      "id": "backend_src_shared_services_taskcache_service_js",
+      "label": "TaskCacheService",
+      "file_type": "code",
+      "source_file": "backend/src/shared/services/taskCache.service.js"
+    },
+    {
+      "id": "backend_src_shared_services_taskorder_service_js",
+      "label": "TaskOrderService",
+      "file_type": "code",
+      "source_file": "backend/src/shared/services/taskOrder.service.js"
+    },
+    {
+      "id": "backend_src_shared_sockets_presencesubscriber_js",
+      "label": "presenceSubscriber.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/sockets/presenceSubscriber.js"
+    },
+    {
+      "id": "backend_src_shared_sockets_socket_js",
+      "label": "socket.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/sockets/socket.js"
+    },
+    {
+      "id": "backend_src_shared_sockets_socketemitter_js",
+      "label": "socketEmitter.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/sockets/socketEmitter.js"
+    },
+    {
+      "id": "backend_src_shared_sockets_socketevents_js",
+      "label": "socketEvents.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/sockets/socketEvents.js"
+    },
+    {
+      "id": "backend_src_shared_sockets_socketservice_js",
+      "label": "socketService.js",
+      "file_type": "code",
+      "source_file": "backend/src/shared/sockets/socketService.js"
+    },
+    {
+      "id": "concept_realtime_presence_tracking",
+      "label": "Real-time Presence Tracking",
+      "file_type": "rationale",
+      "source_file": "backend/src/shared/sockets/presenceSubscriber.js"
+    },
+    {
+      "id": "concept_distributed_socket_architecture",
+      "label": "Distributed Socket Architecture",
+      "file_type": "rationale",
+      "source_file": "backend/src/shared/sockets/socket.js"
+    },
+    {
+      "id": "concept_redis_backed_cache_invalidation",
+      "label": "Redis-backed Cache Invalidation",
+      "file_type": "rationale",
+      "source_file": "backend/src/shared/services/taskCache.service.js"
+    },
+    {
+      "id": "frontend_src_context_authcontext_jsx",
+      "label": "authContext.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/context/authContext.jsx"
+    },
+    {
+      "id": "frontend_src_context_socketcontext_jsx",
+      "label": "socketContext.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/context/socketContext.jsx"
+    },
+    {
+      "id": "frontend_src_context_themecontext_jsx",
+      "label": "themeContext.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/context/themeContext.jsx"
+    },
+    {
+      "id": "frontend_src_features_calendar_kanbanview_jsx",
+      "label": "KanBanView.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/calendar/KanBanView.jsx"
+    },
+    {
+      "id": "frontend_src_features_calendar_monthview_jsx",
+      "label": "MonthView.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/calendar/MonthView.jsx"
+    },
+    {
+      "id": "frontend_src_features_calendar_weekview_jsx",
+      "label": "WeekView.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/calendar/WeekView.jsx"
+    },
+    {
+      "id": "frontend_src_features_chat_channelmembersmodal_jsx",
+      "label": "ChannelMembersModal.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/chat/ChannelMembersModal.jsx"
+    },
+    {
+      "id": "concept_react_state_management_strategy",
+      "label": "React State Management Strategy",
+      "file_type": "rationale",
+      "source_file": "frontend/src/context/authContext.jsx"
+    },
+    {
+      "id": "concept_drag_and_drop_reordering",
+      "label": "Drag-and-Drop Reordering Architecture",
+      "file_type": "rationale",
+      "source_file": "frontend/src/features/calendar/KanBanView.jsx"
+    },
+    {
+      "id": "concept_realtime_frontend_synchronization",
+      "label": "Real-time Frontend Synchronization",
+      "file_type": "rationale",
+      "source_file": "frontend/src/features/calendar/KanBanView.jsx"
+    },
+    {
+      "id": "frontend_src_features_chat_typingindicator_jsx",
+      "label": "TypingIndicator.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/chat/TypingIndicator.jsx"
+    },
+    {
+      "id": "frontend_src_features_projects_projectactivity_jsx",
+      "label": "ProjectActivity.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/projects/ProjectActivity.jsx"
+    },
+    {
+      "id": "frontend_src_features_tasks_addtask_jsx",
+      "label": "AddTask.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/tasks/AddTask.jsx"
+    },
+    {
+      "id": "frontend_src_features_tasks_attachmentmanager_jsx",
+      "label": "AttachmentManager.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/tasks/AttachmentManager.jsx"
+    },
+    {
+      "id": "frontend_src_features_tasks_dependencymanager_jsx",
+      "label": "DependencyManager.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/tasks/DependencyManager.jsx"
+    },
+    {
+      "id": "concept_realtime_typing_feedback",
+      "label": "Real-time Typing Feedback",
+      "file_type": "rationale",
+      "source_file": "frontend/src/features/chat/TypingIndicator.jsx"
+    },
+    {
+      "id": "concept_task_recurrence_configuration",
+      "label": "Task Recurrence Configuration",
+      "file_type": "rationale",
+      "source_file": "frontend/src/features/tasks/AddTask.jsx"
+    },
+    {
+      "id": "concept_frontend_api_integration_pattern",
+      "label": "Frontend-API Integration Pattern",
+      "file_type": "rationale",
+      "source_file": "frontend/src/features/tasks/AttachmentManager.jsx"
+    },
+    {
+      "id": "frontend_src_features_tasks_tasktemplates_jsx",
+      "label": "TaskTemplates.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/tasks/TaskTemplates.jsx"
+    },
+    {
+      "id": "frontend_src_features_tasks_timelog_jsx",
+      "label": "TimeLog.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/tasks/TimeLog.jsx"
+    },
+    {
+      "id": "frontend_src_features_tasks_components_recurrencesection_jsx",
+      "label": "RecurrenceSection.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/tasks/components/RecurrenceSection.jsx"
+    },
+    {
+      "id": "frontend_src_features_tasks_components_taskapplytomodal_jsx",
+      "label": "TaskApplyToModal.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/tasks/components/TaskApplyToModal.jsx"
+    },
+    {
+      "id": "frontend_src_features_tasks_hooks_usetaskdetail_js",
+      "label": "useTaskDetail.js",
+      "file_type": "code",
+      "source_file": "frontend/src/features/tasks/hooks/useTaskDetail.js"
+    },
+    {
+      "id": "concept_local_storage_persistence",
+      "label": "Local Storage Persistence Strategy",
+      "file_type": "rationale",
+      "source_file": "frontend/src/features/tasks/TaskTemplates.jsx"
+    },
+    {
+      "id": "concept_recurring_update_logic",
+      "label": "Recurring Task Update Logic",
+      "file_type": "rationale",
+      "source_file": "frontend/src/features/tasks/components/TaskApplyToModal.jsx"
+    },
+    {
+      "id": "frontend_src_pages_home_home_jsx",
+      "label": "Home.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/home/Home.jsx"
+    },
+    {
+      "id": "frontend_src_pages_people_peopledirectory_jsx",
+      "label": "PeopleDirectory.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/people/PeopleDirectory.jsx"
+    },
+    {
+      "id": "frontend_src_pages_projects_projectdetail_jsx",
+      "label": "ProjectDetail.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/projects/ProjectDetail.jsx"
+    },
+    {
+      "id": "frontend_src_pages_projects_projects_jsx",
+      "label": "Projects.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/projects/Projects.jsx"
+    },
+    {
+      "id": "concept_dashboard_data_filtering",
+      "label": "Dashboard Data Filtering Logic",
+      "file_type": "rationale",
+      "source_file": "frontend/src/pages/home/Home.jsx"
+    },
+    {
+      "id": "concept_project_view_orchestration",
+      "label": "Project View Orchestration",
+      "file_type": "rationale",
+      "source_file": "frontend/src/pages/projects/ProjectDetail.jsx"
+    },
+    {
+      "id": "concept_team_directory_collaboration",
+      "label": "Team Directory & Collaboration",
+      "file_type": "rationale",
+      "source_file": "frontend/src/pages/people/PeopleDirectory.jsx"
+    },
+    {
+      "id": "frontend_src_socket_socketemit_js",
+      "label": "socketEmit.js",
+      "file_type": "code",
+      "source_file": "frontend/src/socket/socketEmit.js"
+    },
+    {
+      "id": "frontend_src_socket_socketevents_js",
+      "label": "socketEvents.js",
+      "file_type": "code",
+      "source_file": "frontend/src/socket/socketEvents.js"
+    },
+    {
+      "id": "frontend_src_stores_taskstore_js",
+      "label": "taskStore.js",
+      "file_type": "code",
+      "source_file": "frontend/src/stores/taskStore.js"
+    },
+    {
+      "id": "frontend_src_stores_chat_channelstore_js",
+      "label": "channelStore.js",
+      "file_type": "code",
+      "source_file": "frontend/src/stores/chat/channelStore.js"
+    },
+    {
+      "id": "frontend_src_stores_chat_chatstore_js",
+      "label": "chatStore.js",
+      "file_type": "code",
+      "source_file": "frontend/src/stores/chat/chatStore.js"
+    },
+    {
+      "id": "frontend_src_stores_chat_messagestore_js",
+      "label": "messageStore.js",
+      "file_type": "code",
+      "source_file": "frontend/src/stores/chat/messageStore.js"
+    },
+    {
+      "id": "frontend_src_stores_chat_typingstore_js",
+      "label": "typingStore.js",
+      "file_type": "code",
+      "source_file": "frontend/src/stores/chat/typingStore.js"
+    },
+    {
+      "id": "frontend_src_stores_chat_useonlinestore_js",
+      "label": "useOnlineStore.js",
+      "file_type": "code",
+      "source_file": "frontend/src/stores/chat/useOnlineStore.js"
+    },
+    {
+      "id": "concept_socket_acknowledgement_pattern",
+      "label": "Socket Acknowledgement Pattern",
+      "file_type": "rationale",
+      "source_file": "frontend/src/socket/socketEmit.js"
+    },
+    {
+      "id": "concept_zustand_global_state_management",
+      "label": "Zustand Global State Management",
+      "file_type": "rationale",
+      "source_file": "frontend/src/stores/taskStore.js"
+    },
+    {
+      "id": "frontend_public_vite_svg",
+      "label": "vite.svg",
+      "file_type": "image",
+      "source_file": "frontend/public/vite.svg"
+    },
+    {
+      "id": "frontend_src_assets_react_svg",
+      "label": "react.svg",
+      "file_type": "image",
+      "source_file": "frontend/src/assets/react.svg"
+    }
+  ],
+  "edges": [
+    {
+      "source": "backend_scripts_setup_db_js",
+      "target": "backend_src_migrations_001_init_schema_sql",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/scripts/setup-db.js"
+    },
+    {
+      "source": "backend_scripts_migrate_003_js",
+      "target": "backend_src_migrations_003_task_full_text_search_sql",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/scripts/migrate-003.js"
+    },
+    {
+      "source": "backend_src_server_js",
+      "target": "backend_src_shared_sockets_socket",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/server.js"
+    },
+    {
+      "source": "backend_src_server_js",
+      "target": "backend_src_routes_index",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/server.js"
+    },
+    {
+      "source": "backend_src_server_js",
+      "target": "concept_socket_io_integration",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "backend/src/server.js"
+    },
+    {
+      "source": "backend_src_migrations_001_init_schema_sql",
+      "target": "concept_database_initialization",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "backend/src/migrations/001_init_schema.sql"
+    },
+    {
+      "source": "backend_src_migrations_003_task_full_text_search_sql",
+      "target": "concept_full_text_search_impl",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "backend/src/migrations/003_task_full_text_search.sql"
+    },
+    {
+      "source": "backend_src_modules_analytics_analytics_routes_js",
+      "target": "backend_src_modules_analytics_analytics_controller_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/analytics/analytics.routes.js"
+    },
+    {
+      "source": "backend_src_modules_channels_channel_controller_js",
+      "target": "backend_src_modules_channels_channel_model_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/channels/channel.controller.js"
+    },
+    {
+      "source": "backend_src_modules_channels_channel_controller_js",
+      "target": "backend_src_modules_channels_channelcategory_model_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/channels/channel.controller.js"
+    },
+    {
+      "source": "backend_src_modules_channels_channel_routes_js",
+      "target": "backend_src_modules_channels_channel_controller_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/channels/channel.routes.js"
+    },
+    {
+      "source": "backend_src_modules_channels_channel_routes_js",
+      "target": "backend_src_modules_channels_channel_validation_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/channels/channel.routes.js"
+    },
+    {
+      "source": "backend_src_modules_channels_channel_controller_js",
+      "target": "concept_realtime_notifications",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "backend/src/modules/channels/channel.controller.js"
+    },
+    {
+      "source": "backend_src_modules_analytics_analytics_controller_js",
+      "target": "concept_analytics_engine",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "backend/src/modules/analytics/analytics.controller.js"
+    },
+    {
+      "source": "backend_src_modules_notifications_notification_routes_js",
+      "target": "backend_src_modules_notifications_notification_controller_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/notifications/notification.routes.js"
+    },
+    {
+      "source": "backend_src_modules_projects_project_controller_js",
+      "target": "backend_src_modules_projects_project_model_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/projects/project.controller.js"
+    },
+    {
+      "source": "backend_src_modules_projects_project_controller_js",
+      "target": "backend_src_modules_notifications_notification_model_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/projects/project.controller.js"
+    },
+    {
+      "source": "backend_src_modules_projects_project_controller_js",
+      "target": "concept_project_ownership_model",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "backend/src/modules/projects/project.controller.js"
+    },
+    {
+      "source": "backend_src_modules_notifications_notification_model_js",
+      "target": "concept_notification_lifecycle",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "backend/src/modules/notifications/notification.model.js"
+    },
+    {
+      "source": "backend_src_modules_files_models_file_model_js",
+      "target": "concept_file_attachment_management",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "backend/src/modules/files/models/file.model.js"
+    },
+    {
+      "source": "backend_src_modules_tasks_task_controller_js",
+      "target": "backend_src_modules_tasks_task_service_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/tasks/task.controller.js"
+    },
+    {
+      "source": "backend_src_modules_tasks_task_controller_js",
+      "target": "backend_src_modules_tasks_task_model_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/tasks/task.controller.js"
+    },
+    {
+      "source": "backend_src_modules_tasks_task_service_js",
+      "target": "backend_src_modules_tasks_task_model_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/modules/tasks/task.service.js"
+    },
+    {
+      "source": "backend_src_modules_tasks_task_model_js",
+      "target": "concept_task_caching_strategy",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "backend/src/modules/tasks/task.model.js"
+    },
+    {
+      "source": "backend_src_modules_tasks_task_service_js",
+      "target": "concept_recurring_task_logic",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "backend/src/modules/tasks/task.service.js"
+    },
+    {
+      "source": "backend_src_modules_tasks_task_controller_js",
+      "target": "concept_task_reordering_system",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "backend/src/modules/tasks/task.controller.js"
+    },
+    {
+      "source": "backend_src_routes_index_js",
+      "target": "backend_src_shared_middlewares_auth_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/routes/index.js"
+    },
+    {
+      "source": "backend_src_shared_cron_index_js",
+      "target": "backend_src_shared_cron_taskoverdue_job_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/shared/cron/index.js"
+    },
+    {
+      "source": "backend_src_shared_cron_taskoverdue_job_js",
+      "target": "backend_src_shared_config_database_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/shared/cron/taskOverdue.job.js"
+    },
+    {
+      "source": "backend_src_shared_middlewares_errorhandler_js",
+      "target": "backend_src_shared_sentry_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/shared/middlewares/errorHandler.js"
+    },
+    {
+      "source": "backend_src_shared_middlewares_permission_middleware_js",
+      "target": "backend_src_shared_config_database_js",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/shared/middlewares/permission.middleware.js"
+    },
+    {
+      "source": "backend_src_routes_index_js",
+      "target": "concept_central_routing_table",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "backend/src/routes/index.js"
+    },
+    {
+      "source": "backend_src_shared_middlewares_errorhandler_js",
+      "target": "concept_error_propagation_strategy",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "backend/src/shared/middlewares/errorHandler.js"
+    },
+    {
+      "source": "backend_src_shared_sockets_socket_js",
+      "target": "backend_src_shared_sockets_presencesubscriber_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/shared/sockets/socket.js"
+    },
+    {
+      "source": "backend_src_shared_sockets_socket_js",
+      "target": "backend_src_shared_sockets_socketemitter_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/shared/sockets/socket.js"
+    },
+    {
+      "source": "backend_src_shared_sockets_socketevents_js",
+      "target": "backend_src_shared_sockets_socketservice_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/src/shared/sockets/socketEvents.js"
+    },
+    {
+      "source": "backend_src_shared_sockets_socketservice_js",
+      "target": "backend_src_shared_services_taskcache_service_js",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "backend/src/shared/sockets/socketService.js"
+    },
+    {
+      "source": "backend_src_shared_sockets_presencesubscriber_js",
+      "target": "concept_realtime_presence_tracking",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "backend/src/shared/sockets/presenceSubscriber.js"
+    },
+    {
+      "source": "backend_src_shared_sockets_socket_js",
+      "target": "concept_distributed_socket_architecture",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "backend/src/shared/sockets/socket.js"
+    },
+    {
+      "source": "backend_src_shared_services_taskcache_service_js",
+      "target": "concept_redis_backed_cache_invalidation",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "backend/src/shared/services/taskCache.service.js"
+    },
+    {
+      "source": "frontend_src_features_calendar_kanbanview_jsx",
+      "target": "frontend_src_context_socketcontext_jsx",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "frontend/src/features/calendar/KanBanView.jsx"
+    },
+    {
+      "source": "frontend_src_features_calendar_kanbanview_jsx",
+      "target": "concept_drag_and_drop_reordering",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/features/calendar/KanBanView.jsx"
+    },
+    {
+      "source": "frontend_src_features_calendar_kanbanview_jsx",
+      "target": "concept_realtime_frontend_synchronization",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/features/calendar/KanBanView.jsx"
+    },
+    {
+      "source": "frontend_src_context_themecontext_jsx",
+      "target": "concept_theme_customization",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/context/themeContext.jsx"
+    },
+    {
+      "source": "frontend_src_features_chat_typingindicator_jsx",
+      "target": "concept_realtime_typing_feedback",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/features/chat/TypingIndicator.jsx"
+    },
+    {
+      "source": "frontend_src_features_tasks_addtask_jsx",
+      "target": "concept_task_recurrence_configuration",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/features/tasks/AddTask.jsx"
+    },
+    {
+      "source": "frontend_src_features_tasks_attachmentmanager_jsx",
+      "target": "concept_frontend_api_integration_pattern",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "frontend/src/features/tasks/AttachmentManager.jsx"
+    },
+    {
+      "source": "frontend_src_features_projects_projectactivity_jsx",
+      "target": "frontend_src_features_projects_projectactivity_jsx",
+      "relation": "references",
+      "confidence": "AMBIGUOUS",
+      "confidence_score": 0.5,
+      "source_file": "frontend/src/features/projects/ProjectActivity.jsx"
+    },
+    {
+      "source": "frontend_src_features_tasks_tasktemplates_jsx",
+      "target": "concept_local_storage_persistence",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/features/tasks/TaskTemplates.jsx"
+    },
+    {
+      "source": "frontend_src_features_tasks_components_taskapplytomodal_jsx",
+      "target": "concept_recurring_update_logic",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/features/tasks/components/TaskApplyToModal.jsx"
+    },
+    {
+      "source": "frontend_src_features_tasks_hooks_usetaskdetail_js",
+      "target": "frontend_src_features_tasks_components_taskapplytomodal_jsx",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/features/tasks/hooks/useTaskDetail.js"
+    },
+    {
+      "source": "frontend_src_features_tasks_timelog_jsx",
+      "target": "concept_time_tracking_logic",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "frontend/src/features/tasks/TimeLog.jsx"
+    },
+    {
+      "source": "frontend_src_pages_home_home_jsx",
+      "target": "concept_dashboard_data_filtering",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/home/Home.jsx"
+    },
+    {
+      "source": "frontend_src_pages_projects_projectdetail_jsx",
+      "target": "concept_project_view_orchestration",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/projects/ProjectDetail.jsx"
+    },
+    {
+      "source": "frontend_src_pages_people_peopledirectory_jsx",
+      "target": "concept_team_directory_collaboration",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/people/PeopleDirectory.jsx"
+    },
+    {
+      "source": "frontend_src_pages_projects_projects_jsx",
+      "target": "frontend_src_pages_projects_projectdetail_jsx",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/projects/Projects.jsx"
+    },
+    {
+      "source": "frontend_src_socket_socketemit_js",
+      "target": "concept_socket_acknowledgement_pattern",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/socket/socketEmit.js"
+    },
+    {
+      "source": "frontend_src_stores_taskstore_js",
+      "target": "concept_zustand_global_state_management",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/stores/taskStore.js"
+    },
+    {
+      "source": "frontend_src_socket_socketevents_js",
+      "target": "frontend_src_stores_chat_typingstore_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/socket/socketEvents.js"
+    },
+    {
+      "source": "frontend_src_stores_chat_channelstore_js",
+      "target": "concept_zustand_global_state_management",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/stores/chat/channelStore.js"
+    }
+  ],
+  "hyperedges": [],
+  "metadata": {
+    "total_nodes": 107,
+    "total_edges": 60,
+    "total_hyperedges": 0,
+    "source": "Project: my-fullstack-app",
+    "version": "1.0.0"
+  }
+}

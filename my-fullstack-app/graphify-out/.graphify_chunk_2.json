@@ -1,0 +1,27 @@
+{
+  "nodes": [
+    {"id": "backend_src_modules_analytics_analytics_controller_js", "label": "analytics.controller.js", "file_type": "code", "source_file": "backend/src/modules/analytics/analytics.controller.js"},
+    {"id": "backend_src_modules_analytics_analytics_routes_js", "label": "analytics.routes.js", "file_type": "code", "source_file": "backend/src/modules/analytics/analytics.routes.js"},
+    {"id": "backend_src_modules_channels_channel_controller_js", "label": "channel.controller.js", "file_type": "code", "source_file": "backend/src/modules/channels/channel.controller.js"},
+    {"id": "backend_src_modules_channels_channel_model_js", "label": "channel.model.js", "file_type": "code", "source_file": "backend/src/modules/channels/channel.model.js"},
+    {"id": "backend_src_modules_channels_channel_routes_js", "label": "channel.routes.js", "file_type": "code", "source_file": "backend/src/modules/channels/channel.routes.js"},
+    {"id": "backend_src_modules_channels_channel_validation_js", "label": "channel.validation.js", "file_type": "code", "source_file": "backend/src/modules/channels/channel.validation.js"},
+    {"id": "backend_src_modules_channels_channelcategory_model_js", "label": "channelCategory.model.js", "file_type": "code", "source_file": "backend/src/modules/channels/channelCategory.model.js"},
+    {"id": "backend_src_modules_channels_channelpost_controller_js", "label": "channelPost.controller.js", "file_type": "code", "source_file": "backend/src/modules/channels/channelPost.controller.js"},
+    {"id": "concept_analytics_engine", "label": "Analytics Engine", "file_type": "rationale", "source_file": "backend/src/modules/analytics/analytics.controller.js"},
+    {"id": "concept_channel_hierarchy", "label": "Channel & Category Hierarchy", "file_type": "rationale", "source_file": "backend/src/modules/channels/channelCategory.model.js"},
+    {"id": "concept_realtime_notifications", "label": "Real-time Notifications", "file_type": "rationale", "source_file": "backend/src/modules/channels/channel.controller.js"}
+  ],
+  "edges": [
+    {"source": "backend_src_modules_analytics_analytics_routes_js", "target": "backend_src_modules_analytics_analytics_controller_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/analytics/analytics.routes.js"},
+    {"source": "backend_src_modules_channels_channel_controller_js", "target": "backend_src_modules_channels_channel_model_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/channels/channel.controller.js"},
+    {"source": "backend_src_modules_channels_channel_controller_js", "target": "backend_src_modules_channels_channelcategory_model_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/channels/channel.controller.js"},
+    {"source": "backend_src_modules_channels_channel_routes_js", "target": "backend_src_modules_channels_channel_controller_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/channels/channel.routes.js"},
+    {"source": "backend_src_modules_channels_channel_routes_js", "target": "backend_src_modules_channels_channel_validation_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/channels/channel.routes.js"},
+    {"source": "backend_src_modules_channels_channel_controller_js", "target": "concept_realtime_notifications", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "backend/src/modules/channels/channel.controller.js"},
+    {"source": "backend_src_modules_analytics_analytics_controller_js", "target": "concept_analytics_engine", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": "backend/src/modules/analytics/analytics.controller.js"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 15000,
+  "output_tokens": 1200
+}

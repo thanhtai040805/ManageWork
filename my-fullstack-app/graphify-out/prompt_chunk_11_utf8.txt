@@ -1,0 +1,1999 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 11 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\socket\socketEmit.js ---
+// socket/socketEmit.js
+import socket from "./socket";
+
+/**
+ * emit with ack + retry
+ */
+const emitWithAck = (event, payload, options = {}) => {
+  const { timeout = 5000, retries = 1 } = options;
+
+  return new Promise((resolve, reject) => {
+    if (!socket || !socket.connected) {
+      return reject(new Error("Socket not connected"));
+    }
+
+    let attempts = 0;
+
+    const send = () => {
+      attempts++;
+
+      const timer = setTimeout(() => {
+        if (attempts <= retries) {
+          send(); // retry
+        } else {
+          reject(new Error("Timeout"));
+        }
+      }, timeout);
+
+      socket.emit(event, payload, (res) => {
+        clearTimeout(timer);
+
+        if (!res) return resolve(null);
+        if (res.ok === false) return reject(new Error(res.error));
+
+        resolve(res.data || res.message || res);
+      });
+    };
+
+    send();
+  });
+};
+
+/**
+ * MESSAGE
+ */
+export const emitSendMessage = (roomId, content, parentMessageId = null) =>
+  emitWithAck("message:send", { roomId, content, parentMessageId });
+
+export const emitEditMessage = (payload) =>
+  emitWithAck("message:edit", payload);
+
+export const emitDeleteMessage = (payload) =>
+  emitWithAck("message:delete", payload);
+
+export const emitGetMessages = (payload) =>
+  emitWithAck("message:get", payload);
+
+export const emitToggleReaction = (payload) =>
+  emitWithAck("message:reaction:toggle", payload);
+
+export const emitTogglePinMessage = (payload) =>
+  emitWithAck("message:pin:toggle", payload);
+
+/**
+ * ROOM
+ */
+export const emitUpdateRoom = (payload) =>
+  emitWithAck("room:update", payload);
+
+export const emitOpenRoom = (roomId) => {
+  socket.emit("room:open", { roomId });
+};
+
+/**
+ * TYPING (debounce client)
+ */
+let typingTimer = null;
+const TYPING_DELAY = 500;
+
+export const emitTyping = (roomId) => {
+  if (!socket.connected) return;
+  if (typingTimer) return;
+  socket.emit("typing", { roomId });
+  typingTimer = setTimeout(() => {
+    typingTimer = null;
+  }, TYPING_DELAY);
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\socket\socketEvents.js ---
+// socket/socketEvents.js
+import socket from "./socket";
+import { useTypingStore } from "../stores/chat/typingStore";
+
+const DEBUG = false;
+const log = (...args) => DEBUG && console.log("[socketEvents]", ...args);
+
+/**
+ * debounce typing clear (auto stop typing)
+ */
+const typingTimeouts = new Map();
+const TYPING_DURATION = 2000;
+
+const handleTyping = (payload) => {
+  const { roomId, userId , userName} = payload || {};
+  if (!roomId || !userId) return;
+  log("room:typing", payload);
+  const store = useTypingStore.getState();
+  // set typing
+  store.setTyping(roomId, userId, userName);
+
+  // clear old timeout
+  if (typingTimeouts.has(userId)) {
+    clearTimeout(typingTimeouts.get(userId));
+  }
+
+  // auto remove typing sau 2s
+  const timeout = setTimeout(() => {
+    store.removeTyping(roomId, userId);
+    typingTimeouts.delete(userId);
+  }, TYPING_DURATION);
+
+  typingTimeouts.set(userId, timeout);
+};
+
+/**
+ * register socket events
+ */
+export const registerSocketEvents = (handlers = {}) => {
+  if (!socket) {
+    console.warn("Socket not initialized");
+    return () => {};
+  }
+
+  const {
+    onNewMessage,
+    onEditMessage,
+    onDeleteMessage,
+    onReactionUpdate,
+    onPinUpdate,
+    onRoomUpdate,
+    onUserOnline,
+    onUserOffline,
+    onOnlineList,
+    onConnect,
+    onDisconnect,
+    onChannelPostNew,
+    onChannelReplyNew,
+    onNotification,
+  } = handlers;
+
+  const wrap = (name, fn) => (payload) => {
+    log(name, payload);
+    fn?.(payload);
+  };
+
+  const listeners = {
+    "message:new": wrap("message:new", onNewMessage),
+    "message:update": wrap("message:update", onEditMessage),
+    "message:delete": wrap("message:delete", onDeleteMessage),
+    "message:reaction:update": wrap("message:reaction:update", onReactionUpdate),
+    "message:pin:update": wrap("message:pin:update", onPinUpdate),
+    "room:update": wrap("room:update", onRoomUpdate),
+    "room:typing": handleTyping,
+    "user:online": wrap("user:online", onUserOnline),
+    "user:offline": wrap("user:offline", onUserOffline),
+    "users:online:list": wrap("users:online:list", onOnlineList),
+    "channel:post:new": wrap("channel:post:new", onChannelPostNew),
+    "channel:reply:new": wrap("channel:reply:new", onChannelReplyNew),
+    "notification:new": wrap("notification:new", onNotification),
+
+    connect: () => {
+      log("connect");
+      onConnect?.();
+    },
+
+    disconnect: () => {
+      log("disconnect");
+      onDisconnect?.();
+    },
+  };
+
+  /**
+   * tránh duplicate listeners
+   */
+  Object.entries(listeners).forEach(([event, handler]) => {
+    socket.off(event);
+    socket.on(event, handler);
+  });
+
+  log("registered events");
+
+  /**
+   * cleanup
+   */
+  return () => {
+    Object.entries(listeners).forEach(([event, handler]) => {
+      socket.off(event, handler);
+    });
+
+    log("cleaned events");
+  };
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\stores\taskStore.js ---
+import { create } from 'zustand';
+
+export const useTaskStore = create((set, get) => ({
+  projectTasks: {},
+  userTasks: [],
+  
+  setProjectTasks: (projectId, tasks) => set((state) => ({
+    projectTasks: {
+      ...state.projectTasks,
+      [projectId]: tasks,
+    },
+  })),
+  
+  getProjectTasks: (projectId) => get().projectTasks[projectId] || [],
+  
+  setUserTasks: (tasks) => set({ userTasks: tasks }),
+  
+  getUserTasks: () => get().userTasks,
+  
+  updateTask: (taskId, updates) => set((state) => {
+    const updatedProjectTasks = {};
+    Object.keys(state.projectTasks).forEach((projectId) => {
+      const tasks = state.projectTasks[projectId];
+      if (Array.isArray(tasks)) {
+        updatedProjectTasks[projectId] = tasks.map((task) =>
+          task.task_id === taskId ? { ...task, ...updates } : task
+        );
+      } else {
+        updatedProjectTasks[projectId] = tasks;
+      }
+    });
+    
+    return {
+      projectTasks: updatedProjectTasks,
+      userTasks: Array.isArray(state.userTasks) 
+        ? state.userTasks.map((task) =>
+            task.task_id === taskId ? { ...task, ...updates } : task
+          )
+        : state.userTasks,
+    };
+  }),
+  
+  addTask: (task) => set((state) => {
+    if (!task.project_id) return state;
+    const projectTasks = { ...state.projectTasks };
+    if (projectTasks[task.project_id]) {
+      projectTasks[task.project_id] = [task, ...projectTasks[task.project_id]];
+    }
+    
+    return {
+      projectTasks,
+      userTasks: [task, ...state.userTasks],
+    };
+  }),
+  
+  removeTask: (taskId, projectId) => set((state) => {
+    const updatedProjectTasks = { ...state.projectTasks };
+    if (projectId && updatedProjectTasks[projectId]) {
+      updatedProjectTasks[projectId] = updatedProjectTasks[projectId].filter(
+        (task) => task.task_id !== taskId
+      );
+    }
+    
+    return {
+      projectTasks: updatedProjectTasks,
+      userTasks: state.userTasks.filter((task) => task.task_id !== taskId),
+    };
+  }),
+  
+  clearProjectTasks: (projectId) => set((state) => {
+    const updatedProjectTasks = { ...state.projectTasks };
+    delete updatedProjectTasks[projectId];
+    return { projectTasks: updatedProjectTasks };
+  }),
+  
+  clearUserTasks: () => set({ userTasks: [] }),
+}));
+
+export default useTaskStore;
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\stores\chat\channelStore.js ---
+import { create } from "zustand";
+import {
+  getMyChannelsAPI,
+  createChannelAPI,
+  deleteChannelAPI,
+} from "@/services/channel.service";
+
+export const useChannelStore = create((set, get) => ({
+  channels: [],
+  currentChannel: null,
+  loading: false,
+  error: null,
+  posts: [],
+
+  // Get all channels for a project
+  fetchChannels: async (projectId) => {
+    try {
+      set({ loading: true });
+      const channels = await getMyChannelsAPI(projectId);
+      set({ channels: channels || [], loading: false });
+    } catch (error) {
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  // Create new channel
+  addChannel: async (channelData) => {
+    try {
+      const newChannel = await createChannelAPI(channelData);
+      set(state => ({ 
+        channels: [...state.channels, newChannel] 
+      }));
+      return newChannel;
+    } catch (error) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  // Delete channel
+  removeChannel: async (channelId) => {
+    try {
+      await deleteChannelAPI(channelId);
+      set(state => ({
+        channels: state.channels.filter(c => c.channel_id !== channelId),
+        currentChannel: state.currentChannel?.channel_id === channelId ? null : state.currentChannel
+      }));
+    } catch (error) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  // Set current channel
+  setCurrentChannel: (channel) => set({ currentChannel: channel }),
+  
+  // Clear current channel
+  clearCurrentChannel: () => set({ currentChannel: null }),
+
+  // Posts actions for real-time
+  setPosts: (posts) => set({ posts }),
+
+  addPost: (post) => set(state => {
+    const exists = state.posts.some(p => p.post_id === post.post_id);
+    if (exists) return state;
+    return { posts: [...state.posts, post] };
+  }),
+
+  addReplyToPost: (postId, reply) => set(state => ({
+  posts: state.posts.map(p => {
+    if (p.post_id !== postId) return p;
+
+    const replies = p.replies || [];
+
+    if (replies.some(r => r.reply_id === reply.reply_id)) {
+      return p;
+    }
+    return {
+      ...p,
+      replies: [...replies, reply],
+      reply_count: (p.reply_count || 0) + 1
+    };
+  })})),
+  
+}));
+
+export default useChannelStore;
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\stores\chat\chatStore.js ---
+import { create } from "zustand";
+
+export const useChatStore = create((set) => ({
+  /* connection */
+  connected: false,
+
+  /* rooms */
+  rooms: [],
+  loadingRooms: false,
+
+  /* current room */
+  currentRoomId: null,
+
+  /* search */
+  keyword: "",
+  searchResults: [],
+
+  /* connection */
+  setConnected: (status) => set({ connected: status }),
+
+  /* room */
+  setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),
+
+  /* rooms */
+  setRooms: (rooms) => set({ rooms }),
+  setLoadingRooms: (v) => set({ loadingRooms: v }),
+
+  addRoom: (room) =>
+    set((state) => ({
+      rooms: [room, ...state.rooms],
+    })),
+
+  updateRoom: (updatedRoom) =>
+    set((state) => ({
+      rooms: state.rooms.map((r) =>
+        r.room_id === updatedRoom.room_id ? { ...r, ...updatedRoom } : r,
+      ),
+    })),
+
+  updateRoomLastMessage: (roomId, message) =>
+    set((state) => {
+      const isCurrentRoom = state.currentRoomId === roomId;
+      const updatedRooms = state.rooms.map((r) => {
+        if (r.room_id === roomId) {
+          return {
+            ...r,
+            last_message_content: message.content,
+            last_message_at: message.created_at,
+            last_message_sender_name: message.sender_name,
+            unread_count: isCurrentRoom ? 0 : (r.unread_count || 0) + 1,
+          };
+        }
+        return r;
+      });
+
+      // Sort by last message time
+      return {
+        rooms: [...updatedRooms].sort((a, b) => 
+          new Date(b.last_message_at) - new Date(a.last_message_at)
+        )
+      };
+    }),
+  
+  markRoomAsRead: (roomId) =>
+    set((state) => ({
+      rooms: state.rooms.map((r) =>
+        r.room_id === roomId ? { ...r, unread_count: 0 } : r
+      ),
+    })),
+
+  removeRoom: (roomId) =>
+    set((state) => ({
+      rooms: state.rooms.filter((r) => r.room_id !== roomId),
+    })),
+
+  selectFirstRoom: () => {
+    set((state) => {
+      if (state.rooms.length > 0) {
+        return { currentRoomId: state.rooms[0].room_id };
+      }
+      return {};
+    });
+  },
+
+  /* search */
+  setKeyword: (keyword) => set({ keyword }),
+  setSearchResults: (results) => set({ searchResults: results }),
+}));
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\stores\chat\chatUIStore.js ---
+import { create } from "zustand";
+
+export const useChatUIStore = create((set) => ({
+  replyingToMessage: null,
+  setReplyingToMessage: (message) => set({ replyingToMessage: message }),
+  clearReply: () => set({ replyingToMessage: null }),
+}));
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\stores\chat\index.js ---
+export * from "./chatStore";
+export * from "./messageStore";
+export * from "./typingStore";
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\stores\chat\messageStore.js ---
+import { create } from "zustand";
+
+export const useMessageStore = create((set) => ({
+  messagesByRoom: {},
+  loadingByRoom: {},
+
+  setLoading: (roomId, value) =>
+    set((s) => ({
+      loadingByRoom: { ...s.loadingByRoom, [roomId]: value },
+    })),
+
+  addMessage: (roomId, message) =>
+    set((state) => {
+      const prev = state.messagesByRoom[roomId] || [];
+      if (prev.some((m) => m.message_id === message.message_id)) return state;
+      return {
+        messagesByRoom: {
+          ...state.messagesByRoom,
+          [roomId]: [...prev, message],
+        },
+      };
+    }),
+
+  setMessages: (roomId, messages) =>
+    set((state) => ({
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: messages,
+      },
+    })),
+
+  prependMessages: (roomId, messages) =>
+  set((state) => {
+    const prev = state.messagesByRoom[roomId] || [];
+
+    if (prev.length === 0) {
+      return {
+        messagesByRoom: {
+          ...state.messagesByRoom,
+          [roomId]: messages,
+        },
+      };
+    }
+
+    const firstPrevId = prev[0].message_id;
+    const lastNewId = messages[messages.length - 1]?.message_id;
+
+    let safeMessages = messages;
+
+    if (lastNewId === firstPrevId) {
+      safeMessages = messages.slice(0, -1);
+    }
+
+    return {
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: [...safeMessages, ...prev],
+      },
+    };
+  }),
+
+  editMessage: (roomId, updatedMessage) =>
+    set((state) => ({
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: (state.messagesByRoom[roomId] || []).map((m) =>
+          m.message_id === updatedMessage.message_id ? updatedMessage : m,
+        ),
+      },
+    })),
+
+  removeMessage: (roomId, messageId) =>
+    set((state) => ({
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: (state.messagesByRoom[roomId] || []).map((m) =>
+          m.message_id === messageId ? { ...m, is_deleted: true } : m,
+        ),
+      },
+    })),
+
+  updateReactions: (roomId, messageId, reactions) =>
+    set((state) => ({
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: (state.messagesByRoom[roomId] || []).map((m) =>
+          m.message_id === messageId ? { ...m, reactions } : m
+        ),
+      },
+    })),
+
+  updatePinStatus: (roomId, messageId, isPinned) =>
+    set((state) => ({
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: (state.messagesByRoom[roomId] || []).map((m) =>
+          m.message_id === messageId ? { ...m, is_pinned: isPinned } : m
+        ),
+      },
+    })),
+
+  clearRoom: (roomId) =>
+    set((state) => {
+      const clone = { ...state.messagesByRoom };
+      delete clone[roomId];
+      return { messagesByRoom: clone };
+    }),
+}));
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\stores\chat\typingStore.js ---
+import { create } from "zustand";
+
+export const useTypingStore = create((set) => ({
+  typingUsers: {},
+
+  setTyping: (roomId, userId, name) =>
+    set((state) => {
+      const room = state.typingUsers[roomId] || {};
+
+      return {
+        typingUsers: {
+          ...state.typingUsers,
+          [roomId]: {
+            ...room,
+            [userId]: { userId, name },
+          },
+        },
+      };
+    }),
+
+  removeTyping: (roomId, userId) =>
+    set((state) => {
+      const room = { ...(state.typingUsers[roomId] || {}) };
+
+      delete room[userId];
+
+      return {
+        typingUsers: {
+          ...state.typingUsers,
+          [roomId]: room,
+        },
+      };
+    }),
+}));
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\stores\chat\useOnlineStore.js ---
+import { create } from "zustand";
+
+export const useOnlineStore = create((set) => ({
+  onlineUsers: new Set(),
+
+  setOnline: (userId) =>
+    set((state) => {
+      const newSet = new Set(state.onlineUsers);
+      newSet.add(String(userId));
+      return { onlineUsers: newSet };
+    }),
+
+  setOffline: (userId) =>
+    set((state) => {
+      const newSet = new Set(state.onlineUsers);
+      newSet.delete(String(userId));
+      return { onlineUsers: newSet };
+    }),
+
+  setOnlineList: (users) =>
+    set({
+      onlineUsers: new Set(users.map(u => String(u))),
+    }),
+
+  isOnline: (userId) => {
+    return useOnlineStore.getState().onlineUsers.has(userId);
+  },
+}));
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\utils\dateHelpers.js ---
+// Helper function to get start and end of week (Monday to Sunday)
+export const getWeekRange = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  // Calculate difference to Monday (day 1, where Sunday is 0)
+  const diff = day === 0 ? -6 : 1 - day;
+  const startOfWeek = new Date(d);
+  startOfWeek.setDate(d.getDate() + diff);
+  startOfWeek.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  return { start: startOfWeek, end: endOfWeek };
+};
+
+// Helper function to get all 7 days of the week
+export const getWeekDays = (date) => {
+  const { start } = getWeekRange(date);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    days.push(day);
+  }
+  return days;
+};
+
+// Helper function to check if date is on a specific day (ignoring time)
+export const isSameDay = (dateString, dayDate) => {
+  if (!dateString) return false;
+  try {
+    const date = new Date(dateString);
+    return (
+      date.getDate() === dayDate.getDate() &&
+      date.getMonth() === dayDate.getMonth() &&
+      date.getFullYear() === dayDate.getFullYear()
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
+// Helper function to get start and end of month
+export const getMonthRange = (date) => {
+  const d = new Date(date);
+  const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  endOfMonth.setHours(23, 59, 59, 999);
+  return { start: startOfMonth, end: endOfMonth };
+};
+
+// Helper function to check if date is within range
+export const isDateInRange = (dateString, startDate, endDate) => {
+  if (!dateString) return false;
+  try {
+    const date = new Date(dateString);
+    return date >= startDate && date <= endDate;
+  } catch (error) {
+    return false;
+  }
+};
+
+// Helper function to format date range
+export const formatDateRange = (start, end, type) => {
+  if (type === "week") {
+    const startStr = start.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+    });
+    const endStr = end.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    return `${startStr} - ${endStr}`;
+  } else {
+    return start.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  }
+};
+
+// Helper function to get all days for calendar month view
+export const getMonthDays = (date) => {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday, 6 = Saturday
+
+  const days = [];
+  
+  // Add empty cells for days before month starts (from previous month)
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevYear = month === 0 ? year - 1 : year;
+  const daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+  
+  for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+    const day = new Date(prevYear, prevMonth, daysInPrevMonth - i);
+    days.push({ date: day, isCurrentMonth: false });
+  }
+  
+  // Add all days of the current month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayDate = new Date(year, month, day);
+    days.push({ date: dayDate, isCurrentMonth: true });
+  }
+  
+  // Add empty cells for days after month ends (to fill calendar grid)
+  const remainingCells = 42 - days.length; // 6 rows * 7 days = 42 cells
+  for (let day = 1; day <= remainingCells; day++) {
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextYear = month === 11 ? year + 1 : year;
+    const dayDate = new Date(nextYear, nextMonth, day);
+    days.push({ date: dayDate, isCurrentMonth: false });
+  }
+  
+  return days;
+};
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\utils\formatDateLabel.js ---
+export const formatDateLabel = (dateStr) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return "Today";
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+    return d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\utils\taskColors.js ---
+// Priority colors for tasks
+export const PRIORITY_COLORS = {
+  high: {
+    bg: "bg-rose-100",
+    text: "text-rose-600",
+    hoverBg: "hover:bg-rose-200",
+    badge: "bg-rose-500 text-white",
+    label: "High",
+  },
+  medium: {
+    bg: "bg-indigo-100",
+    text: "text-indigo-600",
+    hoverBg: "hover:bg-indigo-200",
+    badge: "bg-indigo-500 text-white",
+    label: "Medium",
+  },
+  low: {
+    bg: "bg-emerald-100",
+    text: "text-emerald-600",
+    hoverBg: "hover:bg-emerald-200",
+    badge: "bg-emerald-500 text-white",
+    label: "Low",
+  },
+};
+
+// Status colors for tasks
+export const STATUS_COLORS = {
+  todo: {
+    bg: "bg-rose-100",
+    text: "text-rose-600",
+    hoverBg: "hover:bg-rose-200",
+    badge: "bg-rose-500 text-white",
+    label: "Not Started",
+    labelCompleted: "Not Started",
+    tone: "text-rose-500",
+  },
+  in_progress: {
+    bg: "bg-blue-100",
+    text: "text-blue-600",
+    hoverBg: "hover:bg-blue-200",
+    badge: "bg-blue-500 text-white",
+    label: "In Progress",
+    labelCompleted: "In Progress",
+    tone: "text-blue-500",
+  },
+  done: {
+    bg: "bg-emerald-100",
+    text: "text-emerald-600",
+    hoverBg: "hover:bg-emerald-200",
+    badge: "bg-emerald-500 text-white",
+    label: "Done",
+    labelCompleted: "Completed",
+    tone: "text-emerald-500",
+  },
+  review: {
+    bg: "bg-amber-100",
+    text: "text-amber-600",
+    hoverBg: "hover:bg-amber-200",
+    badge: "bg-amber-500 text-white",
+    label: "Review",
+    labelCompleted: "Review",
+    tone: "text-amber-500",
+  },
+  on_hold: {
+    bg: "bg-slate-100",
+    text: "text-slate-600",
+    hoverBg: "hover:bg-slate-200",
+    badge: "bg-slate-500 text-white",
+    label: "On Hold",
+    labelCompleted: "On Hold",
+    tone: "text-slate-500",
+  },
+  overdue: {
+    bg: "bg-red-100",
+    text: "text-red-600",
+    hoverBg: "hover:bg-red-200",
+    badge: "bg-red-500 text-white",
+    label: "Overdue",
+    labelCompleted: "Overdue",
+    tone: "text-red-500",
+  },
+  cancelled: {
+    bg: "bg-gray-100",
+    text: "text-gray-600",
+    hoverBg: "hover:bg-gray-200",
+    badge: "bg-gray-500 text-white",
+    label: "Cancelled",
+    labelCompleted: "Cancelled",
+    tone: "text-gray-500",
+  },
+};
+
+// Get priority badge classes (for display)
+export const getPriorityBadgeClass = (priority) => {
+  const colors = PRIORITY_COLORS[priority] || PRIORITY_COLORS.low;
+  return `${colors.bg} ${colors.text}`;
+};
+
+// Get status badge classes (for display)
+export const getStatusBadgeClass = (status) => {
+  const colors = STATUS_COLORS[status] || STATUS_COLORS.todo;
+  return `${colors.bg} ${colors.text}`;
+};
+
+// Get status dropdown classes (includes hover)
+export const getStatusSelectClass = (status) => {
+  const colors = STATUS_COLORS[status] || STATUS_COLORS.todo;
+  return `${colors.bg} ${colors.text} ${colors.hoverBg}`;
+};
+
+// Get priority label
+export const getPriorityLabel = (priority) => {
+  return PRIORITY_COLORS[priority]?.label || "Low";
+};
+
+// Get status label
+export const getStatusLabel = (status) => {
+  if (status === "overdue") return "Overdue";
+  return STATUS_COLORS[status]?.label || "Not Started";
+};
+
+// Get priority badge (solid color)
+export const getPriorityBadge = (priority) => {
+  const colors = PRIORITY_COLORS[priority] || PRIORITY_COLORS.low;
+  return `${colors.badge}`;
+};
+
+// Get status badge (solid color)
+export const getStatusBadge = (status) => {
+  const colors = STATUS_COLORS[status] || STATUS_COLORS.todo;
+  return `${colors.badge}`;
+};
+
+// Get status tone for circular progress
+export const getStatusTone = (status) => {
+  return STATUS_COLORS[status]?.tone || STATUS_COLORS.todo.tone;
+};
+
+// Status options array for dropdowns (excludes overdue - it's auto-calculated)
+export const STATUS_OPTIONS = Object.entries(STATUS_COLORS)
+  .filter(([key]) => key !== "overdue")
+  .map(([key, value]) => ({
+    value: key,
+    label: value.label,
+    ...value,
+  }));
+
+// Get status options for display (uses labelCompleted for done, excludes overdue)
+export const getStatusOptionsForDisplay = () => {
+  return [
+    { value: "done", label: "Completed", ...STATUS_COLORS.done },
+    { value: "in_progress", label: "In Progress", ...STATUS_COLORS.in_progress },
+    { value: "todo", label: "Not Started", ...STATUS_COLORS.todo },
+    { value: "review", label: "Review", ...STATUS_COLORS.review },
+    { value: "on_hold", label: "On Hold", ...STATUS_COLORS.on_hold },
+    { value: "cancelled", label: "Cancelled", ...STATUS_COLORS.cancelled },
+  ];
+};
+
+// Auto-detect status based on due_date
+export const getAutoStatus = (task) => {
+  if (task.status === "done") return "done";
+  if (!task.due_date) return task.status || "todo";
+  
+  const now = new Date();
+  const dueDate = new Date(task.due_date);
+  
+  if (dueDate < now && task.status !== "done") {
+    return "overdue";
+  }
+  return task.status || "todo";
+};
+
+// Priority options array for dropdowns
+export const PRIORITY_OPTIONS = Object.entries(PRIORITY_COLORS).map(([key, value]) => ({
+  value: key,
+  label: value.label,
+  ...value,
+}));
+
+--- FILE: D:\ManageWork\my-fullstack-app\AGENTS.md ---
+🤖 AGENTS.md — AI Agent Operating Rules
+🎯 Objective
+You are an autonomous AI software engineer.Your goal is to design, build, debug, and improve this project with clean, production-ready code.
+Always prioritize:
+* Correctness
+* Simplicity
+* Maintainability
+* Performance
+
+🧠 Core Behavior Rules
+1. Think Before Acting
+* Always analyze the task before writing code
+* Break problems into smaller steps
+* Avoid unnecessary complexity
+
+2. Code Quality Standards
+* Write clean, readable, and modular code
+* Use meaningful variable and function names
+* Follow consistent formatting
+* Avoid duplication (DRY principle)
+
+3. Project Awareness
+Before making changes:
+* Read existing files
+* Understand project structure
+* Respect current architecture
+DO NOT:
+* Rewrite entire codebases unnecessarily
+* Introduce breaking changes without reason
+
+4. File Handling Rules
+* Create new files only when necessary
+* Update existing files instead of duplicating logic
+* Keep file structure organized
+
+🏗️ Architecture Guidelines
+Frontend (if applicable)
+* Use component-based architecture
+* Keep components small and reusable
+* Separate UI and logic
+Backend (if applicable)
+* Follow MVC or modular structure
+* Keep business logic separate from routes
+* Validate all inputs
+
+🔐 Security Best Practices
+* Never expose API keys or secrets
+* Use environment variables
+* Validate and sanitize user input
+* Prevent common vulnerabilities (XSS, SQL Injection)
+
+⚡ Performance Guidelines
+* Avoid unnecessary re-renders or loops
+* Optimize database queries
+* Use caching when appropriate
+
+🧪 Testing & Debugging
+* Write testable code
+* Add basic error handling
+* Log meaningful debug information
+
+🧩 Task Execution Strategy
+When given a task:
+1. Understand the requirement
+2. Check existing implementation
+3. Plan minimal changes
+4. Implement step-by-step
+5. Test the result
+6. Refactor if needed
+
+📚 Documentation Rules
+* Add comments only where necessary
+* Explain complex logic clearly
+* Keep README updated if major changes occur
+
+🚫 What to Avoid
+* Overengineering
+* Unnecessary dependencies
+* Hardcoded values
+* Ignoring existing patterns
+
+🧠 Context Memory Strategy
+Use project files as long-term memory:
+* README.md → project overview
+* AGENTS.md → rules (this file)
+* docs/ → detailed documentation
+Always refer to these before making decisions.
+
+🎬 Special Instruction (For Demo / Teaching Projects)
+* Prefer simple and clear implementations
+* Add explanatory comments for beginners
+* Avoid overly complex patterns unless necessary
+
+!!!Important 
+* Correct path is: D:\ManageWork\my-fullstack-app
+* Not run any migration withought permission
+
+✅ Output Expectations
+Every output should be:
+* Working
+* Clean
+* Minimal
+* Easy to understand
+
+🔄 Continuous Improvement
+If you see a better approach:
+* Suggest improvement
+* Then implement it safely
+
+🚀 Final Rule
+Always act like a senior software engineerwho writes code that others can easily understand, use, and scale.
+
+--- FILE: D:\ManageWork\my-fullstack-app\docker-compose.dev.yml ---
+services:
+  postgres:
+    image: postgres:18
+    container_name: managework-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: managework
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: managework-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data_dev:/data
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\docker-compose.yml ---
+services:
+  postgres:
+    image: postgres:16
+    container_name: managework-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: managework
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: managework-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    container_name: managework-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8888
+      # DB
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: managework
+      # Redis
+      REDIS_ENABLED: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8888:8888"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8888
+    container_name: managework-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+--- FILE: D:\ManageWork\my-fullstack-app\README.md ---
+# ManageWork - Full Stack Application
+
+A modern full-stack application built with React frontend and Node.js backend, featuring user authentication, form validation, and a beautiful UI.
+
+## ⚙️ Environments (Dockerized)
+
+### 1) DEV LOCAL (Backend local + Docker Redis + Docker Postgres)
+
+Setup:
+1. Start infra (Redis + Postgres) in Docker:
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+2. Backend env:
+```bash
+cd backend
+cp env.development.example .env
+```
+3. Run backend locally with hot reload:
+```bash
+npm run dev
+```
+
+Defaults used:
+- REDIS_ENABLED=true, REDIS_HOST=127.0.0.1, REDIS_PORT=6379
+- DB_HOST=127.0.0.1, DB_PORT=5432, DB_USER=postgres, DB_PASSWORD=postgres, DB_NAME=managework
+
+### 2) PRODUCTION (Full Docker: FE + BE + DB + Redis)
+
+Setup:
+1. Backend env:
+```bash
+cd backend
+cp env.production.example .env
+```
+2. (Optional) Frontend API URL at build time:
+   - By default compose uses `http://localhost:8888`
+   - To change: pass `--build-arg VITE_API_URL=https://your-backend-domain` to the frontend build in compose
+3. Start full stack:
+```bash
+docker compose up -d --build
+```
+
+Services:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8888
+- Postgres: localhost:5432 (exposed for convenience)
+- Redis: localhost:6379 (exposed for convenience)
+
+## 🚀 Features
+
+- **Frontend**: React 18, React Router, Tailwind CSS, Zustand state management
+- **Backend**: Node.js, Express, PostgreSQL, JWT authentication
+- **Authentication**: Secure user registration and login with JWT tokens
+- **Form Validation**: Client-side and server-side validation
+- **UI/UX**: Responsive design with modern styling
+- **Security**: Password hashing, CORS protection, Helmet security headers
+
+## 📋 Prerequisites
+
+- Node.js (v16 or higher)
+- PostgreSQL (v12 or higher)
+- npm or yarn
+
+## 🛠️ Installation & Setup
+
+### 1. Clone the repository
+```bash
+git clone <repository-url>
+cd my-fullstack-app
+```
+
+### 2. Install dependencies
+```bash
+# Install root dependencies
+npm install
+
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
+npm install
+```
+
+### 3. Database Setup
+
+#### Install PostgreSQL
+- Download and install PostgreSQL from [postgresql.org](https://www.postgresql.org/download/)
+- Create a database named `ManageWork`
+
+#### Configure Environment Variables
+```bash
+# Copy the example environment file
+cd backend
+cp env.example .env  # or use the docker-specific examples above
+```
+
+Edit `.env` file with your database credentials:
+```env
+# Database Configuration (PostgreSQL)
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_password_here
+DB_NAME=managework
+
+# Server Configuration
+PORT=8888
+NODE_ENV=development
+
+# JWT Secret (generate a strong secret)
+JWT_SECRET=your_jwt_secret_key_here
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:3000
+```
+
+#### Run Database Migration
+```bash
+cd backend
+npm run setup-db
+```
+
+### 4. Start the Application
+
+#### Option 1: Start both frontend and backend (recommended)
+```bash
+# From root directory
+npm start
+```
+
+#### Option 2: Start separately
+```bash
+# Terminal 1 - Backend
+cd backend
+npm run dev
+
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
+```
+
+## 🌐 Access the Application
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8888
+- **API Documentation**: http://localhost:8888/v1/api/
+
+## 📁 Project Structure
+
+```
+my-fullstack-app/
+├── backend/
+│   ├── src/
+│   │   ├── config/          # Database and view engine configuration
+│   │   ├── controllers/     # Route controllers
+│   │   ├── middlewares/     # Authentication and validation middleware
+│   │   ├── models/          # Database models
+│   │   ├── routes/          # API routes
+│   │   ├── services/        # Business logic services
+│   │   ├── migrations/      # Database migration files
+│   │   └── scripts/         # Setup and utility scripts
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── stores/         # Zustand state management
+│   │   ├── services/        # API services
+│   │   └── App.jsx         # Main application component
+│   └── package.json
+└── package.json            # Root package.json with concurrent scripts
+```
+
+## 🔧 API Endpoints
+
+### Authentication
+- `POST /v1/api/auth/register` - User registration
+- `POST /v1/api/auth/login` - User login
+- `GET /v1/api/auth/profile` - Get user profile (protected)
+
+### General
+- `GET /v1/api/` - API health check
+- `GET /test-db` - Database connection test
+
+## 🎨 Frontend Routes
+
+- `/` - Redirects to login or dashboard based on auth status
+- `/login` - User login page
+- `/register` - User registration page
+- `/dashboard` - User dashboard (protected)
+
+## 🔒 Security Features
+
+- **Password Hashing**: bcryptjs with salt rounds
+- **JWT Authentication**: Secure token-based authentication
+- **Input Validation**: Both client and server-side validation
+- **CORS Protection**: Configured for specific origins
+- **Security Headers**: Helmet middleware for security headers
+- **SQL Injection Protection**: Parameterized queries with pg
+
+## 🚀 Development
+
+### Backend Development
+```bash
+cd backend
+npm run dev  # Starts with nodemon for auto-reload
+```
+
+### Frontend Development
+```bash
+cd frontend
+npm run dev  # Starts Vite development server
+```
+
+### Database Management
+```bash
+cd backend
+npm run setup-db  # Run database migrations
+```
+
+## 🧪 Testing
+
+### Test API Endpoints
+```bash
+# Test database connection
+curl http://localhost:8888/test-db
+
+# Test API health
+curl http://localhost:8888/v1/api/
+```
+
+### Test Registration
+```bash
+curl -X POST http://localhost:8888/v1/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "John",
+    "lastName": "Doe",
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "Password123!",
+    "confirmPassword": "Password123!"
+  }'
+```
+
+## 📝 Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DB_HOST` | PostgreSQL host | localhost |
+| `DB_PORT` | PostgreSQL port | 5432 |
+| `DB_USER` | Database username | postgres |
+| `DB_PASSWORD` | Database password | - |
+| `DB_NAME` | Database name | managework |
+| `PORT` | Server port | 8888 |
+| `JWT_SECRET` | JWT secret key | - |
+| `CORS_ORIGIN` | CORS allowed origin | http://localhost:3000 |
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Database Connection Error**
+   - Ensure PostgreSQL is running
+   - Check database credentials in `.env`
+   - Verify database exists
+
+2. **Port Already in Use**
+   - Change PORT in `.env` file
+   - Kill existing processes on ports 3000/8888
+
+3. **CORS Errors**
+   - Check CORS_ORIGIN in backend `.env`
+   - Ensure frontend is running on correct port
+
+4. **JWT Errors**
+   - Ensure JWT_SECRET is set in `.env`
+   - Use a strong, random secret key
+
+## 📄 License
+
+This project is licensed under the ISC License.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## 📞 Support
+
+For support and questions, please open an issue in the repository.
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\index.html ---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>front-end</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\README.md ---
+# React + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## React Compiler
+
+The React Compiler is not enabled on this template. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\public\BackgroundImage.png ---
+PNG
+
+   
+IHDR           	pHYs        sRGB    gAMA  a $JIDATx콽$G;<cny|l!>ߌ--|$]  o=kBYUYխ̌_o}/v7|WՋ{o5w߽Ë//|G=;us^|ϯo~ⷿ틟'/>ߟC/?<^_O?}_gL?k}gH?^K_gޏm)-S_||<gڏQc?͸N6[;cwO<<̶/&OS<lc=؆G~?~'_}աkր~Q{7xZC g*a~YټO$\{8 /_|g¼O[O`Ns@k<s?((G5Gk]'<_~fm9<h+8kLZvcZxh6s]zȸʖpü}/_4NB^3?yN\\3}L8BFysh_/<fu|A=}BB[$IomRtCȾ{O6`U6|7yf\gRpߌ5Qs3}yﾏ M{oc{^CV==g^J89_σq%:
+O5oFZ6	%^=)ڷpps^pםK/o}}~x}Ksȋ[cگ*߻qGXbu9|Q!	K۟}޸8?37Ӗ_AgZk1źG" PkOIX %0G<vVD	/'\:{=<7NR=Aĉzh%ċ/6C>] Z
+$\ޓpAo	17dL 1+Z3+@mC|0GvuBL )556-:"lO=nrlϼqqEm
+ 8@|?}rTx.=rfZ6Ue3>5^)D̳>u)
+Bq$[3$^^D1CkYCuod)<ɌE6b_|(5.wo_kA5 dIڃNEG[# idf`J
+tTH<#ȭ̿60$QgTA؏P\='C=-ajIIB9Vk'߿[r0YwP@>9xˇ5ǦJugn
+-.Hp|mB&X'K{ tp17=^fg cmca-5߫Wv72%<T5(rxX&+0s-6ZfE^3q A6hր1NpsL;'?7hOZEG@Ơ*  sZ0`qMnU<;XSׯ:ZZv*!TWg
+w$gBmJl2 hڥ WGQ<Z s~eO>="9-
+OҶ5 fy6N
+<>|~w7ZN([0|@9*\Nqi̅je8A̚,-sYD\q<} =Tl)H(0rt&ڴc>>*f0 "ksdKx>ڶhc;`)c~u-<YD-V0j+pϴWok
+rCQ>2}lmdniAmNOTPJ:t*&OQm&mO1ĳ OL*CAUڵпX2EWi~móyg|Tf{F1|W@t&th,?D ̽V&okG`O-qUUppMp{wE9R_"@aLqٲoqp.S+3zdm^X}l+_XRϥϏϢ%3~`M%^RC`}3Z
+	L}vWh8hAU'?zHY?uCa| R*	}p+=[-*^ZσxQ[*<Ao0ߩbܹW%!ΓDózhNӟ>:)T*[>F֨T
++U׀RwpsB{@X*YZ\X;C"3tHi`aPk3F-5[Yo5(Z{̚a+k<A4G gͩ}10;/kJҎ.BY-RyϭA= m*kI^Gcrι {
+@'oݺIr!iA"87ؖ|$~'$^*gAȎŜSi'(M	]3 4d"y,n==zO<DV,CFfPD4ɨA#i  +~"3x@${C	98DmB07Xa@c
+eP}Xc{A]g,țLKbK_Ke&sa 	>;J[cECgf^$l{ps\7Tk[<%RO03E1ܿ\뷲/6%w`{ʃօgy ڪ`b04h|
+ɉ6Ka* WR~;x>*{,~FWEșBj*/>"ӇOy~P
+bO1
+J >':KHfL% $Tuނ} U`-tkdzk"m<r%;(9c1{9{
+v]B*Ֆd@z ,/IY sgo;5Vo`x.^%+,z"||@6gz>oB	ba֐߆cC0нȠ\psoc3!1nj]hgZf E<8nn B2D,c5Y}	Yn(œ)`kп	L=vshk} NS浀C*_>)>	&J|$Glˠ`%;w 1 mN?]SիqW
+
+(l
+Lk^ޢBk v&@xQ{v/&3.rpFq>H%Z* mq5_Kr*[t?r,g-y+xb6Ϋc^b|dgRN=*KV}d!4YHQۣZLgIKO͞p 	?{xڄ
+8B}gDMeLM>صȘi=~vma3f7w^|^3iݭ\9C9E:K@-%ls,KhYͽ+	K<OWz6|㎿>Þ#C-8!_K(́2]ւתJׇZ'5hk5V!_}
+T.~{ZBOekHAO|G~(YgۓO?}f爜z zWY%_gu!Ym%x<PH(:0S	#e!.5J$T[jϔɓ3fK {YS0uT<=O
+fJZj ;׏6`@C\AW#q<t2_sIg{LgQ@$Uu<κ$0vN4`WZz9vc_.^y{lC
+mV'{lU
+Z?sI/|}G%_m8`Lf
+P
+10E~{I[D|B`-s=w!x]=ix_xd]c"C{N2|:Zf 4P$ DT8)=S?
+P.@FELn!Srzq2fl mg  W˫Gk仔dUw*;AI:=*&2t&|{nق#	X
+2++_7}%Tuq־"}tz@,
+iR^*,@8ws6~goh=+ܜvGChgԫIYwo0-rȪg]Pdp;
+˗+@ZmY4td1qR/:OL*1dm6@C%{,DYgxb'4kuai0FMI@|)joʉ=F=VA絊l<K љFVg佒;⚯sN}?R |o=pdufzpMakw.n"dj;vFp<W9F<w>Тm	}s<Lg.&SÙk"n>	E؁O>#S;ݢ*l#5R2
+P(5/g玀ga䢎[u]uk0wVG` $L9`60ZZdOZ
+OU?<wȚ}̍Sюw=DjRp-(Γx>e
+xB>-xoEILOGm@e+}HJ)ӐЭZ	0wfae!7cTIf(͙=\q	,QQ&U5)εq-`adnAHApsi`;҆
+&&j)H&{?_~fIx eXéqjhm萯siPv=@˰U*{  dx`+8˩`qLo"&wć&_3 Vfꗮ2	S<3 nT|3mGN|6\͵I}[ywj ڍ(cC 6}H8[EI@P8NԳh5mư,:g$,<7{ދS8:tcGGm=+~)@xvwTFsm)H%\u{:b!fxtu]Նm
+ tZ9]mݺ
+JZ?	@OU*ߞJkN9؈1U|:QY}k Az$4Nt,\"vB\|%>m70;$) "
+7y|OUbκavVxi%UX#]*^3P}i4:7d%<疪cS,hMg|8e{E S5"2\\Ȁ*Aȃf)	xaZ.hٯ \fߌ,
+h>idqK
+,X+hK̹;+ec^jczN(+M||(n~\ƅHL38ǘoJg2>7%ykeǧǢ<S𹷮 "QX#XWМhK봅}!+9Ԟ/	@gLUo-X-8c(p(crM;@^QR< ̀ADI"Hg#y｟=?~@`eOQuZeйaBz$YT:0	@-A.6gR2ɥLB~7FzG^YxVLyK2:^6Ͼ}N
+	 x?!NCуKD$-<Tj3ݛ>-УK+m3J`T0?~VKHJH[@d<c~Ts3G~>v}ڴ>a@Hq-Zvx}n%=;?;[WUZSYp,wg*@ZJ3`!7
+ -~F03I,Ғj?7eڒiET<h}QVu#-6D4T3zsA2g ZGH@F*~͋l6<Abv5uϿtp;[aJ-*hjή&[A9|fuޟs6U3Ϭ<0*x8w݂ͮ3ϵ{l]~σ'߁d,}~ɮgy/؄>qX$[@@٪:2VpDQo!m-z>gylxfr[EBtHk0>:?
+L
+I'bnt yXf{{y/	Sg)xΝEPm	\ +-6c.Wݷx.*΂+2؃F<ˢW*a=s[pճUҠ]GfZ/I)̇}\V(V}
+Q\˜3!tp-7ٛ`qKz
+ZlZ աaQB6Ah[+(s$7gfX;`g2i(	&Qws2K&R~mo!	hATq/-"ƥZkh}eA4(hco{{B
+sD(h'juE`pSE( 4	+>ٿnmHo$o}ˮCnZy-ٲ<{&:34ÄAV_~=@F
+ dЯl\']3I(G5PիWUVTNba3bȮ`{u'`ZLZ1*ܯs2BZH	d9X4T@Mƥ8&ʌ!{7I*pFoqNLAC|WR#fpK\oY?u-.yMZv{͓5(9)tbl	xp_͸"8g3g<[>OH^
+{w@$g6ʽIZ@Pۦd.<C@NUy|".A5LJh}UGT4uoiYKGjSAnc(SMHOtk}EAX+d@׍O a< gRJY yAjoQ
+P&=
+w*|K:͌#3`4kҶ=^|-(:J?k$χ@?#W 3xC/:wpjm§Hr7d92Rg9Z"3X7= R%p3wL~<pOQ,\kꗬOvKꈴ@6	iבg= T+ϸ1ȸZjv10WgT{>{) IKC~`>߼uSa3Rmg֊NM;]xF0K#`Us B|T]UkIxo]B9+JI5:ZA~pϐDaz}){442\qk.߽'W{3KՀr-g= 8SpAk,<U8w{*!$34Tr/[pg״<Ciב	]g"zh{N+IAT+jaR"'x>q
+>'rl
+ڋN",xbC' Liq?$TEڽ0r{ސMEYo#bfKL۷)y%!A{`*J6])UBXu}/-p[B+k!%9uY:X?5Y2 Ckma_/NZ IZ(6$GZܓdh,
+BOm3SPAn[Ϩ2~>*湰0p
+T(hhs:h#ҫ2]PMH,z3qweйuKT@ }Bf N9s.9qC\]7q5r.}OzO 5WoȄZURr3g]y|0ǘ,BUw)w\7HoKۮz䋽%,Y{18=u3+T?Ӗk,ǵy]R1gɑZ2gˀiJd@x֤Ӕ5S|TGl
+Z<MR>!?{	U	=fa2HƤeW_KY ς[m,fTFJԅU?R$ߚ k߈tnYLdi&cTczcE3c	xjo<kY|<(3P
+TZgJ2MiwzmxPQ\(9m4{C˾M?dзsHZ(AZ'r\qzr-IA0ELh+RNS;Agb۬mie櫾K	Υ!g߷/XO(m/DϼKr޿BrꂔAi2eEQ!Vޏ}
+л@AT=R[HPqZ.ng	%Ak@Y 
+a*K#l:B53 :-7JѯZ@;E \TtI@S	,DV?Ӻ&|I-Urjޘ#l ̕K=@먕0>{?Ӿ!~οab	ey ҡaS8	p
+=&XS3KS5Z;do)JjݮC/kbːEVv/'?&bx ֺ7cp=@@3ouXS18q<J[t(Ţ$6tnj R̢@;\R>^*~-J7Jn,,JKhlU@p{H齤\zB7!</mhiY]~S]G?hpI:U.^"yp&j_Q)Spꁚ=	jTt^+*6Sp&b]R=|Mo
+#Mm7iLYKȣ2'k/G2w%e6]iYSryg	X:SwY?EM?ad?NU(:S]˺1]} q	\ fMȺ.e
+&Pf&oPsM;IRKp.Eù'-w@A_rK/o5 T
+n&8'X.=mteSU%6~siPG*WC vCUկ=8jg
+)33 iDZ59fl%Ud)G1$ K8^m-XqΔ~CeJg#߷` 3"h
+8pO~.Cm|Dy9HN w<dub.2XKAxmr^@qg+}=N[┴(@F"BfQ2RAe3m<|1aM5HC5s2ǰWW.uQ((gϟ`UT ?p
+`}Y+$9^W@3⁮ǀizRC	P5^Jސ'ƽNKBti~<Tߴ[fXed%MHP%|<8!'|S/m`,PqLXHU3Mm[$-O_kSCD剰I"tDs߽Lksj1"?!:=p=؜m.i|\!cm`g~QjgkjO"
+x^|O_
+Q,Px4r-`M{5qJ C2KO}M`~Xr{~gs˥8!	Ʃkq7gThc M
+2^NF{X ~5JBȀ;
+	?[f;z X?l	J2>
+}>3\̅Y10zA|g	,(ӹ
+Nb(NX5@ yHiwCUyHg˿<"Ki|CYXx̵1cGd1Bi|z9[#Xw7י{*&s'oZEKQ6nz׀P ͷ+!ھ暙S{<rI'^%Us-gAXoqo5CiϮi3hHZ	>,|f0v.	N1K0R	>#Oo_f?α}f·%EM'Ҷ13u@,fiM#`+KiL`l2`\oP_X`ε-BK43R2(f`M9TLt-r"T![#l ̅p_^HtaGoLB'̍0Y|< * @@%KRki1.VB`P
+uX~YFH'?kpYcNȴV;& I=[}2(KvAh75"oe
+v;
+kqKo|LC*3s|kOi7?AV2K	>mp<-`xF	>AfnP
+kV뜾JxhFs|5]{wV|f&a٬~H:c?kZr{q6_gB@3nخƈ?*_@로$͙jR5;5 "Il<Lz
+g@r9r*xvgvs6KHP*6*bR3I2VjN`Y
+HCA& *m}MBTomڱ~Lxuk%=t)o|?wU{=&u-[S) A-يg7xܗ_)&}IsfIJd𞿩1QN9^Γʻ`^9.(d޴(KS^P;g4d'9Y{크q%_6kx>3kcFBfc[jS*'"iMD$7HZ v*7OwoY}||X;}Osx&Ov<3pϟ|ɋ9Wx+ypdTGhaA$-,cQk?q
+/yٶ+pR+ Ƌ4BEE68-m&iG1BZXks\U8'eh}vo,D-w:o+C&g~}! )|cm86~M7smq/`z9km{Fc%8\z]Ccҵ|np~5ZW. [˽_``Ўq>* 
+Hĥb(<u3Zea:~v'1
+~Vt3AHA0H4ƼsS@ߕv0c3nOQ+qY];QG~Ѕ	Xxmo1/1muHh w\P};u7r==LOZ|ncCn<0Me\^
+S`
+`~ǎ
+>G3)WKּ5h{gr8gh߹kc\prec)HI	9bx<"1veX-EZwծWU(`0̅B5ӏye.fp̷5CgiZӆ95{.ģt]'|'9mzX`UY
+|Z0'|x"OD`ϻ*foxj>K%2y~s'åwKiOO0
+"eѫL׻
+ ;`!kLW
+@TL~&%	`ԵA߲ub
+qbn8<ߜ\kԱ/GW*./YG<,?a@gBτהk_n]#z?>Ec~bk1+kq9xWS}6-.<?;g2[ri/)GY?+M/Y6җIh%#MmU=6c5
+?OÜ᠇
+S/?'F07yq,V|1>k9$5!+wtTm1AԒl
+1ApggRTR{&f TσynJK%U!jv؁T
+"vCTGxs	8cs^*C}(3,7Sk,X&7Sts~nv=<><<5!}RXs5`h>|j5C?g>(~&}\o0' pk}zH7fMƼZe⭟oǒvU|eP}
+VK
+v0\W3Bvү@x,S{@ 犋-<?R \Ya"!cyg|s{ម?HIPBmN=z cwdq5;)!O'_?TzX2펉UBaQB&zRTbkK820n*{2tɆ䬰`^14n+X^-q̤:)>*
+'FadE;Hm{M-6E1*o Pg${HT([>pө
+~Fr[#}}1!ZG\,Se4/oda3J٤^{h+'ca P\
+<'$[TrN
+V/l9X'\ȧA?@AP~}[aCtsɕh/?-ֆzy<sߩtm&O^}3&Q>ϘF8[
+`<cmClPEѱRᙃ	Nʎ _?U?2_ITG7%|IDKRC8IEvyP9wܐ
+YfIjW	:BiZ::MţnkUzهk/&mdM _IL@^HV7`)ÒKhMIg5,kOqHK`$A莵 2xf5 SlqB,AAf-ucWt4XU0 }~{>~gר0
+ߥ<IEq
+RG)	Zx\uoF_.<5{Epܥ%[/
+J֡[\Nf?ߵ&Yܛs	}6!6ke53_B@{cM09љU-?<O'kiw7{A0M˂o-@k1JSEyOg=D KR !n*RzQIzK6s#Q=٤nn\A!|QCT*쪸`ֲ-֭uKǀ1_w]Gkui(TBtu-c7yajfBAK3J)l0<G5kAp>C,|%HEgk6P)Y>.fAk9?jJvֆ 3;%37w汱iV{+^gV<(m	/eJX|X0uL?_J+]\S
+qT
+=Uއ1iRRb`4
+Z%.G՘"z,|`ѯrp薪F}}%T.ᛒ놈[se3[Pf,R_9SA4	ѱMf;em>G@8k]vi䅥::	^0*]kt^u1,*uM@U{w
+#h9S71&
+ƨsx?gvVZ܀g>av s48嚼'+|ѧxZݺƭarCꫯF\t$M=|X+i1v7 ].L|4*5j{$ZlW,K_׈	ڃ零Fs539UbOjLTe}TA "uv7P|	^.1RcÃ!::Y=s>A'd#y5
+%o1d ePS0@uϰH;¹H3-#hKk@I|Q)f(R0&Soss?̯;7X
+!\W/;88,x29L%僊)!CP/$r}laym хxP+REVvZ_JEY'ssU3aX?}
+ms6Qkձ?:78=Y8Oxcpr,tey\ג5J{,j_lk
+-L9+r0|>@n	g{67\V"Sp/'maP
+?Y	mYhE$`4oΟ>I X
+T>,
+>y@;KqHU_~sJG(kTުguyݪf1ĴZ|
+@b	1's<eoΚ݃4-A:u<q7ޒf"HAgR_Xzfd`3֞5֍{)#=w/APj,5rm
+q>[ےqcFi?N߼7!T6O'']5I@XD$PCDh{(L",83UucZH\zz[h
+R\B{J	+x&vt}1F{&6; v!kJoFkdda^c#ni	_Ygpxh×q5}9/)YXz ʠ6N:4l/3<ӷMyyK
+x!Zr!ZR<K}V莩:G,R5߾Y',rppxdZg[}	I(YkL;k3kv~ Ey2\)LֲR`WmFc-s>ݻ&s54K%k2T_e]cceJ@}{ :ӂ$9`{j9|]"VZkB/Rx pl1`a\`Ecʥo8oXi-p}z = ~ӟ>o8X+`Cz LVf
+˜G:|
+2ja%/ ՚-
+*m=0~\3\~q_HM5}V{C?bZ4G{ϳϝ|/k6B> ]>t@<̞Bc?AӱhkG@*רEnLދ{]~,XƢNǧ^!Y|f/^_!cQ":nNF8Qڠ
+F6j)Xѱ%n'cM?_zp1{{ua-ZY~=\k6!,0_k_S:OZKZycgM>LG#wV'<8Lw샽9YOpK?{ jI&5k-Te ǨK쭉Mzk,^ }	D)@׮xT@J-紭*&dC^Ϡ2S7;'C9tu 18]BY<(,?Z\xo}#Kg"(>vpZ\μWck/YlwV
+鋤d9Igx
+Vǹ@@-f?A5ܦ:ޫcYĶ{Fk!Wz_:ߴlabyZ?9 ׹o6{IQ@Yˍ=RW mj-OzQG8tN6ҷHab0i<E^ُ}u!v/93^Sd|}_|<=#'i~k)F~v2oߞOV
+4Jg7o;v,:
+d<u;D`B|f::E;0`aTIP(a{*$Ǧ]*nƩ2&Zӳ~_#7zR{r}::jEAgSSts`M=S;yY+rp⋵U^ُk[ueGlO%϶3֓\vo䴰%|֫Ws>z4wPcYo} Ü. mj6@S
+iO
+u5ڱ/X%Ay:vI=}Eon )h5S,OjO0ƫA.-N|>S7LS}J>y=Lei?-̢NnXiǎ}"ύY'gDf:LtoVPZ7?kx#<nOڳ 8̹|G-Nv.њ"&XgeYl\0e{sk}-FӀa9 O J(Vsi~>'\~uNжLIH{1
+mi3?4Fk>Kdv= S/	ʺYtZ*([bo-qw(,T:f|mHgVl#H#H^QZѱy褴+E's}.@9/hW?ᒸ +T뾎6X{/eyN0g𙹛qy8dpeka_(ςQ(5a'`ޣ׭{kO=>OYkNCA7UFc
+Ƿ~Yf46̃,A:Ӭ'4#fdc1%$2ӟ;6&h;C 7l11Ć
+z.V=,S9'ϗT\7f{@B?*xHW{*B(
+Gȱ:
+t+Uvu٬ޫB5_%l huN~+^,W؟|;׮_s^H|po
+pN
+Xy߱"YjuC_)Yz-k٘{v1k 5OIv2p+S2 S<˱!1:"k"*B0wfh_nagDP=ZZTqu(.SWc:Lܓ6u({I֧{ᚽCS֐p}{D>IBl8?t 2%,RSS?~kZ~<-fk=9'ǨY0}*h\kv;{B dG@YʯkA^... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\public\Login.png ---
+PNG
+
+   
+IHDR  e  e   '   	pHYs        sRGB    gAMA  a 85IDATx$Wun=9nUBBҒ"X&؀glc?lmxq10"P9O]ϹU=33;gw?=]]]w=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0طoL&%,L&#sW=`i0X13W/+PXM[J4#G	,W(s`!'i;N},رcc\ss4PKu1e0̢aQ0̜9x񶷽mP!σ&mLϕi;BO:Z oÎ[b(wnlݲ)u+'8!4et<Tnph	aQ~RKK
+p'2ICqW\CWA;	ظq]3)|afEì>|{3N>dº5ifz4)C胡v
+)؈oҽP;D.M;f<^\uͶ( +_v"W70]~M)\F>[-M&w<I5@My;/Zz6};i0`Q0ts'MV*L],uk|q
+a.=bTnw,4aCd`64ŧ	79h_p=W,ZwFC5ϳКC'4Y*
+"w}ìYX1L]wu	$Q3_][_|	-f\̢f@!	as$7n|!8i\N>sxHp`;Np]o+f2|2p>ìJh0ؿ>00bSzƧ?i:[,#،ۄ.7.Exz9ǬrGߚPn',	gqqOBi'
+'>񉡖Jp8F"oÆ
+.
+6X1L¢a?jwygӑ':kj+l׹*oڸq}akQ<0`(k0H$SNOTE=ãii=ofϣ>OJ;?~wf+	3GN#6	i!<+]o|ε8V7/	/q]k
+caJ(	ƯBKc7Ӆb㣦
+vmi`n#:Ԁ??Y8NW5;q5!ifs ]Df1Du!	C;:jFtoO?~l,?N(|C|1
+a-t:1447y=z.qًˆT&a ,+	~\rK_돍f3KA0̊a={JvP#l_dZl	}&ưQth?{?ܹd26:q6~K> ]ceY8]jwuW$M^͎8M_nBx~&'3Fy,Rz4ӡ	(ļ|>?lcxK&``VT, f>yrϱ]>]Hx'e ц0TrTHPCL]	%/qN:|X駟> ]{/Aijp^%fuϟ.oسg׎Kqn\:-SӨLT84%ccw0jOz3-M B_<0sEj}ū^Kp~\ŨvZ	1r2;^т<yw?==}e
+~304x`;vhg>WC87gE00%QЄD 8OGoijׯ/f{1j9BY(cɐk|A{nNܞaV8sFS==ͻ&jH<Xs:tBƹh̚Et\˯;y=n_oLضD}YHB_U=3gΜzGƫì1xa<nW⸑&U<1Y'Zi
+y6_1un30d5K6ok^/;8b,feQp8asi\Ler<lۥi`U8̚b֭_W݉hո굩L^GSwLjhL]<3y.?>v3z"H8]`E& 1җ}-q&jDXϿsF{UV<WjcӡP硫0LѾqymkmRٔL\GzP%)(4t«%T_N69JE?6/y{,N၈Ym{uvm]woNƣ7/1i\&~$+	0yO@ClW^Hmp
+Y<S^rɮ;k-ǻ	60qF.hfpydt4~u=nݺo3X1<WU;}k}g:[1YPgx<
+;l~}G:;;ϞF0=:âY/_b(sd0lx,"5dԾׯ=|5}!(crA;;/3y<ȶੰ$퓃
+X,y_MֻyݻwgD=cV0ߒ<'33gBAǎ45҅|O?ݽiӺ2fAi&~S쥯x[{;;ޔڹ0`RH$!C|>Coذwq3S7>ۛaF`\}_o}K_=	/dYB&	DT˷,˹OO?=İ(c/~+?\)fS2RPjD(dRON*qg_mmms0h_xk_\z^X%wA'Q\	}4ahsY0<1u<uco75'a@Jaj	ޤ	<F9}}tU,{ztVܝgn2sG7?}{ߋܼp]W^/k1SL(Ў;y~yي 悰(cqAvmKd9`;n<pǸ*?0i9))v{>kt<΅*Y1SiO"Eɲ]y׽뮻+m23g3#1O\w޽4giT(sE<=?׽{|fg L2֨}ss.h9<
+aFMLpKnWe~9R*G=_S߲c?E1vCTRa '0:ѤJK]9z*YKO_}v]y=VD暫g;ޕŒEYP!D<BXk򃮎;YpL7;?K]cA0َ̪b)LƯknڻwέ[wmm~a5	;eLMؿ?o?kLga9\0̚%pF 駞:ŷ-^sơ5J;vկ=Ekܿa41 g4p8Ui}q×J(}_~王KY,Y˨S)4Y׍}%GF~Bf%OoKbY0tLGC};vo^~ܶiN(?+C%۾¶]NgΤbj޼iew_tE5Md~2W%,ʘ'?{x^tf!Kd0PnT(cȋoyrBqÆug:TцUr#8ztm>_ͭaͤihi?|_Wc)cїtnx:afAIQB=O޸wޫ^~S0aAYL˳gƺzPZd%cYY<c<W6ownI 
+2fQ%u<RngA0xhXM~rẫ=5 d{oؓƥ/a_溞lǴlw-ssnBzO=%`$%_+_;>+J	yd0
+4W$QN}|a|_ޅ
+%{ʂaf wFп}?oo%d<oR73-aV	~&
+5Cso{m{̡CAY,*
+0L8u]2aPi9|@߇^җS,rbmŠ+JLKa&]QYS"J%N>`=Š~/͗Of-t,(j+X"ɿ:l[qn{.2fQ|ӓJq0L=7fq{ܭ.J`Q,Cwbqu=5Ça!%$~ӶQYY*]=7t|2aH$97{G?Qp'05E`w:;~q0L@3
+Œٔ]s͵d3f`j2fTֽw,Kraex(̴d[̳w9`j
+̼AQ+%|5/^G׀G0<OB2O~x;ɭj`^/|ϝ?ȝ<ӒaQf]3B;WS3x@e8y
+msaYkHD" S=yK^ұiӺuZEbaV	
+mg 0jz[jZΡKfm_$(|Ru)蘅uybB(cho!>kx/e	%UfM!1ڔx<1C}
+Àl4̏Hu]_;8_eau킟AwX>pp<V*nahzoqMeTkìM(qܭ`B~3
+М0Jl1'J7fYu
+
+^;ݜl]-4ͤf7yM!mb{Yˠ7mC.Xl[9fRxD[6ص5	Bz*IZO23a@ek|&g5x[R!?>jѸv\_fmC?Q$J
+Gu\͛"W67`CG.ߙWM!9BLMq]k|+_y!,Ζ
+ً{__фhX8a拦GedS)dn,D?Nh{Ќ=-py]pц8(\>f},G_mt&YKYZCf5zKYKi:X3<#-cXLY]V-hv&=f4GBX(=\ށ-1j
+0qLb}o׮۳?O ;,1,owUϵ#q:YDH+dsT",SylI@ױY/-odw 0K
+Տ:iWJbg7TNL/[_@m7@۽5Ipaj =(vZq~T OvJV?g׿nɍ3̒#Qa%j\!C"<}:dL}@1q܈7$([7u;{nKy`f類iB8Cki+SE8|*fij<
+-.b8?-%E =jY6c`L?n=<ap̂NQO[2x<rh/B Ҋr+0lu4EJ-E<@,_ra e<7ÄtЍ? hXB,,(4=s|ƤrJqSgcFfRw~훂|@X1,	aqLbnԌ^|旟RT}¢afI &ά-$a҄h_W_\^̼;SdzꞠ:L q]`f2~@Ngut;6yaQ0UtY̂i3
+.:A0Fu/ھi?v/ۼyya*A|&MS.ĢMƧleC.ǲ Gu0dŭG}`ǎ=rH	9âa* eL9H=W^o.f
+Z;szdeSH
+
+uQ	-]03Q(97|?}+nr 89X1LBcTO/J2rݒaCK]D
+e
+]va!X!Hx_ΏwrX	}0PΔtWD9cU=	[/RG;Ca<z"zW\|<ۀvj*hk. Q~! ܔT«5ئ"dO{]pH{i:0htkێ_<峹a*CFSKDQ0* s;oaH$OeϢDclLi$Ԝ1DPZ"rO~^'0¢a*(*4C!*aB3342>efnP\w՗nd2X#IT,w}9a!х+_{u7<?
+̌p?T.o}a%|?~L$sX105z__$|7e0,'pl6[zz^[[ڱcGi(caf-9*fe0ì+l_$X10"#MMM}`5e,aY1h&w&WhmoNG>6`lSףB܋Y]hxk{!_Kx/?E3gh?x0.ɆgAaVy=/_r
+2fn8.@""`{Zt0*0(8]08aV**Kם?=?gQ	]=&\̀)PcF'lw ;7*QqaVjgg9^kyއ>O\{2e̜2a<n1.h@fEbI4%Wرp#G`
+el3sCro\&cVý=+<`1(cafK%Hݿ;y//l52a.U.ZL^*B%0P(/qN0SS(t,V":`*p]OHM$>0H<
+ke0LMQ (6u8z<>vNpٞmyCze{.689'D"{pշ`
+&(caj9]ш	%+?~~xpL?d%-
+Œ±yh4Ͱyc7\rxξp-Q`;;g
+LuϿ`?2a&hAmc𳇟o|~x1
+e`co'lXס78ãY8?
+?SGvK
+K`
+	P,9s2yxs{yo1X105l?o3֜T9:#2$HtҔډ{E_zϡkUyFN(9y!d\1gP/a0ttl8I$AȢejX[mރwuxٓ
+Ox
+-5q dYPgr1t;E/u(֔yN0?BQ7_握o`D	/C'WS%3u}ݵ\Yi:
+(8`s%&)wlR>nö9'p?x,X&Y10+J9DsY8d.(H"*d0سs<+_jQYRzE 	CW{l;W_q1$bae8!4dKKs3wqqX#I,R8xB((쉧N6t;cgsw}8
+1rlɀIxtD]vel_Ѱr܊4fE|Q8p7x?{X([ҋBa:=??y\U#E k%1'>::]mU/SLDe	C?킷V9@K2򨞘nJ\swP=k N_ݨQogtkKLO(74
+0zxHʌg6$cز-	O>?9G9z
+E{f4㚏~EF|k_y=a|##)5q)5)9g!?/DGdw>
+_ƏT,b[V#}__[k em/ݲ>riXazu<5kr9Xe\x?''
+gΏI LM47	jےE*#Hցa0bZ}
+Adш䀣'?}> 
+<3fE4qsp}U[Z۷_k;]2*h#գWmbW>w#OWpȭ6r'/~n\X([޽#
+a.g2S7&C~}OHPD<1Չ\L\xp5r[J'>FnRmpmJH|5#챧NÿQ^*Yy^{~_VnaQ
+y;a+5]o%0Fva^xu(OzumggRgc
+<Q,Vi6v?N!U]X.q̙3\WD9j0LA.)|y-p;1<e
+-̂kȄG<EaS 
+6O6u4qr)c*AҡWUe5
+y٨4:\owlS"߻Q8zqYY\XC;m_,hBL3JEM_*Xeo}/>fh*92ajB1y)ya,D#!WTɌ ,cp _a%,g}aUPM܀2:\XhrZ=:ԍ`]P5cbudQ^|-G~nɯ~_*E*#>/^q]2av퍯~?=_vsf#!WA䘵6ahx_x<jY6Q)|pjBI	.X-TRBXJWiu6$c(t=Jym&AH=7v3^xldr|W(cwگ^b
+a`Ea׿f8~<gOu;溮Bzuq,StC]P
+'[dQLBWL
+d	u2y"j<5ao1.]5}uvtC<<%ȚQM=Ea6pVhly,UdQz_uU2)K]y01$koW{~J*-ظZ[*ՠ1x9[n~7gR(P*WB<yk NGG`|!6i$<t[91M59qG4[BfApۗ 7vՎNZ<U"Hl~5\*E*b-o?oйX,0
+:Jܺ47'+vHPT`
+|Y!s凬-aK1*?HaaDICAartɢ;SaAR wהl#8â"o];6IeC#CeI¡P*ѯ|+`lu N.0)s(VhW]e,|?P+2Mط!D9IH<3Зq!s"3_YQebQT߅4_ '΁	x8ׁloAqۘ;j|?ӫMqIUΜ{+{%c!aF%1dp؟G䙁d
+/[uX׉n/\\=YB!tr_p|10DW#[4jD% :h)Dm0y
+M@EcjŒۿ`Q
+70L#˳Q/dpIYee=(M
+41	7m!(:(m[W(*,%S.[t1OD8ϢD׎fRl>aA,
+n2})p_%aN8~Q%#m$ܴ5l}9P{0܄Kޒ
+@f
+zY
+7&#Ӣ G!iIڿHzEWrŰEM.=FsC48~/a8TezףARHǰeK;{{x44N )S/l2,O
+m448oÝ
+ߺng7cCJ`qQG׾MWkB,YUe /+	l]H^&H$JgEV+)HLZ!-Ke9O7'ρ?yߣ61q+`?qC3)0_^¹C0ʀJhAKX_(R$Hi}4SPmh#C"jTO*D<?}B>BJ\cG*PKt{aDX5&˗f
+`YMK؎4M
+ᗙ
+ޯ=ET]QXuG"#ҔHco
+1q4ϫb/UD_E{80q'nG	t^sY*ZS+	GRXrTU%;uU'ju1^ߋrհJ`Qxo[^|0
+5AQ@OW4'.cSUzCqS["0tQҕbt_eUeiB<ak%<1<CӲA;sc<Y[v<q/,y;wn]\a\4	,G,9cT΂&DC%	7o;<9:jZuBu0	a{,aP	K^#t} SXS>l6n{w~@dQ`߿G
+W_}յLaVD,a4O.eRŤ((;#ÄtQ6+i	S)^u{*!;åT2C3j6GS>Y.A}bx̟<:42R.!ig}G?
+CâqP豱kK0	M`/ IA,4rT
+1Uh3-p	x]gQ:݊®Fd#.PY
+	JwevuTɌн?od=7FRmjjjxGAnذ!|ޞ=%K`0ZA2&LƅI҇1jd&OW\&\ܥÍ"pӎpϾ#dOI56O({6%jPKوI(̎gA6%mNGv+ˢLWEYc`7m^u7K6M^~0ˏ/$$aظYD%ϥ?)r.V}+bH=MEԖM!(f<cExU	x
+Ie*U9KZ
+BY->i*m|=F2s9Ao}n7Ȣ1Kk׮+$X10|6sfxF"74@G
+RI"ɏ$
+L?࿟);O¯ e]eJF"'0fS`P/Tv5$u$d@#(`_2YXD<n>p;
+5o|[|7q0ZAi;kKyeA5
+C#.@g(Nom݆*dIk)nՐR.5њ^G"?}xS	MB 
+d2h`X5Kxs._x1&l:vB[k2h>0+'*L	fJ	s3~&[ R9Z8	67d~O<~S:_fE
+۶Q~ǋ_VJì%7]=yA3vY_ʁ<?p]R=\%du{(hq|h":j^$]H؊dY5ɢQ_|˛n,Yk-vwhkI(z3-!&/ǯ۞a_n-Z7	?iU)'^΄
+Y⛖σ uU&M3>nV5"fQV\.accS\}E
+DRt<r¨@lU%1HLxx
+؂blcw גKddQbL|QFIVNI&1࣠GepnݺKB³/똃&ϝAXYS*Mx+C!W~{pz`c0нb'۠9SXAzWiºsBG3 @lQR36+%_
+Cɂ
+ƮJwL){l2I~8隢nQh@X)[l߯kJ&Mg=.YPn+920ʪ<#a(M6ptā\%K8_)a/QdPQA)mG0sЏcC/8{PPkp:|e<m۶l&d<͂a0vɆ'WbpSgálҶ
+W&y]0dk`$_:˃pDtپKZ7 (Hp@>=(hBCe5d$Ӡ=}Do	}<
+B	}5sCsKrȒa
+2.'΍k:TK"]t޴Lƺ,
+:<_l6Jsǯ-脸"O5^Pkl,jrˊN{}aLq;7~C:w}نu=[,9͎Ȗ3fH?/)HW^vBq)YQ7lrN=!Hz. ( 1܍2U?[G|COlڊ"
+ŦDt]w;
+`(Kvn}w&WlY1v14Њ6GA`HsIxT !t^ػ:tpф)|#%>nY# I??-CІ
+=iY~%UԖ&,@9ƹApz:Fs
+tTq^>
+ĨQb׮=oR]n0Z
+jg@टϥkόK!Mt.KºHM4+W&HydfC%[Y\2 !\Sp2Ґ${~e"W @{Uw4 ,k_{6tX1Ðv"W\
+Pp:ãr#	B7Pb>[Ym#G2*!aX2@fb&噹k%)tIFǂ^5	
+/<<zgv_a>/E'vT13DbqȢ0+dM% EA*96)j (i.Z:ki9Z[vjK=}t
+^n9#cYӨ:3rP5P. 3:b6
+URڂԂP-JS;
+K7جMӃtڀkמz`xڊRhȪ?7]Onjl1։͑?<=:kx
+nl eg%T:Xn0̩ Et@̈́@jAKám aZA9P_7/͓ u&XԀ\ ݝmzQ,clqZ(T_B_s|Ƴ-(,>4ìIp'A̀7oEpChf^Cpͭ!<eE;:;erY(7"\+-Kmˇ0\nOJT P>
+u١oKRqiW,jR(n7{K6=K]([Yu;1wB3v\
+uP?< b0|*r(|YQ5QDS8P`/sm+cڤ%,}BB&c2, TL\A?8`v1=vѻd߾}?,ʘYQ.oo=/ߋWCۿzQt9^*A("
+/Mo<8XcMfH%
+݉uH&eSfuA](s)WT9(Dǒ
+⪦UvlJrk|!bov$kLƉ-{L?8]pM(ZumT$2G	vK\?5`0'Ǝp~8Q$Zx5av`Ay8<$$t'{;.fB@}I9')TI!Ke*(>dhmW0gm*JD?JbkI9yC#;ONL(Fڠ`Q_ߘLDޜNvN c34S9cAϰ|zGMqHčQtF)hÖYoñA?>E{9H$iw1f%"*ﮤʎԫ':%$x<q<.T<r4,V-oLea08a6˜BAvgϢ8SL=133	7YҺz5Ш(ȕyjY|,W[D ebW-D퓪II
+2
+t3}R)ͽiMR딭0RiW$z?:dU%
+3x;#xv)QB&m`3S50Eo$] ?Bg5u%~ӻ!Fp5"Dͭc*HdоQslu$DQ`8xin-Z/L 6n;ＳCaQ2/ī^ޱTw徊C+CCQ؞
+Pwg4+/{?86,u0LÁȖ8>蒒6dZ9hԴ
+-	6r{WsV,a$XS6ٳǄE8O㉦-ۉj k ?9ϞS׵i{&9ay#)XAH>0Q%
+K.+:3OY9ej9!L_i+/7ېpʮsY-?;ZXD|:J;VN_iYphQxè41a2q.Ad@Xp:C51\B^v]S0SAk$<[|ÄX '
+jlz[*`}+-D
+Vz|\ih0Y Χ枟@l sMTжgK-DݲA1LjRD
+㘻QXÄ/y2X,gL~/ϴ\]P!G? 3g!NB@SPB왡!l`kN53u.)5P`uZYPB>v֔MdPG [M:xi/>?YA!Y14DYPdˋ QzRvc|<ruA C=b+:Ex!iqXߴ	^H,"{(x4u	MqX	,%`8KXKP-#\¥CL*a~m5T[e7L/_i*lJua,ʖpu5>zo"\]Pɱ0:C_5jl9<=𸪑u̘mRE߅y;,.:<74ۊb	?wi|S
+Ƣ}j=KF{Θ!eftt(7tPSEh1MӬسhX--t4ԧ7zvܖ OV	E;yمY4şfX1unIr3B̃gPCV@fR# T|AFQLؗ˖Gpkri>ܲpzF<Ќ+pAY3b=[4D$,쯯 /Dbq37<
+Y-eoҽmhᙟ [%8R UL']0В]Q\1!ܟi3?iv:$OCGb,̘C"0tfN%Rx 9OS D45Hݜb)wM\næ,|hw(tcEYGȢRVpqwt7GagZ 
+u`XVjeضm}.u?EҡF%of%b0=:5d~tȢ9`0<ӯ	6k3l2 u5h>9: =|;2 E~OH3@ZC,mҡ#J0i3+R[GhEIEN4vF4xnBe1
+S'z($,}Dj%P5%JZ A/\&FP;*:gBSA֝;wSP([:=W_yBe1Ƃl@X
+DhMj #Ea֋ nRu848T[e+MN"(4E[Djf *OQxӀa\xXRIq+ʄD/Ƞmw... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\public\Register.png ---
+PNG
+
+   
+IHDR       e܆_   	pHYs        sRGB    gAMA  a ZIDATx$Wu.~nΓg6'*rB""#r	2px`̳E0D	"yڼ;WsCwuNLLOWSwO00000X	`;qzڱc~б?`e>ۛ/L|	:|/=kgǝ3aȣw9_/zA`
+屝ZC>RN=ͩTn-V)P*
+3υ \ؿe{ {a,1eęx__\j0'(`I8m6IDCFvlK3g|c,.8%yM<łuyx7_XrۑzѴp .c5F`bS"r=Ç໇`H8w՞=^/usG
+/!
+Ba}р[9fOl";˘Ha)΃3000X"7|L|E<FXqRD"2\eǬ9ul[oH`~u٥9[ǅay8
+ؚd4Ρ}%}Y4!1Yp՟r-=㑍%Kg^a$' 
+ѶDV1SyFiRUu&t=68V,XXr`K7du_3֓g.D_=3k4tCb]mۮSiVNcGb'=-e`O0 9]hS-*LPgOYj6t8*Cbo7rΝ;5W_
+ss8's&]&L*K<T^8iưt+nCb+J3;~kpʅm5SDrihwCWd`ula\0$f``Θĺ[#Uۊ
+k_Գ9
+k#Etiì[ya```|duΛhɏ8yoFSp*㴉/LL'6kwҀm9e#0:?y:;6e%,3ې2$tY6Z=600XjB"og9obA
+lluO`
+2	2Ebd1CVI7000/t,=Y;pw9Wx9<~bg08`M<cˁl1;06CbJ'_4~g1n*[sГF3d/[PYeHl1ɧАA~5N
+kڸu8q2S I8Ʋfp6S{Al}l|?dFwͱ,Y;lKheh
+:`HY`/̇O;3hYqq"cXDʮ8iqfERWu8F;`nCOO٩-]s2XL@OJ2GT6P<Bq,8s{t
+K\abMeR
+FS؂Bo~ib`R񣲌rH
+	
+I4Ex#!HbDf:X`'7Ziv/ڟ@h[6gg_
+u/[HƪCB	E5DLrr`; 2xq}݈	t'&pe;B*Tb\$b4iibdr9Vi:r帘J8G
+g;vbHNJ#Q8)$$NArp١	y%NF*/̤4b!M,_V+DXA_&++		*夅U]ܗ'VjDOY\biIfdi
+7b%VnExͱ6g@\
+P!*kH*Ud<"7`J8#YҪ)ރq56YYr2am	9wp}dy-D;h,i	nZSE=aVŭ8mIw e	ZsS/Nd+7	W$m~aR\K1̺V4,"ف3(+DdU$AT\J2"asBfsGђ!Q015MTB^מCb̓]ؘNFqe$Nec2%1JMHE%U!ay )S,l	
++[-[l̥;䏑ok
+ rDzYp6\$-ɄI\\̉JbB킒#s<
+Dkai4W	xD^x6q+IL\M:;pjER@yAӠ !\`cvMrɄ,
+K< ED8a?wbƉ4H&?ObBK*$DZr9Jw`ç*4wt+[t`HyP9G3hM?,~фBPx
+8hӳ_a,1ь6жfoյR))ӑEJe\Hվ[i3000h :&֔<c$,HY`iJ'x?
+@d@T{0
+6YTi)fuEcHXh-9Is5i,Hp	gH1 uv%VЩ0$f``4D@DԨT.DH ǧa	%bQ
+lIXI"*OJɞ$UA40ڂ
+Έ8qs~t44
+7kMlH]RO$\@*L$B|_+`46w"2HZ E&ŉ
+:_ZϲSaHijCSyXrAZRyERyh`2mIŞ2yd,Pd^U8nH
+^yfף0$f``4h+l9"*uUN&dJEP+QP$_z*rQ+FNZKZt<&%p(܆LhUCk,vCbMC2
+9E-pS!L"Ңe\eI$kH*aI@KW$[00crjZ
+UeK6DZ,A gߗ%&
+"	2+IVb/*_ƨ\49N'*KHTAyD^q)[KJRV3]\x-ZCbMҢS"(
+"{ETKB[B!2"`I*+,B@z_U2ע,I9sC'[aCbME3Wd9B?dUJT! YIC/ S	*Yr3	W27r}'@bo```ple-VM5%ch5hjDXb5f%/@D	e1"Vp
+7!*mtJ}G
+w0LACN$JEeǠˮи.^I
+7
+B[0tbK%
+3ij.G+4dhhԪGaujPwA \иJǲ?R| yHS)\TlT
+Q!Myi[@ϵl Uj&<Ip$l>وq'̍6=V]Pq+6A|??Yg0y$2y$2@J(sR\(Yp`ii8^[ZY(^VAc֨KvL*GC87<\V~s`܉
+¶eE?Zn3K!}}E89AnP̗/AW
+w5~MdQ|,¹Lmrȉ!L8Ń
+4MLZ!D6Y%&
+wHOk\΍
+YPlDkѭ&aH)%ʇ	ݛd)e(qB`T4ϕDɒdː
+!$"DLǶCA HK
+c"FF`^:qB"v=
+=C.$:U FbT"XK*̑"
+q܄T/P
+f&ButZ}ƂDJ!,0f,1g```56#H X=4SI?wӦC؀OFXŢ$19wbr=p-<zHLXiɢF@%-A(A($Rc!rY+@Z*U	2,NA쀬PTA;X;N.Sdb4('{qRL*;RL-6!1Nsa_*dKᓰ0ƹ|؈f76l
+7=vCh.lts&$ǵEz|ŚǓh9HPy.2#lȤXLL}PɩIǂr4^$*W$,<,$LSPBǑ]WH$ZS	iWZY2%T 1$v`>s'<8wcYx|䄀gOAيĴs#!C89苅a*'H%k>Q拲{eK*$757%I!avB
+,G*'1VR,VHL#DeAiIV\ɡqRsQYHLY|Ck@dc,7mͷU^{i؄nEbXϘ
+h5 =HP6vȦ|`{."d6a 35V~A]|$Beշpj[%ywLPE8OiH'uj>KW0FEVNI$YS	YܒL+3>;rv*9odjtj^cDLl ɠ9NhR,љbqlo=l=tYНŋ8+ÅR<udEh1%݆DXH_RqC~VCVbN!!m\U"	tQ
+1
+ٖTmUҖE-	H\Eգ,N~&l(ׄ=a0
+ņ>8Ŧv|ozTb6+S 6V4TA0
+?W:B%U|U]{>_+JPBFBWķ "T=A(K|@[h/RlZE95W꣉CbMD&-$ `v/ch%10ŹBP`ɡS ߬pt~&aVBbX3YxQh;5[4Ӂ[$dPƹmFP(Y[)~'.(~Z⹬Y̐ɸ&BM`CquDv橁3;6婓#e?Ɔl`#1MB88ZҩS=y[Lef12$r0%OJ}ЁS)iZ4(WVw<%f`йw
+::n	)4NY
+|㧄sq"'ti[ۜ{:e50.5֒dX	MFVkUUs!LkuebBXVTH3&DBH8}.nυ!ت
+Pz9L	\ˊCq7  59,dvgDul5ZlDڳX%ixNH`GEU.!0B3껵3t4Aߺw;FfG7)OGDIsa)>Pn+
+P4Z^2U^x4QcFѷ:_CDHT#-SZ_  E36^N[`I*~UwSB'ÁF+2
++×t+(B.ad^Pr1
+BIYM%d7Zx[XMMU7Ag 3b=g]9skEz1P
+>{S*U^+|Y^ke+޶,YUơI-R19OG$Ls*͒=Xs-xM)ׇSVNg)}CY`n8eٍ3b RҗEyt扔&r\M(TG8Tc0ց
+o*kY0$f5HvM1(,}&g"bu)z@s
+nRY AIaVj\#"Ӄe.?ChOQMHZ^ZuܠȺ&ޡQaH̠K!&Z
+ġTmWP\Py
+<YDwr^T6Kn*"4EK -I)HZT,$SBs^nx*yÖ1*EV
+31
+t	^mq,X-ِMggfIs*"	=40$5=ME.bZE!TH2$WA+*I)
+Q,c]S츴̄=UfxD++"-rMF
+m8g!1.bNRBwq%ahqv>eF ǌ{:hO-Ҋě%$A,*`Zs~8Y^NL$30ZHӀ܇.ZaR,@BKQZS)ZF'p+T7,*J&*)fI^eG6$f`Х ²|S[#3fVR-0{&K	]1F{x\bq't&8D\Xb5T"'z9^1S'he* U.fh0Cb"-Yy9.`<ZiyOhWZdx	1е5IJƊdy,PƁL	iR))\!m'Y4D˒HڛR,+t? =+
+!XKl$	Ւ )	'mcȅxB"rĔ)TS
+*BO$dF)N([|.r,f$URӸ?߇@WfN17й0$f`B -PN HGO֏Uh醳%-C,!z!LȬ;X,aДyR˂l$1:[ARc	@t#ѱ	Y2B!\.|>u>Pf}|yMgxѼ fvb;@cYeltCbKmaQ"?0y|xDI7r	-sk9ฤ`#y`coXR)B]Wah(	k5I{+GXODHDZjIIT
+EDI8rbEarDԔ@Hޛ
+<*;$e?1軉0SIlcAṱ
+d:.UwcJQlEN400TZ.T2X%-A	,~ڒ599,UYsd*#2?4N<To-"HH	q$5>8+}t7@Q@zk8x(Hh	hJLHH8Ep.	ߧ&3- E)E^/-Q?V/e$ѮD5"::RX΁rVƓ)Y5a<&
+T\]yіPS& 0300޾$L!A-6Ht	W]xYCZZ4#%?Db%@D*u-e1d	jۛ$,SIXXn	$$mB.Du"'qTϔ]+gIf*֊֒zΏloMz%Ǡ#EY(LK,֏z=Bd_@K4gpѫ<1-hEF0$f`0LYZ5Hd*Pܘ$n>ϕzG*QEHN.Mqt=ri	#HVR=xJl(H]v20=,9.)l<ئՠ7Dx~Bn)A܃eKj=3Z2RD
+KJ[[ҊWtVIjKothegRkE,WZtzRsY$<wHDSbV/)z\k/JE*,I5d-XwUZ̸'f`` @.| ,xś/V͗H+/ń=\j *SN ;6G%$ZF98r8y@XDf'rB܉UPż|cIelTqʖ
+P(P*_m0F+P՚LzaHN"D+
+NrؑL q$Ae\JPDA*v".h<r1𹐗%mC5rh=i-Fki, p1x
+tU\j.RR
++rO4Ō;bчUk܋~R>KNZDy$2u9RZe_P+vE9'CDKj9VJڑ3M@Wl={dP]'j9Tn:r-EnJmIPDZ 2%
+L֓Jq;(ˑtx"NR	N(ROI#zQ,Dm~M)"|'+E(Ԥ$#Н7Y!9hB%HYe *OJjn9v6~,McG0",Т '$@HE$%Y*	H+EnK
+^gzw(݊:3ZuD!1y 'PHѤqT+j%
+`КGճ.}EhN]|I &OS"&*En$*D\,XIP30wVyNR:V^DL`Uln t	QR%XP$#QTEn|ᆘ!1?gr:^;P5AÄ;>ѵV3k+ՐJ a``A2FDL	LC}<DaΉ%V+`H x5")b&dv	y; 2e4;جr>j[oӏB^Cb]t&P%89CjK
+sueuCt*6VFg!A3$]|ԌUkPL*3.
+q`z{T2<0tLbA#J:b~ku p))Co˕/IȸRX; <.[OF	`eq'bٰAL#Rzs
+y,r8jH^SgmFouj"d:"I\P8bA!J,|.+p2zp$$ɉCXYF1υ]Ax{*l	w?C`+'<?!;z
+!׊j=ƖσXܖWc`Ԉ'R$ág
+ZC^^~1
+ZGps$KJ)$h$cb/Xd'Ew<[BpW4>"P:Y^98qb-!(o{lH<<KuM4zR#[U.c[B%KPMO:x&,@ܵ{	H=zMƺUgTC)s!ToLWpvJZ=^dY惪VME- +=/z.AZ@n:ĉDCQ~%;Aj^C:Bς_M'/SCb+bRsw2L8F.c_ʐ
+<w{.98|7`F](J,ճ#JG+v6d,uE01bTW_,G|L^܁4
+$o01iQ_g\\!IHD`LޝSYI{V@_|=RגvlBȷ&eGxϺ%-S|A]!	MOɺar,HVY*ςHݞVcm:$LfV[n
+[dKiz)011凸ot2\Y8Le+_Q3XK=zG\/w}y!t)|+\G\YuMA5r"սן$<C՛31'jyBYUqEgQ@S5BZp # O~cZ ]_(@iY(0˞ghYMӾġp[9Zj6kd*"$.gjd%*BחOr(ÒNZUL|Xq xoyߐUϳ!1@MƳ/ޟwᣲރC$=KoLϲ|jg&=sB>^1w>qodr}q*/-" $ I`cES+5&%^ؒ|f240.sk'~HOThL<KYT:3KT("	=>
+O:	T{,:ZH^(&d=tQ\,26V[CEȻMԄ PQG0F6D5%q 
+i*JT
+_ǩ_IW6݋q.5qN$*ۖ@nT[oZ^.P+aH=QI޸>uN*xc_qV>fkclWUG^XԵ;~~}paqt.y.dg@6W*]ɰkK5R*7DxSsKTuUL1YáDPfVQ#;1Q
+iehOǸp+
+	S[q%Qeg\.bF ݖ:_Wv&&ȵh$YOR,h]}6	CF׀2M5RB,'Z'oSnq
+i2񞼮M.Co
+$it:?aHP!^.I	hUhdu=d"qQ#$jO(1nK0yZ>~"|l"nw"}8v*$C5DY@%8r`
+r͕DL""'ֲt&@NK8!*~6QlSy$@PsYFD$6}ؘUϜ\Kd&0NƎ*)1HNIo%FB:yItQI$QɋȊ^%LӪH	ʂ2p>ݸhXfev"o
+/1x|>\^v;U3E"4Ida@mSϴBK_}>)"cã솯}w-ZFytb*qBr*Js!_&h5DL*96눰T&҃UYUELZ9dTI,U=d	]/:᤺
+t<GWk/wW"īDEImj.En-ېAj~{3\W*$zi/3:>ӟ'&bVwFͪfC%_9ak%2QcS?}p
+@TYYPYrGrVPf,Ysj7jm51o{rR1t
+|ua%I7X
+hS]p{sph"9]r;+B]$pUh+TN@MFBٝ9xv 5[g@MDVy"`:%fADdxU5ܡ2DVC%pͶAlnNP~.fKX!UM}S:#$2-cwMOtVCcE1묥*;/5B@;/*WNֆĖ.>e?hm&?:E`*f1L(A.AwY!]3P%nLƈJI@B[jsbq't{O+ 0Ma%n!"la	g_Bq{IglY;1+dKbku%f
+Z
+@oN3T 
+e!KHg	@(\6x_%$lG 	,%F@gV7utTSaHlq*f+a/;CB@&,&#|X'ijE`eAbtWSVRY'&#6 q:.?ĭCW5J`܏>L2@]/ԈlXIT+m`k/ץZH^@K4A< R$efBRa*p	^t~NtH9SʰD<τ\-=ዓu2Z ; KveA$vyɎu1U+,2Yj_vLĤ"\2R=1B祜,ICxҙq#61WN!e08e]pe8dsƱd/;aN8ϳ"?>}v- J:lH"G"+
+agLWȱBUBEDqIKs>aXKPZKv/YETuJ%)/F닂dKIX-TQXu=+dCpIz@.56Z'0pq3aHl1
+/-C,o|0md!K7MkbzpƍccpOqyQJq!Xk JA  qXIQSXi@8ؒhc}JA& S#\x4%rьSd[DXzB* QD͉ʒ"r*HRQ>0z)ړ+QǓzz,% ̤f#c	`'$R&)%f81
+'E4w($`ƶmp|nEu8*J)HOV%JXBWԤhq'X-Fs*K
+ _7	GD|9?Zvυ샾yl
+v=0 ŦH8x@jFXNˋ5҂"ʰ8lkA=YjW?2,q[ķq9[ĉ)_	\HIuf#gYƇA+=>~el==b(`V DܕwXez=fQ9H8Y?-@>I$a`0z!'j4еDuZDɤ,`YRbʹ}ww2Tv&8~s_֟}3	?	Gvd4K*B?e ՚N9yH\$%R,pJH>D X8a
+#[=k+<A'-pu7b̂'`\lA,jretlzt-PMkC@$/%'a='XC3cJt\:h'jTC5-QPSӴe܅Q^eR
+Da.C6S.ٓZnV9H'? =qNVaqi8$&彠i(!Y!!]z
+=5
+#ןeiJmU=$UP֪ЄPqjE,k5SZFbй0$BTl=P2^#۬\H#w-hcUODaZ8 *BAaaKzL(,YP_QQ](S%G\RlI+8Tj[QBI'B$%6ar
+E	OkK"Db*IIT4ɍ\TٹiҠ]IBi:;!61WZX&cWS"p(	qYA{!QBKK*>ʐ2ۜTJ
+cЙ	{T<H <dmw~sN.ڎbC:$$Gw\	LƒbWeĭ#<YȔlJЙn<:VeQE$$aseyAeAPXH.dm30gT59*Յ5Բo?ccޏV[B#Sq3Uό
+%8q-P*o0{pM`S-i4Q޴tRYxPXawA+0ʳC;ahہr ]x"}1E@Fih@&
+PޏDT,B""A b/D_,1~[R^
+UjT
+zzRVp(,be_Nd*E[uG5C&nežDL֠')]?`sYMhyLj%rjUf^MbAK;ފ
+Dm~,6A~(B_?:DKT(
+j<>4!b,HaUZKe)`V%@XEgDDJZ.JO%?[rv?),>/:W$e˥!1A!}7dН6U؁UKaUz߇6U]ߞ !x{&b&GWc( (Υ\ňutShޖ۫3f)[qIA-X5SOwԱ0$fC2P.s2%
+T 4Ht8YwM޿>V\q*T-+reerIbEZVm(I"l	r+UtZ(0$ 6P@醧"$tG}\xobeĪT;a
+[6'*claXA %(A":^ٹ}Tgt2E
+j'v;Ѡ#mA`	lOXa<Oع`m|Ѕ|\_Af؂҄="{<1ظ΂u?|?7_To*
+Z.
+fJtp[nN2
+M60x!~
+ƭhad꩝;	P$"eB2w9ಋȬp0yp99&x[3}9:
+eޱ[VI뽗maej)6p+I!g8p
+ z,=lۂYDh! ?x[)9L! +sVkbVP;Ė	W.9\zq Ͻ4?CE0\I PV87\ń/"N6D*ݧow`p9>h%oAXWp.b>bHuDnWPΪ|݌hC.Ed܉Kz&>~RrnytJmy6Cx>E!	-k,X5LJR~OL_woz/n"1NHAif%È,O)M*ӯl%[&K)^0I
+ICH&bY&ʰ{oA,Oq
+0s%TXMLښ1RpɽkIEB(\,%;Ѡ&IXbbCrn
+xX.giQJuvB@4Db4-v<rr[a	C`q^VrqS_\/+A$E"Uu2DZRQ{H&\
+=",Av"S R[b,^9P 's!v R[ :-oT&Mnn..K"`3qT-\Ш~#:WFpph]r+>߷,/_`\ܵF D6LvASXA^iH6-{މl?1s:4 /e{qRI-Ȥ!,5vlaMoе?x
+KDARvE~KIOEBZ clKZo|kԚc+x6B~<yLbpqA\~(+i;(bxAʪ8% 6 oU7
+@!HI($I)虖CJ8W93䗌!9smY@\b)>e_-KGKߑ0${cy6Y1Ue6mMAݎ[60X-=Mu6m@(l8Ĕda`uIP?$,#)(
+cp_R˷$4#51U"(HGY=:oN;M(Bį֑c"4qᯋ՛~Hz\WlXDKkh=8bhmm7NG+V6別~=
+߼)XVى3["t2-??6@ <nmM%$G9i 4U%Uptդ؃hjDqtbkW]iz<)1fA}.FH$kY E3Im~rvhYC]I[U,QK#dl,
+Q&Xtu}_[V*S6ś!)]~Y9{~no{!$Q_=w;n?g2*#;epYC4PN]4>Τ;6uԻB]奲
+im6oW]e믟
+PgO +\$?@XZE/B0\ǉ	KNa!I .(vԽWfخf5q/$e'gosA|M#۰@#zC)?5
+U.:Ry97'&zk)#ma<[F0Nh'@|OyUoJ2АqǏޯ;F  n	7ydzb2-jsdyaH.KL5})t93όfYg"[ (C0]g2ClmbL... (truncated)
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_11.json using write_to_file tool.

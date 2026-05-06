@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {"id": "backend_scripts_migrate_003_js", "label": "migrate-003.js", "file_type": "code", "source_file": "backend/scripts/migrate-003.js"},
+    {"id": "backend_scripts_run_005_migration_js", "label": "run-005-migration.js", "file_type": "code", "source_file": "backend/scripts/run-005-migration.js"},
+    {"id": "backend_scripts_run_migration_js", "label": "run-migration.js", "file_type": "code", "source_file": "backend/scripts/run-migration.js"},
+    {"id": "backend_scripts_seed_data_js", "label": "seed-data.js", "file_type": "code", "source_file": "backend/scripts/seed-data.js"},
+    {"id": "backend_scripts_setup_db_js", "label": "setup-db.js", "file_type": "code", "source_file": "backend/scripts/setup-db.js"},
+    {"id": "backend_src_server_js", "label": "server.js", "file_type": "code", "source_file": "backend/src/server.js"},
+    {"id": "backend_src_migrations_001_init_schema_sql", "label": "001_init_schema.sql", "file_type": "document", "source_file": "backend/src/migrations/001_init_schema.sql"},
+    {"id": "backend_src_migrations_002_chat_enhancements_sql", "label": "002_chat_enhancements.sql", "file_type": "document", "source_file": "backend/src/migrations/002_chat_enhancements.sql"},
+    {"id": "backend_src_migrations_003_task_full_text_search_sql", "label": "003_task_full_text_search.sql", "file_type": "document", "source_file": "backend/src/migrations/003_task_full_text_search.sql"},
+    {"id": "concept_database_initialization", "label": "Database Initialization", "file_type": "rationale", "source_file": "backend/src/migrations/001_init_schema.sql"},
+    {"id": "concept_full_text_search_impl", "label": "Full-Text Search Implementation", "file_type": "rationale", "source_file": "backend/src/migrations/003_task_full_text_search.sql"},
+    {"id": "concept_socket_io_integration", "label": "Socket.IO Integration", "file_type": "rationale", "source_file": "backend/src/server.js"}
+  ],
+  "edges": [
+    {"source": "backend_scripts_setup_db_js", "target": "backend_src_migrations_001_init_schema_sql", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/scripts/setup-db.js"},
+    {"source": "backend_scripts_migrate_003_js", "target": "backend_src_migrations_003_task_full_text_search_sql", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/scripts/migrate-003.js"},
+    {"source": "backend_src_server_js", "target": "backend_src_shared_sockets_socket", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/server.js"},
+    {"source": "backend_src_server_js", "target": "backend_src_routes_index", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/server.js"},
+    {"source": "backend_src_server_js", "target": "concept_socket_io_integration", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.95, "source_file": "backend/src/server.js"},
+    {"source": "backend_src_migrations_001_init_schema_sql", "target": "concept_database_initialization", "relation": "rationale_for", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "backend/src/migrations/001_init_schema.sql"},
+    {"source": "backend_src_migrations_003_task_full_text_search_sql", "target": "concept_full_text_search_impl", "relation": "rationale_for", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "backend/src/migrations/003_task_full_text_search.sql"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 12000,
+  "output_tokens": 1000
+}

@@ -1,0 +1,22 @@
+{
+  "nodes": [
+    {"id": "backend_src_modules_tasks_task_controller_js", "label": "task.controller.js", "file_type": "code", "source_file": "backend/src/modules/tasks/task.controller.js"},
+    {"id": "backend_src_modules_tasks_task_model_js", "label": "task.model.js", "file_type": "code", "source_file": "backend/src/modules/tasks/task.model.js"},
+    {"id": "backend_src_modules_tasks_task_routes_js", "label": "task.routes.js", "file_type": "code", "source_file": "backend/src/modules/tasks/task.routes.js"},
+    {"id": "backend_src_modules_tasks_task_service_js", "label": "task.service.js", "file_type": "code", "source_file": "backend/src/modules/tasks/task.service.js"},
+    {"id": "concept_task_caching_strategy", "label": "Task Caching Strategy", "file_type": "rationale", "source_file": "backend/src/modules/tasks/task.model.js"},
+    {"id": "concept_recurring_task_logic", "label": "Recurring Task Logic", "file_type": "rationale", "source_file": "backend/src/modules/tasks/task.service.js"},
+    {"id": "concept_task_reordering_system", "label": "Task Reordering System", "file_type": "rationale", "source_file": "backend/src/modules/tasks/task.controller.js"}
+  ],
+  "edges": [
+    {"source": "backend_src_modules_tasks_task_controller_js", "target": "backend_src_modules_tasks_task_service_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/tasks/task.controller.js"},
+    {"source": "backend_src_modules_tasks_task_controller_js", "target": "backend_src_modules_tasks_task_model_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/tasks/task.controller.js"},
+    {"source": "backend_src_modules_tasks_task_service_js", "target": "backend_src_modules_tasks_task_model_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/modules/tasks/task.service.js"},
+    {"source": "backend_src_modules_tasks_task_model_js", "target": "concept_task_caching_strategy", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "backend/src/modules/tasks/task.model.js"},
+    {"source": "backend_src_modules_tasks_task_service_js", "target": "concept_recurring_task_logic", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.95, "source_file": "backend/src/modules/tasks/task.service.js"},
+    {"source": "backend_src_modules_tasks_task_controller_js", "target": "concept_task_reordering_system", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": "backend/src/modules/tasks/task.controller.js"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 16000,
+  "output_tokens": 1300
+}

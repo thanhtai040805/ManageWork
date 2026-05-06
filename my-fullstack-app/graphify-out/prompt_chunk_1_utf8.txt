@@ -1,0 +1,1232 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 1 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\scripts\migrate-003.js ---
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
+const fs = require("fs");
+const { Pool } = require("pg");
+
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
+
+async function runMigration() {
+  try {
+    console.log("🚀 Starting migration 003: Task Full-Text Search...");
+
+    const migrationPath = path.join(
+      __dirname,
+      "../src/shared/migrations/003_task_full_text_search.sql"
+    );
+    const migrationSQL = fs.readFileSync(migrationPath, "utf8");
+
+    await pool.query(migrationSQL);
+    console.log("✅ Migration 003 completed successfully!");
+
+  } catch (error) {
+    console.error("❌ Migration failed:", error);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+}
+
+runMigration();
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\scripts\run-005-migration.js ---
+require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
+const { Pool } = require("pg");
+
+const pool = new Pool({
+  host: process.env.DB_HOST || "localhost",
+  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "postgres",
+  database: process.env.DB_NAME || "managework",
+});
+
+async function runMigration() {
+  try {
+    console.log("🚀 Running migration 005_cloudinary_files.sql...");
+    
+    const migrationPath = path.join(__dirname, "../src/migrations/005_cloudinary_files.sql");
+    const migrationSQL = fs.readFileSync(migrationPath, "utf8");
+    
+    await pool.query(migrationSQL);
+    console.log("✅ Migration 005_cloudinary_files.sql completed successfully!");
+  } catch (error) {
+    console.error("❌ Migration failed:", error.message);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+}
+
+runMigration();
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\scripts\run-migration.js ---
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
+const fs = require("fs");
+const { Pool } = require("pg");
+
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
+
+
+async function runMigration(migrationFile) {
+  try {
+    console.log(`🚀 Running migration: ${migrationFile}...`);
+    
+    const migrationPath = path.join(__dirname, "../src/migrations", migrationFile);
+    const migrationSQL = fs.readFileSync(migrationPath, "utf8");
+    
+    await pool.query(migrationSQL);
+    console.log(`✅ Migration ${migrationFile} completed successfully!`);
+  } catch (error) {
+    console.error(`❌ Migration ${migrationFile} failed:`, error.message);
+    throw error;
+  }
+}
+
+async function runMigrations() {
+  try {
+    await runMigration("012_mute_block_users.sql");
+
+    console.log("🎉 All migrations completed successfully!");
+  } catch (error) {
+    console.error("❌ Migration process failed:", error);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+}
+
+// Run migrations if this file is executed directly
+if (require.main === module) {
+  runMigrations();
+}
+
+module.exports = runMigrations;
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\scripts\seed-data.js ---
+/**
+ * Seed Data Runner
+ * Run this after all migrations are complete to populate test data
+ * 
+ * Usage: node scripts/seed-data.js
+ * 
+ * All users have password: Password123@
+ */
+
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME || 'managework',
+});
+
+async function seedData() {
+  const client = await pool.connect();
+  
+  try {
+    console.log('📦 Starting seed data insertion...');
+    
+    // Read migration file
+    const migrationPath = path.join(
+      __dirname,
+      '../src/migrations/014_seed_test_data.sql'
+    );
+    const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+    
+    // Execute seed data
+    await client.query(migrationSQL);
+    console.log('✅ Seed data inserted successfully!');
+    
+    // Verify data
+    const userCount = await client.query('SELECT COUNT(*) FROM users');
+    console.log(`👥 Total users: ${userCount.rows[0].count}`);
+    
+    const projectCount = await client.query('SELECT COUNT(*) FROM projects');
+    console.log(`📁 Total projects: ${projectCount.rows[0].count}`);
+    
+    const taskCount = await client.query('SELECT COUNT(*) FROM tasks');
+    console.log(`✅ Total tasks: ${taskCount.rows[0].count}`);
+    
+    const chatRoomCount = await client.query('SELECT COUNT(*) FROM chat_rooms');
+    console.log(`💬 Total chat rooms: ${chatRoomCount.rows[0].count}`);
+    
+    console.log('\n🎉 Seed data loaded successfully!');
+    console.log('   All users have password: Password123@');
+    
+  } catch (error) {
+    console.error('❌ Seed data insertion failed:', error.message);
+    process.exit(1);
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+// Run if executed directly
+if (require.main === module) {
+  seedData();
+}
+
+module.exports = seedData;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\scripts\setup-db.js ---
+require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
+const { Pool } = require("pg");
+
+const pool = new Pool({
+  host: process.env.DB_HOST || "localhost",
+  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "your_password_here",
+  database: process.env.DB_NAME || "managework",
+});
+
+async function setupDatabase() {
+  try {
+    console.log("🚀 Starting database setup...");
+
+    // Get all migration files in order
+    const migrationsDir = path.join(__dirname, "../src/migrations");
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    // Run each migration
+    for (const file of files) {
+      const migrationPath = path.join(migrationsDir, file);
+      const migrationSQL = fs.readFileSync(migrationPath, "utf8");
+      
+      try {
+        await pool.query(migrationSQL);
+        console.log(`✅ Migration ${file} completed`);
+      } catch (err) {
+        // Ignore "already exists" errors
+        if (!err.message.includes('already exists') && !err.message.includes('duplicate')) {
+          console.log(`⚠️  ${file}: ${err.message}`);
+        }
+      }
+    }
+
+    // Test the setup
+    const result = await pool.query("SELECT COUNT(*) FROM users");
+    console.log(`📊 Users table created with ${result.rows[0].count} records`);
+    
+    // Test other tables
+    const tables = [
+      'team_members',
+      'projects',
+      'tasks',
+      'tags',
+      'comments',
+      'chat_rooms',
+      'messages',
+      'files',
+      'events',
+      'notifications',
+      'activity_logs'
+    ];
+    for (const table of tables) {
+      try {
+        await pool.query(`SELECT COUNT(*) FROM ${table}`);
+        console.log(`✅ Table ${table} created successfully`);
+      } catch (error) {
+        console.log(`❌ Error with table ${table}:`, error.message);
+      }
+    }
+
+    console.log("🎉 Database setup completed successfully!");
+  } catch (error) {
+    console.error("❌ Database setup failed:", error);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+}
+
+// Run setup if this file is executed directly
+if (require.main === module) {
+  setupDatabase();
+}
+
+module.exports = setupDatabase;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\server.js ---
+require("dotenv").config();
+const express = require("express");
+const path = require("path");
+const http = require("http");
+const initSocket = require("./shared/sockets/socket");
+const rootRouter = require("./routes/index");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const pool = require("./shared/config/database");
+const errorHandler = require("./shared/middlewares/errorHandler");
+const { swaggerDocs } = require("./shared/config/swagger");
+const { initCronJobs } = require("./shared/cron");
+const logger = require("./shared/utils/logger");
+const { initSentry } = require("./shared/sentry");
+
+const app = express();
+const server = http.createServer(app);
+
+// ===== INIT SENTRY =====
+initSentry();
+
+// ===== UNHANDLED EXCEPTIONS =====
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error("Unhandled Rejection", { reason: String(reason) });
+  if (process.env.SENTRY_DSN) {
+    const { Sentry } = require("./shared/sentry");
+    Sentry.captureException(reason);
+  }
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception", { error: error.message });
+  if (process.env.SENTRY_DSN) {
+    const { Sentry } = require("./shared/sentry");
+    Sentry.captureException(error);
+  }
+  process.exit(1);
+});
+
+// ===== SOCKET.IO INIT =====
+const io = initSocket(server);
+
+// Security middleware
+app.use(helmet());
+
+// CORS configuration
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
+// Logging
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
+
+// Middleware
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     tags: [Health]
+ *     summary: Health check
+ *     security: []
+ */
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
+// Redis health check
+app.get("/health/redis", async (req, res) => {
+  const { redis } = require("./shared/redis/redis");
+  
+  if (!redis) {
+    return res.status(503).json({
+      status: "unavailable",
+      reason: "Redis is disabled",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  try {
+    const start = Date.now();
+    await redis.ping();
+    const latency = Date.now() - start;
+
+    const onlineUsers = await redis.smembers("online_users");
+    
+    res.status(200).json({
+      status: "healthy",
+      latency_ms: latency,
+      online_users_count: onlineUsers.length,
+      online_users: onlineUsers,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "error",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// Swagger documentation
+swaggerDocs(app);
+
+// Routes
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/v1/api", rootRouter);
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
+const port = process.env.PORT || 8888;
+
+// Start server with database connection test
+(async () => {
+  try {
+    const client = await pool.connect();
+    logger.info("Connected to PostgreSQL successfully");
+
+    const result = await client.query("SELECT NOW()");
+    logger.debug("DB Time: " + result.rows[0].now);
+
+    client.release();
+
+    server.listen(port, () => {
+      logger.info(`Swagger docs available at http://localhost:${port}/api-docs`);
+      logger.info(`Backend + Socket.IO running on http://localhost:${port}`);
+      
+      if (process.env.REDIS_ENABLED === "true") {
+        const { redis } = require("./shared/redis/redis");
+        if (redis) {
+          redis.del("online_users").then(() => {
+            logger.info("Cleared stale online_users in Redis");
+          });
+        }
+      }
+
+      initCronJobs();
+      logger.info("Cron jobs started successfully");
+    });
+  } catch (error) {
+    logger.error("Error connecting to DB", { error: error.message });
+    process.exit(1);
+  }
+})();
+
+module.exports = { app, io };
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\001_init_schema.sql ---
+BEGIN;
+
+-- Needed for gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Drop in dependency order to allow re-running safely
+DROP TABLE IF EXISTS message_attachments CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS chat_room_members CASCADE;
+DROP TABLE IF EXISTS chat_rooms CASCADE;
+DROP TABLE IF EXISTS files CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS team_members CASCADE;
+DROP TABLE IF EXISTS activity_logs CASCADE;
+DROP TABLE IF EXISTS reminders CASCADE;
+DROP TABLE IF EXISTS events CASCADE;
+DROP TABLE IF EXISTS task_tags CASCADE;
+DROP TABLE IF EXISTS tags CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS subtasks CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+DROP TABLE IF EXISTS project_members CASCADE;
+DROP TABLE IF EXISTS projects CASCADE;
+DROP TABLE IF EXISTS recurring_tasks CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- ==============
+-- Core
+-- ==============
+CREATE TABLE users (
+  user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  avatar_url TEXT,
+  role TEXT NOT NULL DEFAULT 'member',
+  theme_color TEXT NOT NULL DEFAULT '#f87171',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE projects (
+  project_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT,
+  description TEXT,
+  owner_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_projects_owner_id ON projects(owner_id);
+CREATE INDEX idx_projects_created_at ON projects(created_at DESC);
+
+-- Join table for project members
+CREATE TABLE project_members (
+  project_id UUID NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'viewer',
+  joined_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_project_members_project_id ON project_members(project_id);
+CREATE INDEX idx_project_members_user_id ON project_members(user_id);
+
+CREATE TABLE recurring_tasks (
+  recurring_task_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
+  title TEXT,
+  description TEXT,
+  priority TEXT NOT NULL DEFAULT 'medium',
+  start_date TIMESTAMP NOT NULL,
+  end_date TIMESTAMP NOT NULL,
+  repeat_type TEXT NOT NULL,
+  repeat_days INTEGER[] NOT NULL DEFAULT '{}'::integer[],
+  created_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  assigned_to UUID REFERENCES users(user_id) ON DELETE SET NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_recurring_tasks_created_by ON recurring_tasks(created_by);
+CREATE INDEX idx_recurring_tasks_project_id ON recurring_tasks(project_id);
+CREATE INDEX idx_recurring_tasks_is_active ON recurring_tasks(is_active);
+
+CREATE TABLE tasks (
+  task_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES projects(project_id) ON DELETE SET NULL,
+  title TEXT,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'todo',
+  priority TEXT NOT NULL DEFAULT 'medium',
+  start_date TIMESTAMP,
+  due_date TIMESTAMP,
+  order_index INTEGER NOT NULL,
+  created_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  assigned_to UUID REFERENCES users(user_id) ON DELETE SET NULL,
+  recurring_task_id UUID REFERENCES recurring_tasks(recurring_task_id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_tasks_project_id ON tasks(project_id);
+CREATE INDEX idx_tasks_created_by ON tasks(created_by);
+CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
+CREATE INDEX idx_tasks_recurring_task_id ON tasks(recurring_task_id);
+CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+
+CREATE TABLE subtasks (
+  subtask_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  title TEXT,
+  is_done BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_subtasks_task_id ON subtasks(task_id);
+
+CREATE TABLE comments (
+  comment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  content TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_comments_task_id ON comments(task_id);
+CREATE INDEX idx_comments_user_id ON comments(user_id);
+
+CREATE TABLE tags (
+  tag_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT,
+  color TEXT
+);
+
+CREATE INDEX idx_tags_name ON tags(name);
+
+CREATE TABLE task_tags (
+  task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  tag_id UUID NOT NULL REFERENCES tags(tag_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_task_tags_task_id ON task_tags(task_id);
+CREATE INDEX idx_task_tags_tag_id ON task_tags(tag_id);
+
+-- ==============
+-- Calendar/Event
+-- ==============
+CREATE TABLE events (
+  event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  title TEXT,
+  description TEXT,
+  start_time TIMESTAMP,
+  end_time TIMESTAMP,
+  location TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_events_user_id ON events(user_id);
+CREATE INDEX idx_events_start_time ON events(start_time);
+
+CREATE TABLE reminders (
+  reminder_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
+  remind_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_reminders_event_id ON reminders(event_id);
+CREATE INDEX idx_reminders_remind_at ON reminders(remind_at);
+
+-- ==============
+-- Activity / Notifications / Files
+-- ==============
+CREATE TABLE activity_logs (
+  log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  task_id UUID REFERENCES tasks(task_id) ON DELETE SET NULL,
+  action TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
+CREATE INDEX idx_activity_logs_task_id ON activity_logs(task_id);
+CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at DESC);
+
+CREATE TABLE notifications (
+  notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_notifications_user_created_at ON notifications(user_id, created_at DESC);
+CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read);
+
+-- Chat
+CREATE TABLE chat_rooms (
+  room_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT,
+  is_group BOOLEAN,
+  created_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  last_message_at TIMESTAMP,
+  last_message_id UUID
+);
+
+CREATE INDEX idx_chat_rooms_last_message_at ON chat_rooms(last_message_at DESC);
+
+CREATE TABLE chat_room_members (
+  room_id UUID NOT NULL REFERENCES chat_rooms(room_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member',
+  joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  last_read_message_id UUID,
+  last_read_at TIMESTAMP,
+  unread_count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (room_id, user_id)
+);
+
+CREATE INDEX idx_chat_room_members_user_id ON chat_room_members(user_id);
+CREATE INDEX idx_chat_room_members_room_id ON chat_room_members(room_id);
+CREATE INDEX idx_chat_room_members_user_room ON chat_room_members(user_id, room_id);
+
+CREATE TABLE messages (
+  message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id UUID NOT NULL REFERENCES chat_rooms(room_id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  content TEXT,
+  message_type TEXT NOT NULL DEFAULT 'text',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  edited_at TIMESTAMP,
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX idx_messages_room_created ON messages(room_id, created_at DESC, message_id DESC);
+
+CREATE TABLE message_attachments (
+  attachment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id UUID NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
+  attachment_url TEXT NOT NULL,
+  attachment_type TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_message_attachments_message_id ON message_attachments(message_id);
+
+-- File attachments for tasks or messages
+CREATE TABLE files (
+  file_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  file_url TEXT NOT NULL,
+  file_type TEXT NOT NULL,
+  uploaded_by UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  task_id UUID REFERENCES tasks(task_id) ON DELETE SET NULL,
+  message_id UUID REFERENCES messages(message_id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_files_uploaded_by ON files(uploaded_by);
+CREATE INDEX idx_files_task_id ON files(task_id);
+CREATE INDEX idx_files_message_id ON files(message_id);
+
+-- Minimal table for team activity stats (only referenced by user/activity queries)
+CREATE TABLE team_members (
+  team_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  PRIMARY KEY (team_id, user_id)
+);
+
+CREATE INDEX idx_team_members_user_id ON team_members(user_id);
+
+COMMIT;
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\002_chat_enhancements.sql ---
+BEGIN;
+
+-- Add columns to messages table
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS parent_message_id UUID REFERENCES messages(message_id) ON DELETE SET NULL;
+
+-- Add columns to chat_rooms table
+ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS description TEXT;
+
+-- Create message_reactions table
+CREATE TABLE IF NOT EXISTS message_reactions (
+    reaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    reaction_type TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(message_id, user_id, reaction_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_reactions_message_id ON message_reactions(message_id);
+
+COMMIT;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\003_task_full_text_search.sql ---
+BEGIN;
+
+-- Add search_vector column to tasks table
+ALTER TABLE tasks ADD COLUMN search_vector tsvector;
+
+-- Create a GIN index on search_vector
+CREATE INDEX idx_tasks_search_vector ON tasks USING gin(search_vector);
+
+-- Function to update search_vector
+CREATE OR REPLACE FUNCTION tasks_search_vector_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('simple', coalesce(NEW.title, '')), 'A') ||
+    setweight(to_tsvector('simple', coalesce(NEW.description, '')), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+-- Trigger to automatically update search_vector on INSERT or UPDATE
+DROP TRIGGER IF EXISTS trg_tasks_search_vector_update ON tasks;
+CREATE TRIGGER trg_tasks_search_vector_update
+BEFORE INSERT OR UPDATE ON tasks
+FOR EACH ROW
+EXECUTE FUNCTION tasks_search_vector_trigger();
+
+-- Backfill search_vector for existing tasks
+UPDATE tasks SET search_vector = 
+  setweight(to_tsvector('simple', coalesce(title, '')), 'A') ||
+  setweight(to_tsvector('simple', coalesce(description, '')), 'B');
+
+COMMIT;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\004_task_dependencies.sql ---
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS task_dependencies (
+  dependency_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  depends_on_task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+  dependency_type TEXT NOT NULL DEFAULT 'blocking',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_task_dependencies_task_id ON task_dependencies(task_id);
+CREATE INDEX idx_task_dependencies_depends_on_task_id ON task_dependencies(depends_on_task_id);
+CREATE UNIQUE INDEX idx_task_dependencies_unique ON task_dependencies(task_id, depends_on_task_id);
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\005_cloudinary_files.sql ---
+-- Migration: Add Cloudinary columns to files table
+-- This adds support for cloud storage with Cloudinary
+
+BEGIN;
+
+-- Add new columns for Cloudinary integration
+ALTER TABLE files ADD COLUMN IF NOT EXISTS cloudinary_public_id VARCHAR(500);
+ALTER TABLE files ADD COLUMN IF NOT EXISTS file_size BIGINT;
+ALTER TABLE files ADD COLUMN IF NOT EXISTS original_filename VARCHAR(255);
+ALTER TABLE files ADD COLUMN IF NOT EXISTS context_type VARCHAR(50) DEFAULT 'task';
+ALTER TABLE files ADD COLUMN IF NOT EXISTS project_id UUID REFERENCES projects(project_id) ON DELETE SET NULL;
+
+-- Create index for new columns
+CREATE INDEX IF NOT EXISTS idx_files_context_type ON files(context_type);
+CREATE INDEX IF NOT EXISTS idx_files_project_id ON files(project_id);
+CREATE INDEX IF NOT EXISTS idx_files_cloudinary_public_id ON files(cloudinary_public_id);
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\006_recurring_tasks_nullable_project.sql ---
+-- Make project_id nullable in recurring_tasks for tasks without project
+
+BEGIN;
+
+ALTER TABLE recurring_tasks 
+ALTER COLUMN project_id DROP NOT NULL;
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\008_templates_time_tracking.sql ---
+BEGIN;
+
+-- Time Tracking
+DROP TABLE IF EXISTS time_entries CASCADE;
+
+CREATE TABLE time_entries (
+  entry_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID REFERENCES tasks(task_id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  duration_minutes INTEGER NOT NULL DEFAULT 0,
+  description TEXT,
+  started_at TIMESTAMP NOT NULL,
+  ended_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_time_entries_task_id ON time_entries(task_id);
+CREATE INDEX idx_time_entries_user_id ON time_entries(user_id);
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\009_channels.sql ---
+BEGIN;
+
+-- Channel Categories (folders to organize channels)
+DROP TABLE IF EXISTS channel_categories CASCADE;
+
+CREATE TABLE channel_categories (
+  category_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) NOT NULL,
+  project_id UUID REFERENCES projects(project_id) ON DELETE CASCADE,
+  created_by UUID REFERENCES users(user_id) ON DELETE SET NULL,
+  position INTEGER DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_channel_categories_project ON channel_categories(project_id);
+
+-- Channels
+DROP TABLE IF EXISTS channels CASCADE;
+
+CREATE TABLE channels (
+  channel_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) NOT NULL,
+  category_id UUID REFERENCES channel_categories(category_id) ON DELETE SET NULL,
+  project_id UUID REFERENCES projects(project_id) ON DELETE CASCADE,
+  is_public BOOLEAN DEFAULT true,
+  description TEXT,
+  created_by UUID REFERENCES users(user_id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_channels_project ON channels(project_id);
+CREATE INDEX idx_channels_category ON channels(category_id);
+
+-- Channel Members (for private channels)
+DROP TABLE IF EXISTS channel_members CASCADE;
+
+CREATE TABLE channel_members (
+  channel_id UUID REFERENCES channels(channel_id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  role VARCHAR(20) DEFAULT 'member',
+  joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (channel_id, user_id)
+);
+
+CREATE INDEX idx_channel_members_user ON channel_members(user_id);
+
+-- Add channel_id to existing chat_rooms for integration
+ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS channel_id UUID REFERENCES channels(channel_id) ON DELETE SET NULL;
+
+-- Add project_id to chat_rooms (some group chats may be project-related)
+ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS project_id UUID REFERENCES projects(project_id) ON DELETE SET NULL;
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\010_message_read_status.sql ---
+BEGIN;
+
+-- Add read status to messages
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
+
+-- Create table for message read receipts (who read which message)
+DROP TABLE IF EXISTS message_reads CASCADE;
+
+CREATE TABLE message_reads (
+  message_id UUID REFERENCES messages(message_id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  read_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (message_id, user_id)
+);
+
+CREATE INDEX idx_message_reads_user ON message_reads(user_id);
+CREATE INDEX idx_message_reads_message ON message_reads(message_id);
+
+-- Add last_read_at to chat_room_members for room-level read status
+ALTER TABLE chat_room_members ADD COLUMN IF NOT EXISTS last_read_message_id UUID;
+ALTER TABLE chat_room_members ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMP;
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\012_mute_block_users.sql ---
+BEGIN;
+
+-- User mute settings (mute notifications from specific users)
+DROP TABLE IF EXISTS user_mutes CASCADE;
+
+CREATE TABLE user_mutes (
+  mute_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  muted_user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, muted_user_id)
+);
+
+CREATE INDEX idx_user_mutes_user ON user_mutes(user_id);
+
+-- User block settings (block users from contacting)
+DROP TABLE IF EXISTS user_blocks CASCADE;
+
+CREATE TABLE user_blocks (
+  block_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  blocked_user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, blocked_user_id)
+);
+
+CREATE INDEX idx_user_blocks_user ON user_blocks(user_id);
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\013_channel_unique_name.sql ---
+-- Add unique constraint on channel name per project
+-- Delete duplicates keeping the oldest
+DELETE FROM channels 
+WHERE EXISTS (
+  SELECT 1 FROM channels c2 
+  WHERE c2.project_id = channels.project_id 
+    AND LOWER(c2.name) = LOWER(channels.name)
+    AND c2.created_at < channels.created_at
+);
+
+-- Add unique constraint
+CREATE UNIQUE INDEX idx_channel_name_project ON channels(LOWER(name), project_id) 
+WHERE name IS NOT NULL AND project_id IS NOT NULL;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\014_seed_test_data.sql ---
+-- Seed Data Migration: 20 Users with comprehensive test data
+-- Run after all schema migrations
+-- Password for all users: Password123@
+
+BEGIN;
+
+-- Clear existing test users first (if re-running)
+DELETE FROM users WHERE username LIKE 'user%';
+DELETE FROM projects WHERE name IS NOT NULL;
+DELETE FROM tasks WHERE task_id IS NOT NULL;
+DELETE FROM tags WHERE tag_id IS NOT NULL;
+DELETE FROM subtasks WHERE subtask_id IS NOT NULL;
+DELETE FROM comments WHERE comment_id IS NOT NULL;
+DELETE FROM activity_logs WHERE log_id IS NOT NULL;
+DELETE FROM chat_rooms WHERE room_id IS NOT NULL;
+DELETE FROM messages WHERE message_id IS NOT NULL;
+DELETE FROM notifications WHERE notification_id IS NOT NULL;
+DELETE FROM events WHERE event_id IS NOT NULL;
+DELETE FROM channels WHERE channel_id IS NOT NULL;
+
+-- ============================================
+-- USERS (User1 - User20)
+-- ============================================
+INSERT INTO users (user_id, username, email, password_hash, full_name, avatar_url, role, theme_color, created_at, updated_at) VALUES
+(gen_random_uuid(), 'user1', 'user1@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User One', NULL, 'admin', '#f87171', NOW(), NOW()),
+(gen_random_uuid(), 'user2', 'user2@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Two', NULL, 'member', '#60a5fa', NOW(), NOW()),
+(gen_random_uuid(), 'user3', 'user3@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Three', NULL, 'member', '#34d399', NOW(), NOW()),
+(gen_random_uuid(), 'user4', 'user4@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Four', NULL, 'member', '#a78bfa', NOW(), NOW()),
+(gen_random_uuid(), 'user5', 'user5@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Five', NULL, 'member', '#fbbf24', NOW(), NOW()),
+(gen_random_uuid(), 'user6', 'user6@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Six', NULL, 'member', '#f472b6', NOW(), NOW()),
+(gen_random_uuid(), 'user7', 'user7@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Seven', NULL, 'member', '#22d3d8', NOW(), NOW()),
+(gen_random_uuid(), 'user8', 'user8@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Eight', NULL, 'member', '#a3e635', NOW(), NOW()),
+(gen_random_uuid(), 'user9', 'user9@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Nine', NULL, 'member', '#c084fc', NOW(), NOW()),
+(gen_random_uuid(), 'user10', 'user10@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Ten', NULL, 'member', '#fb923c', NOW(), NOW()),
+(gen_random_uuid(), 'user11', 'user11@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Eleven', NULL, 'member', '#818cf8', NOW(), NOW()),
+(gen_random_uuid(), 'user12', 'user12@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Twelve', NULL, 'member', '#2dd4bf', NOW(), NOW()),
+(gen_random_uuid(), 'user13', 'user13@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Thirteen', NULL, 'member', '#facc15', NOW(), NOW()),
+(gen_random_uuid(), 'user14', 'user14@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Fourteen', NULL, 'member', '#e879f9', NOW(), NOW()),
+(gen_random_uuid(), 'user15', 'user15@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Fifteen', NULL, 'member', '#38bdf8', NOW(), NOW()),
+(gen_random_uuid(), 'user16', 'user16@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Sixteen', NULL, 'member', '#4ade80', NOW(), NOW()),
+(gen_random_uuid(), 'user17', 'user17@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Seventeen', NULL, 'member', '#f87171', NOW(), NOW()),
+(gen_random_uuid(), 'user18', 'user18@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Eighteen', NULL, 'member', '#fb7185', NOW(), NOW()),
+(gen_random_uuid(), 'user19', 'user19@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Nineteen', NULL, 'member', '#a5f3fc', NOW(), NOW()),
+(gen_random_uuid(), 'user20', 'user20@test.com', '$2b$10$z7nAndn5afLknwacJKNUh.6nm0OuYkhQAA6JL3rG0RK7alIUIe2Wq', 'User Twenty', NULL, 'member', '#dcfce7', NOW(), NOW());
+
+-- ============================================
+-- PROJECTS (10 projects)
+-- ============================================
+INSERT INTO projects (project_id, name, description, owner_id, created_at, updated_at) VALUES
+(gen_random_uuid(), 'Website Redesign', 'Complete redesign of company website with new branding', (SELECT user_id FROM users WHERE username = 'user1'), NOW(), NOW()),
+(gen_random_uuid(), 'Mobile App', 'Build cross-platform mobile application', (SELECT user_id FROM users WHERE username = 'user2'), NOW(), NOW()),
+(gen_random_uuid(), 'Marketing Campaign', 'Q2 marketing and social media campaign', (SELECT user_id FROM users WHERE username = 'user3'), NOW(), NOW()),
+(gen_random_uuid(), 'Internal Tools', 'Build internal tools for team productivity', (SELECT user_id FROM users WHERE username = 'user1'), NOW(), NOW()),
+(gen_random_uuid(), 'Data Analysis', 'Analyze customer data and create reports', (SELECT user_id FROM users WHERE username = 'user4'), NOW(), NOW()),
+(gen_random_uuid(), 'Customer Portal', 'New customer self-service portal', (SELECT user_id FROM users WHERE username = 'user2'), NOW(), NOW()),
+(gen_random_uuid(), 'API Integration', 'Integrate third-party APIs', (SELECT user_id FROM users WHERE username = 'user5'), NOW(), NOW()),
+(gen_random_uuid(), 'Security Audit', 'Comprehensive security review', (SELECT user_id FROM users WHERE username = 'user6'), NOW(), NOW()),
+(gen_random_uuid(), 'Documentation', 'Technical documentation updates', (SELECT user_id FROM users WHERE username = 'user3'), NOW(), NOW()),
+(gen_random_uuid(), 'Training Program', 'Employee training and onboarding', (SELECT user_id FROM users WHERE username = 'user7'), NOW(), NOW());
+
+-- ============================================
+-- PROJECT MEMBERS
+-- ============================================
+INSERT INTO project_members (project_id, user_id, role, joined_at) VALUES
+((SELECT project_id FROM projects WHERE name = 'Website Redesign'), (SELECT user_id FROM users WHERE username = 'user2'), 'member', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Website Redesign'), (SELECT user_id FROM users WHERE username = 'user3'), 'admin', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Website Redesign'), (SELECT user_id FROM users WHERE username = 'user4'), 'viewer', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Mobile App'), (SELECT user_id FROM users WHERE username = 'user1'), 'member', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Mobile App'), (SELECT user_id FROM users WHERE username = 'user5'), 'admin', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Marketing Campaign'), (SELECT user_id FROM users WHERE username = 'user6'), 'member', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Marketing Campaign'), (SELECT user_id FROM users WHERE username = 'user7'), 'member', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Internal Tools'), (SELECT user_id FROM users WHERE username = 'user9'), 'admin', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Internal Tools'), (SELECT user_id FROM users WHERE username = 'user10'), 'member', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Data Analysis'), (SELECT user_id FROM users WHERE username = 'user11'), 'admin', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Data Analysis'), (SELECT user_id FROM users WHERE username = 'user12'), 'member', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Data Analysis'), (SELECT user_id FROM users WHERE username = 'user13'), 'member', NOW());
+
+-- ============================================
+-- TASKS (31 tasks)
+-- ============================================
+INSERT INTO tasks (project_id, title, description, status, priority, start_date, due_date, order_index, created_by, assigned_to, created_at, updated_at) VALUES
+((SELECT project_id FROM projects WHERE name = 'Website Redesign'), 'Design homepage mockup', 'Create initial design for new homepage', 'done', 'high', NOW() - INTERVAL '10 days', NOW() - INTERVAL '5 days', 0, (SELECT user_id FROM users WHERE username = 'user1'), (SELECT user_id FROM users WHERE username = 'user2'), NOW() - INTERVAL '10 days', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Website Redesign'), 'Implement responsive header', 'Build responsive navigation header', 'in_progress', 'high', NOW() - INTERVAL '5 days', NOW() + INTERVAL '3 days', 1, (SELECT user_id FROM users WHERE username = 'user1'), (SELECT user_id FROM users WHERE username = 'user2'), NOW() - INTERVAL '5 days', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Website Redesign'), 'Create contact form', 'Design and implement contact form', 'todo', 'medium', NOW() - INTERVAL '3 days', NOW() + INTERVAL '7 days', 2, (SELECT user_id FROM users WHERE username = 'user1'), (SELECT user_id FROM users WHERE username = 'user3'), NOW() - INTERVAL '3 days', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Website Redesign'), 'SEO optimization', 'Implement SEO best practices', 'todo', 'low', NOW(), NOW() + INTERVAL '14 days', 3, (SELECT user_id FROM users WHERE username = 'user1'), NULL, NOW(), NOW()),
+((SELECT project_id FROM projects WHERE name = 'Website Redesign'), 'Mobile responsive design', 'Ensure all pages work on mobile', 'in_progress', 'high', NOW() - INTERVAL '2 days', NOW() + INTERVAL '5 days', 4, (SELECT user_id FROM users WHERE username = 'user3'), (SELECT user_id FROM users WHERE username = 'user4'), NOW() - INTERVAL '2 days', NOW()),
+((SELECT project_id FROM projects WHERE name = 'Mobile App'), 'Setup React Native project', 'Initi... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\015_add_pin_feature.sql ---
+-- Add pin feature to messages and chat_rooms
+BEGIN;
+
+-- Add is_pinned to messages
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMP;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by UUID REFERENCES users(user_id);
+
+-- Add is_pinned to chat_rooms (for DMs/Groups)
+ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMP;
+
+-- Add is_pinned to channels
+ALTER TABLE channels ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+ALTER TABLE channels ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMP;
+ALTER TABLE channels ADD COLUMN IF NOT EXISTS pinned_by UUID REFERENCES users(user_id);
+
+-- Create index for pinned messages
+CREATE INDEX IF NOT EXISTS idx_messages_pinned ON messages(room_id, is_pinned) WHERE is_pinned = true;
+CREATE INDEX IF NOT EXISTS idx_chat_rooms_pinned ON chat_rooms(is_pinned) WHERE is_pinned = true;
+CREATE INDEX IF NOT EXISTS idx_channels_pinned ON channels(project_id, is_pinned) WHERE is_pinned = true;
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\migrations\016_channel_posts_replies.sql ---
+-- Channel Posts and Replies (Thread system for channels)
+BEGIN;
+
+-- Channel Posts (like threads)
+CREATE TABLE IF NOT EXISTS channel_posts (
+  post_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id UUID NOT NULL REFERENCES channels(channel_id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  is_pinned BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_channel_posts_channel ON channel_posts(channel_id);
+CREATE INDEX idx_channel_posts_author ON channel_posts(author_id);
+CREATE INDEX idx_channel_posts_pinned ON channel_posts(channel_id, is_pinned) WHERE is_pinned = true;
+
+-- Channel Replies (responses to posts)
+CREATE TABLE IF NOT EXISTS channel_replies (
+  reply_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES channel_posts(post_id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_channel_replies_post ON channel_replies(post_id);
+CREATE INDEX idx_channel_replies_author ON channel_replies(author_id);
+
+COMMIT;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\activity\activity.controller.js ---
+const express = require("express");
+const router = express.Router();
+const ActivityLog = require("../../shared/models/activityLog.model");
+
+const getUserActivity = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { limit = 50, offset = 0, days = null, date = null } = req.query;
+    const logs = await ActivityLog.getUserActivityLogs(userId, limit, offset, days, date);
+    res.json(logs);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskActivity = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+    const logs = await ActivityLog.getTaskActivityLogs(taskId, limit, offset);
+    res.json(logs);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getProjectActivity = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+    const logs = await ActivityLog.getProjectActivityLogs(projectId, limit, offset);
+    res.json(logs);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTeamActivity = async (req, res, next) => {
+  try {
+    const { teamId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+    const logs = await ActivityLog.getTeamActivityLogs(teamId, limit, offset);
+    res.json(logs);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getActivityStats = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { days = 30 } = req.query;
+    const stats = await ActivityLog.getActivityStats(userId, days);
+    res.json(stats);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getUserActivity,
+  getTaskActivity,
+  getProjectActivity,
+  getTeamActivity,
+  getActivityStats
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\activity\activity.routes.js ---
+const express = require("express");
+const router = express.Router();
+const activityController = require("./activity.controller");
+const auth = require("../../shared/middlewares/auth");
+
+router.use(auth);
+
+router.get("/", activityController.getUserActivity);
+router.get("/task/:taskId", activityController.getTaskActivity);
+router.get("/project/:projectId", activityController.getProjectActivity);
+router.get("/team/:teamId", activityController.getTeamActivity);
+router.get("/stats", activityController.getActivityStats);
+
+module.exports = router;
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_1.json using write_to_file tool.

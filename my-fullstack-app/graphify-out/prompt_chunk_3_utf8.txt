@@ -1,0 +1,1476 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 3 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\files\file.validation.js ---
+const { body, param } = require("express-validator");
+
+const taskIdParamValidation = [
+  param("taskId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid task ID"),
+];
+
+const fileIdParamValidation = [
+  param("fileId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid file ID"),
+];
+
+module.exports = {
+  taskIdParamValidation,
+  fileIdParamValidation,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\files\models\file.model.js ---
+const pool = require("../../../shared/config/database");
+
+class File {
+  static async create(fileData) {
+    const { 
+      fileUrl, 
+      fileType, 
+      uploadedBy, 
+      taskId = null, 
+      messageId = null,
+      cloudinaryPublicId = null,
+      fileSize = null,
+      originalFilename = null
+    } = fileData;
+    const query = `
+      INSERT INTO files (file_url, file_type, uploaded_by, task_id, message_id, cloudinary_public_id, file_size, original_filename)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `;
+    
+    try {
+      const result = await pool.query(query, [fileUrl, fileType, uploadedBy, taskId, messageId, cloudinaryPublicId, fileSize, originalFilename]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating file record:", error);
+      throw error;
+    }
+  }
+
+  static async findByTaskId(taskId) {
+    const query = `
+      SELECT f.*, u.full_name as uploader_name
+      FROM files f
+      JOIN users u ON f.uploaded_by = u.user_id
+      WHERE f.task_id = $1
+      ORDER BY f.created_at DESC
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error finding files by task id:", error);
+      throw error;
+    }
+  }
+
+  static async delete(fileId) {
+    const query = `DELETE FROM files WHERE file_id = $1 RETURNING *`;
+    
+    try {
+      const result = await pool.query(query, [fileId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error deleting file record:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = File;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\notifications\notification.controller.js ---
+const Notification = require("./notification.model");
+
+const getUserNotifications = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { limit, offset } = req.query;
+    const notifications = await Notification.getUserNotifications(userId, limit, offset);
+    res.json(notifications);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getUnreadCount = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const stats = await Notification.getNotificationStats(userId);
+    res.json({ unreadCount: parseInt(stats.unread_notifications || 0) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const markAsRead = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const notification = await Notification.markAsRead(id);
+    res.json(notification);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const markAllAsRead = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const notifications = await Notification.markAllAsRead(userId);
+    res.json(notifications);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getUserNotifications,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\notifications\notification.model.js ---
+const pool = require("../../shared/config/database");
+
+class Notification {
+  static async create(notificationData) {
+    const { userId, type, message } = notificationData;
+    const query = `
+      INSERT INTO notifications (user_id, type, message, is_read, created_at)
+      VALUES ($1, $2, $3, FALSE, NOW())
+      RETURNING notification_id, user_id, type, message, is_read, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId, type, message]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      throw error;
+    }
+  }
+
+  static async findById(notificationId) {
+    const query = `
+      SELECT notification_id, user_id, type, message, is_read, created_at
+      FROM notifications 
+      WHERE notification_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [notificationId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding notification by id:", error);
+      throw error;
+    }
+  }
+
+  static async getUserNotifications(userId, limit = 50, offset = 0) {
+    const query = `
+      SELECT notification_id, user_id, type, message, is_read, created_at
+      FROM notifications 
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId, limit, offset]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting user notifications:", error);
+      throw error;
+    }
+  }
+
+  static async getUnreadNotifications(userId) {
+    const query = `
+      SELECT notification_id, user_id, type, message, is_read, created_at
+      FROM notifications 
+      WHERE user_id = $1 AND is_read = FALSE
+      ORDER BY created_at DESC
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting unread notifications:", error);
+      throw error;
+    }
+  }
+
+  static async markAsRead(notificationId) {
+    const query = `
+      UPDATE notifications 
+      SET is_read = TRUE
+      WHERE notification_id = $1
+      RETURNING notification_id, user_id, type, message, is_read, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [notificationId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      throw error;
+    }
+  }
+
+  static async markAllAsRead(userId) {
+    const query = `
+      UPDATE notifications 
+      SET is_read = TRUE
+      WHERE user_id = $1 AND is_read = FALSE
+      RETURNING notification_id, user_id, type, message, is_read, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      throw error;
+    }
+  }
+
+  static async delete(notificationId) {
+    const query = `DELETE FROM notifications WHERE notification_id = $1`;
+    
+    try {
+      await pool.query(query, [notificationId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      throw error;
+    }
+  }
+
+  static async deleteOldNotifications(userId, daysOld = 30) {
+    const query = `
+      DELETE FROM notifications 
+      WHERE user_id = $1 AND created_at < NOW() - INTERVAL '${daysOld} days'
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rowCount;
+    } catch (error) {
+      console.error("Error deleting old notifications:", error);
+      throw error;
+    }
+  }
+
+  static async getNotificationStats(userId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_notifications,
+        COUNT(CASE WHEN is_read = FALSE THEN 1 END) as unread_notifications,
+        COUNT(CASE WHEN type = 'task' THEN 1 END) as task_notifications,
+        COUNT(CASE WHEN type = 'chat' THEN 1 END) as chat_notifications,
+        COUNT(CASE WHEN type = 'event' THEN 1 END) as event_notifications
+      FROM notifications 
+      WHERE user_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting notification stats:", error);
+      throw error;
+    }
+  }
+
+  // Helper methods for creating specific types of notifications
+  static async createTaskNotification(userId, message) {
+    return this.create({ userId, type: 'task', message });
+  }
+
+  static async createChatNotification(userId, message) {
+    return this.create({ userId, type: 'chat', message });
+  }
+
+  static async createEventNotification(userId, message) {
+    return this.create({ userId, type: 'event', message });
+  }
+
+  static async createSystemNotification(userId, message) {
+    return this.create({ userId, type: 'system', message });
+  }
+}
+
+module.exports = Notification;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\notifications\notification.routes.js ---
+const express = require("express");
+const router = express.Router();
+const notificationController = require("./notification.controller");
+const authMiddleware = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const { notificationIdParamValidation } = require("./notification.validation");
+
+router.use(authMiddleware);
+
+router.get("/", notificationController.getUserNotifications);
+router.get("/unread-count", notificationController.getUnreadCount);
+router.put("/mark-all-read", notificationController.markAllAsRead);
+router.put("/:id/read", validate(notificationIdParamValidation), notificationController.markAsRead);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\notifications\notification.validation.js ---
+const { param } = require("express-validator");
+
+const notificationIdParamValidation = [
+  param("id").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid notification ID"),
+];
+
+module.exports = {
+  notificationIdParamValidation,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\projects\project.controller.js ---
+const projectModel = require("./project.model");
+const taskModel = require("../tasks/task.model");
+const Notification = require("../notifications/notification.model");
+const socketEmitter = require("../../shared/sockets/socketEmitter");
+
+const createProject = async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    const ownerId = req.user.uid;
+
+    if (!name) {
+      return res.status(400).json({
+        message: "Project name is required",
+      });
+    }
+
+    const project = await projectModel.create({
+      name,
+      description,
+      ownerId,
+    });
+
+    // Add owner as admin member
+    await projectModel.addMember(project.project_id, ownerId, "admin");
+
+    return res.status(201).json({
+      message: "Project created successfully",
+      data: project,
+    });
+  } catch (error) {
+    console.error("Error creating project:", error);
+    return res.status(500).json({
+      message: "Error creating project",
+      error: error.message,
+    });
+  }
+};
+
+const getProjects = async (req, res) => {
+  try {
+    const userId = req.user.uid;
+    const projects = await projectModel.getUserProjects(userId);
+    return res.status(200).json(projects);
+  } catch (error) {
+    console.error("Error getting projects:", error);
+    return res.status(500).json({
+      message: "Error getting projects",
+      error: error.message,
+    });
+  }
+};
+
+const getProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const project = await projectModel.findById(projectId);
+    
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    // Get project members
+    const members = await projectModel.getProjectMembers(projectId);
+    
+    // Get project stats
+    const stats = await projectModel.getProjectStats(projectId);
+    
+    // Get project tasks
+    const tasks = await taskModel.getProjectTasks(projectId);
+
+    return res.status(200).json({
+      ...project,
+      members,
+      stats,
+      tasks,
+    });
+  } catch (error) {
+    console.error("Error getting project:", error);
+    return res.status(500).json({
+      message: "Error getting project",
+      error: error.message,
+    });
+  }
+};
+
+const updateProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { name, description } = req.body;
+    const userId = req.user.uid;
+
+    // Check if user is owner or admin
+    const project = await projectModel.findById(projectId);
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    if (project.owner_id !== userId) {
+      // Check if user is admin member
+      const members = await projectModel.getProjectMembers(projectId);
+      const userMember = members.find(m => m.user_id === userId);
+      if (!userMember || userMember.role !== "admin") {
+        return res.status(403).json({
+          message: "You don't have permission to update this project",
+        });
+      }
+    }
+
+    const updatedProject = await projectModel.update(projectId, {
+      name,
+      description,
+    });
+
+    return res.status(200).json({
+      message: "Project updated successfully",
+      data: updatedProject,
+    });
+  } catch (error) {
+    console.error("Error updating project:", error);
+    return res.status(500).json({
+      message: "Error updating project",
+      error: error.message,
+    });
+  }
+};
+
+const deleteProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.uid;
+
+    const project = await projectModel.findById(projectId);
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    if (project.owner_id !== userId) {
+      return res.status(403).json({
+        message: "Only project owner can delete the project",
+      });
+    }
+
+    await projectModel.delete(projectId);
+    return res.status(200).json({
+      message: "Project deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    return res.status(500).json({
+      message: "Error deleting project",
+      error: error.message,
+    });
+  }
+};
+
+const getProjectMembers = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const members = await projectModel.getProjectMembers(projectId);
+    return res.status(200).json(members);
+  } catch (error) {
+    console.error("Error getting project members:", error);
+    return res.status(500).json({
+      message: "Error getting project members",
+      error: error.message,
+    });
+  }
+};
+
+const addProjectMember = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { user_id, role } = req.body;
+    const userId = req.user.uid;
+
+    // Check permissions
+    const project = await projectModel.findById(projectId);
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    if (project.owner_id !== userId) {
+      const members = await projectModel.getProjectMembers(projectId);
+      const userMember = members.find(m => m.user_id === userId);
+      if (!userMember || (userMember.role !== "admin" && userMember.role !== "member")) {
+        return res.status(403).json({
+          message: "You don't have permission to add members",
+        });
+      }
+    }
+
+    const member = await projectModel.addMember(projectId, user_id, role || "viewer");
+
+    // Notify the added member
+    const notification = await Notification.createEventNotification(
+      user_id,
+      `You have been added to project: ${project.name}`
+    );
+    socketEmitter.emitNotification(user_id, notification);
+
+    return res.status(201).json({
+      message: "Member added successfully",
+      data: member,
+    });
+  } catch (error) {
+    console.error("Error adding project member:", error);
+    return res.status(500).json({
+      message: "Error adding project member",
+      error: error.message,
+    });
+  }
+};
+
+const removeProjectMember = async (req, res) => {
+  try {
+    const { projectId, userId: memberUserId } = req.params;
+    const userId = req.user.uid;
+
+    // Check permissions
+    const project = await projectModel.findById(projectId);
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    if (project.owner_id !== userId && memberUserId !== userId) {
+      const members = await projectModel.getProjectMembers(projectId);
+      const userMember = members.find(m => m.user_id === userId);
+      if (!userMember || userMember.role !== "admin") {
+        return res.status(403).json({
+          message: "You don't have permission to remove members",
+        });
+      }
+    }
+
+    await projectModel.removeMember(projectId, memberUserId);
+    return res.status(200).json({
+      message: "Member removed successfully",
+    });
+  } catch (error) {
+    console.error("Error removing project member:", error);
+    return res.status(500).json({
+      message: "Error removing project member",
+      error: error.message,
+    });
+  }
+};
+
+const getProjectStats = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const stats = await projectModel.getProjectStats(projectId);
+    return res.status(200).json(stats);
+  } catch (error) {
+    console.error("Error getting project stats:", error);
+    return res.status(500).json({
+      message: "Error getting project stats",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  createProject,
+  getProjects,
+  getProject,
+  updateProject,
+  deleteProject,
+  getProjectMembers,
+  addProjectMember,
+  removeProjectMember,
+  getProjectStats,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\projects\project.model.js ---
+const pool = require("../../shared/config/database");
+
+class Project {
+  static async create(projectData) {
+    const { name, description, ownerId } = projectData;
+    const query = `
+      INSERT INTO projects (name, description, owner_id, created_at, updated_at)
+      VALUES ($1, $2, $3, NOW(), NOW())
+      RETURNING project_id, name, description, owner_id, created_at, updated_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [name, description, ownerId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating project:", error);
+      throw error;
+    }
+  }
+
+  static async findById(projectId) {
+    const query = `
+      SELECT p.project_id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
+             u.username as owner_username, u.full_name as owner_name
+      FROM projects p
+      LEFT JOIN users u ON p.owner_id = u.user_id
+      WHERE p.project_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [projectId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding project by id:", error);
+      throw error;
+    }
+  }
+
+  static async getAll() {
+    const query = `
+      SELECT p.project_id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
+             u.username as owner_username, u.full_name as owner_name
+      FROM projects p
+      LEFT JOIN users u ON p.owner_id = u.user_id
+      ORDER BY p.created_at DESC
+    `;
+    
+    try {
+      const result = await pool.query(query);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting all projects:", error);
+      throw error;
+    }
+  }
+
+  static async getUserProjects(userId) {
+    const query = `
+      SELECT DISTINCT ON (p.project_id) 
+             p.project_id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
+             u.username as owner_username, u.full_name as owner_name,
+             COALESCE(pm.role, 'admin') as user_role
+      FROM projects p
+      LEFT JOIN users u ON p.owner_id = u.user_id
+      LEFT JOIN project_members pm ON p.project_id = pm.project_id AND pm.user_id = $1
+      WHERE p.owner_id = $1 OR pm.user_id = $1
+      ORDER BY p.project_id, 
+        CASE WHEN p.owner_id = $1 THEN 0 ELSE 1 END,
+        pm.role NULLS LAST
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting user projects:", error);
+      throw error;
+    }
+  }
+
+  static async update(projectId, updateData) {
+    const { name, description } = updateData;
+    const query = `
+      UPDATE projects 
+      SET name = $1, description = $2, updated_at = NOW()
+      WHERE project_id = $3
+      RETURNING project_id, name, description, owner_id, updated_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [name, description, projectId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating project:", error);
+      throw error;
+    }
+  }
+
+  static async delete(projectId) {
+    const query = `DELETE FROM projects WHERE project_id = $1`;
+    
+    try {
+      await pool.query(query, [projectId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      throw error;
+    }
+  }
+
+  static async getProjectMembers(projectId) {
+    const query = `
+      SELECT u.user_id, u.username, u.full_name, u.email, u.avatar_url,
+             COALESCE(pm.role, 'owner') as role, pm.joined_at
+      FROM users u
+      LEFT JOIN project_members pm ON pm.user_id = u.user_id AND pm.project_id = $1
+      WHERE u.user_id IN (
+        SELECT owner_id FROM projects WHERE project_id = $1
+        UNION
+        SELECT user_id FROM project_members WHERE project_id = $1
+      )
+      ORDER BY 
+        CASE WHEN pm.role = 'owner' OR pm.role IS NULL THEN 0 ELSE 1 END,
+        pm.joined_at ASC
+    `;
+    
+    try {
+      const result = await pool.query(query, [projectId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting project members:", error);
+      throw error;
+    }
+  }
+
+  static async addMember(projectId, userId, role = 'viewer') {
+    const query = `
+      INSERT INTO project_members (project_id, user_id, role, joined_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING project_id, user_id, role, joined_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [projectId, userId, role]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error adding project member:", error);
+      throw error;
+    }
+  }
+
+  static async removeMember(projectId, userId) {
+    const query = `DELETE FROM project_members WHERE project_id = $1 AND user_id = $2`;
+    
+    try {
+      await pool.query(query, [projectId, userId]);
+      return true;
+    } catch (error) {
+      console.error("Error removing project member:", error);
+      throw error;
+    }
+  }
+
+  static async getProjectStats(projectId) {
+    const query = `
+      SELECT 
+        (SELECT COUNT(*) FROM tasks WHERE project_id = $1) as total_tasks,
+        (SELECT COUNT(*) FROM tasks WHERE project_id = $1 AND status = 'done') as completed_tasks,
+        (SELECT COUNT(*) FROM project_members WHERE project_id = $1) as total_members,
+        CASE 
+          WHEN (SELECT COUNT(*) FROM tasks WHERE project_id = $1) > 0
+          THEN ROUND((SELECT COUNT(*) FROM tasks WHERE project_id = $1 AND status = 'done') * 100.0 / (SELECT COUNT(*) FROM tasks WHERE project_id = $1))
+          ELSE 0
+        END as completion_percentage
+    `;
+    
+    try {
+      const result = await pool.query(query, [projectId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting project stats:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = Project;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\projects\project.routes.js ---
+const express = require("express");
+const router = express.Router();
+const {
+  createProject,
+  getProjects,
+  getProject,
+  updateProject,
+  deleteProject,
+  getProjectMembers,
+  addProjectMember,
+  removeProjectMember,
+  getProjectStats,
+} = require("./project.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const {
+  createProjectValidation,
+  updateProjectValidation,
+  projectIdParamValidation,
+  addMemberValidation,
+} = require("./project.validation");
+
+router.post("/", auth, validate(createProjectValidation), createProject);
+router.get("/", auth, getProjects);
+router.get("/:projectId", auth, validate(projectIdParamValidation), getProject);
+router.put("/:projectId", auth, validate(updateProjectValidation), updateProject);
+router.delete("/:projectId", auth, validate(projectIdParamValidation), deleteProject);
+
+// Members & Stats
+router.get("/:projectId/members", auth, validate(projectIdParamValidation), getProjectMembers);
+router.post("/:projectId/members", auth, validate(addMemberValidation), addProjectMember);
+router.delete("/:projectId/members/:userId", auth, validate(projectIdParamValidation), removeProjectMember);
+router.get("/:projectId/stats", auth, validate(projectIdParamValidation), getProjectStats);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\projects\project.validation.js ---
+const { body, param } = require("express-validator");
+
+const createProjectValidation = [
+  body("name").trim().notEmpty().withMessage("Project name is required").isLength({ max: 200 }),
+  body("description").optional({ nullable: true }).isString(),
+];
+
+const updateProjectValidation = [
+  param("projectId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid project ID"),
+  body("name").optional({ nullable: true }).trim().notEmpty().isLength({ max: 200 }),
+  body("description").optional({ nullable: true }).isString(),
+];
+
+const projectIdParamValidation = [
+  param("projectId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid project ID"),
+];
+
+const addMemberValidation = [
+  param("projectId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid project ID"),
+  body("user_id").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid user ID"),
+  body("role").optional().isIn(["admin", "member", "viewer"]),
+];
+
+module.exports = {
+  createProjectValidation,
+  updateProjectValidation,
+  projectIdParamValidation,
+  addMemberValidation,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\search\search.controller.js ---
+const pool = require("../../shared/config/database");
+
+const globalSearch = async (req, res, next) => {
+  try {
+    const { query } = req.query;
+    if (!query) {
+      return res.json({ results: [] });
+    }
+
+    const searchTerm = `%${query}%`;
+
+    // Search Projects
+    const projectsQuery = "SELECT project_id, name, 'project' as type FROM projects WHERE name ILIKE $1 LIMIT 5";
+    const { rows: projects } = await pool.query(projectsQuery, [searchTerm]);
+
+    // Search Tasks
+    const tasksQuery = "SELECT task_id, title as name, 'task' as type FROM tasks WHERE title ILIKE $1 LIMIT 5";
+    const { rows: tasks } = await pool.query(tasksQuery, [searchTerm]);
+
+    // Search Users
+    const usersQuery = "SELECT user_id, username as name, 'user' as type FROM users WHERE username ILIKE $1 LIMIT 5";
+    const { rows: users } = await pool.query(usersQuery, [searchTerm]);
+
+    const results = [...projects, ...tasks, ...users];
+
+    res.json({ results });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  globalSearch,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\search\search.routes.js ---
+const express = require("express");
+const router = express.Router();
+const { globalSearch } = require("./search.controller");
+const auth = require("../../shared/middlewares/auth");
+
+router.get("/", auth, globalSearch);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\automation.service.js ---
+const Task = require("./task.model");
+const Subtask = require("./models/subtask.model");
+const Project = require("../projects/project.model");
+
+class AutomationService {
+  /**
+   * Rule: IF all subtasks are done -> SET task status to 'done'
+   * Rule: IF a subtask is re-opened -> SET task status to 'in_progress' (if it was 'done')
+   */
+  static async cascadeTaskStatus(taskId) {
+    try {
+      const stats = await Subtask.getTaskSubtaskStats(taskId);
+      const task = await Task.findById(taskId);
+
+      if (!task) return;
+
+      // Only automate if there are actually subtasks
+      if (parseInt(stats.total_subtasks) > 0) {
+        // If all subtasks are done and task is not yet done
+        if (parseInt(stats.pending_subtasks) === 0) {
+          if (task.status !== 'done') {
+            await Task.updateStatus(taskId, 'done');
+            return { action: 'updated_to_done', taskId };
+          }
+        } 
+        // If there are pending subtasks but task is marked as done
+        else if (parseInt(stats.pending_subtasks) > 0 && task.status === 'done') {
+          await Task.updateStatus(taskId, 'in_progress');
+          return { action: 'updated_to_in_progress', taskId };
+        }
+      }
+    } catch (error) {
+      console.error("Error in cascadeTaskStatus automation:", error);
+    }
+  }
+
+  /**
+   * Rule: IF task created without assignee -> SET to project owner
+   */
+  static async autoAssignTask(taskData) {
+    // If already has assignee, don't override
+    if (taskData.assignedTo) return taskData.assignedTo;
+    
+    // If has project, assign to project owner
+    if (taskData.projectId) {
+      try {
+        const project = await Project.findById(taskData.projectId);
+        if (project && project.owner_id) {
+          return project.owner_id;
+        }
+      } catch (error) {
+        console.error("Error in autoAssignTask automation:", error);
+      }
+    }
+    
+    // Fallback to creator
+    return taskData.createdBy;
+  }
+}
+
+module.exports = AutomationService;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\comment.controller.js ---
+const Comment = require("./models/comment.model");
+const logger = require("../../shared/utils/logger");
+const Notification = require("../notifications/notification.model");
+const Task = require("./task.model");
+const socketEmitter = require("../../shared/sockets/socketEmitter");
+const { notifyMentions } = require("../../shared/utils/mentionUtils");
+
+const createComment = async (req, res, next) => {
+  try {
+    const { taskId, content } = req.body;
+    const userId = req.user.uid;
+    const comment = await Comment.create({ taskId, userId, content });
+    
+    // Fetch the full comment with user info
+    const fullComment = await Comment.findById(comment.comment_id);
+    
+    logger.info(`Comment created: ${comment.comment_id} by user ${userId}`);
+    // Notify task assignee if it's not the commenter
+    const task = await Task.findById(taskId);
+    if (task && task.assigned_to && task.assigned_to !== userId) {
+      const notification = await Notification.createTaskNotification(
+        task.assigned_to,
+        `New comment on task "${task.title}": ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
+      );
+      socketEmitter.emitNotification(task.assigned_to, notification);
+    }
+
+    // Handle mentions in comment
+    await notifyMentions(
+      content,
+      userId,
+      'task',
+      `You were mentioned in a comment on task "${task?.title || 'Unknown'}": ${content.substring(0, 50)}...`
+    );
+
+    res.status(201).json({
+      status: "success",
+      data: fullComment
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskComments = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const comments = await Comment.getTaskComments(taskId);
+    
+    res.status(200).json({
+      status: "success",
+      data: comments
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateComment = async (req, res, next) => {
+  try {
+    const { commentId } = req.params;
+    const { content } = req.body;
+    const userId = req.user.uid;
+    
+    // Check if comment belongs to user
+    const existing = await Comment.findById(commentId);
+    if (!existing) {
+      return res.status(404).json({ status: "error", message: "Comment not found" });
+    }
+    if (existing.user_id !== userId) {
+      return res.status(403).json({ status: "error", message: "Unauthorized to update this comment" });
+    }
+
+    const comment = await Comment.update(commentId, { content });
+    res.status(200).json({
+      status: "success",
+      data: comment
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteComment = async (req, res, next) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user.uid;
+    
+    const existing = await Comment.findById(commentId);
+    if (!existing) {
+      return res.status(404).json({ status: "error", message: "Comment not found" });
+    }
+    if (existing.user_id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ status: "error", message: "Unauthorized to delete this comment" });
+    }
+
+    await Comment.delete(commentId);
+    res.status(200).json({
+      status: "success",
+      message: "Comment deleted successfully"
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createComment,
+  getTaskComments,
+  updateComment,
+  deleteComment
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\comment.routes.js ---
+const express = require("express");
+const router = express.Router();
+const {
+  createComment,
+  getTaskComments,
+  updateComment,
+  deleteComment
+} = require("./comment.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const {
+  createCommentValidation,
+  updateCommentValidation,
+  commentIdParamValidation
+} = require("./comment.validation");
+
+router.post("/create", auth, validate(createCommentValidation), createComment);
+router.get("/task/:taskId", auth, getTaskComments);
+router.put("/:commentId", auth, validate(updateCommentValidation), updateComment);
+router.delete("/:commentId", auth, validate(commentIdParamValidation), deleteComment);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\comment.validation.js ---
+const { body, param } = require("express-validator");
+
+const createCommentValidation = [
+  body("taskId").isUUID().withMessage("Valid Task ID is required"),
+  body("content").trim().notEmpty().withMessage("Comment content is required"),
+];
+
+const updateCommentValidation = [
+  param("commentId").isUUID().withMessage("Valid Comment ID is required"),
+  body("content").trim().notEmpty().withMessage("Content cannot be empty"),
+];
+
+const commentIdParamValidation = [
+  param("commentId").isUUID().withMessage("Valid Comment ID is required"),
+];
+
+module.exports = {
+  createCommentValidation,
+  updateCommentValidation,
+  commentIdParamValidation
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\subtask.controller.js ---
+const Subtask = require("./models/subtask.model");
+const logger = require("../../shared/utils/logger");
+const AutomationService = require("./automation.service");
+
+const createSubtask = async (req, res, next) => {
+  try {
+    const { taskId, title } = req.body;
+    const subtask = await Subtask.create({ taskId, title });
+    
+    logger.info(`Subtask created: ${subtask.subtask_id} for task ${taskId}`);
+    res.status(201).json({
+      status: "success",
+      data: subtask
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskSubtasks = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const subtasks = await Subtask.findByTaskId(taskId);
+    
+    res.status(200).json({
+      status: "success",
+      data: subtasks
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateSubtask = async (req, res, next) => {
+  try {
+    const { subtaskId } = req.params;
+    const { title, isDone } = req.body;
+    const subtask = await Subtask.update(subtaskId, { title, isDone });
+    
+    if (!subtask) {
+      return res.status(404).json({ status: "error", message: "Subtask not found" });
+    }
+
+    if (isDone !== undefined) {
+      await AutomationService.cascadeTaskStatus(subtask.task_id);
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: subtask
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const toggleSubtaskStatus = async (req, res, next) => {
+  try {
+    const { subtaskId } = req.params;
+    const subtask = await Subtask.toggleStatus(subtaskId);
+    
+    if (!subtask) {
+      return res.status(404).json({ status: "error", message: "Subtask not found" });
+    }
+
+    await AutomationService.cascadeTaskStatus(subtask.task_id);
+
+    res.status(200).json({
+      status: "success",
+      data: subtask
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteSubtask = async (req, res, next) => {
+  try {
+    const { subtaskId } = req.params;
+    const subtask = await Subtask.findById(subtaskId);
+    if (subtask) {
+      await Subtask.delete(subtaskId);
+      await AutomationService.cascadeTaskStatus(subtask.task_id);
+    }
+    
+    res.status(200).json({
+      status: "success",
+      message: "Subtask deleted successfully"
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createSubtask,
+  getTaskSubtasks,
+  updateSubtask,
+  toggleSubtaskStatus,
+  deleteSubtask
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\subtask.routes.js ---
+const express = require("express");
+const router = express.Router();
+const {
+  createSubtask,
+  getTaskSubtasks,
+  updateSubtask,
+  toggleSubtaskStatus,
+  deleteSubtask
+} = require("./subtask.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const {
+  createSubtaskValidation,
+  updateSubtaskValidation,
+  subtaskIdParamValidation
+} = require("./subtask.validation");
+
+router.post("/create", auth, validate(createSubtaskValidation), createSubtask);
+router.get("/task/:taskId", auth, getTaskSubtasks);
+router.put("/:subtaskId", auth, validate(updateSubtaskValidation), updateSubtask);
+router.patch("/:subtaskId/toggle", auth, validate(subtaskIdParamValidation), toggleSubtaskStatus);
+router.delete("/:subtaskId", auth, validate(subtaskIdParamValidation), deleteSubtask);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\subtask.validation.js ---
+const { body, param } = require("express-validator");
+
+const createSubtaskValidation = [
+  body("taskId").isUUID().withMessage("Valid Task ID is required"),
+  body("title").trim().notEmpty().withMessage("Subtask title is required"),
+];
+
+const updateSubtaskValidation = [
+  param("subtaskId").isUUID().withMessage("Valid Subtask ID is required"),
+  body("title").optional().trim().notEmpty().withMessage("Title cannot be empty"),
+  body("isDone").optional().isBoolean().withMessage("isDone must be a boolean"),
+];
+
+const subtaskIdParamValidation = [
+  param("subtaskId").isUUID().withMessage("Valid Subtask ID is required"),
+];
+
+module.exports = {
+  createSubtaskValidation,
+  updateSubtaskValidation,
+  subtaskIdParamValidation
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\tag.controller.js ---
+const Tag = require("./models/tag.model");
+const logger = require("../../shared/utils/logger");
+
+const createTag = async (req, res, next) => {
+  try {
+    const { name, color } = req.body;
+    
+    // Check if tag with same name exists
+    const existing = await Tag.findByName(name);
+    if (existing) {
+      return res.status(409).json({ status: "error", message: "Tag with this name already exists" });
+    }
+
+    const tag = await Tag.create({ name, color });
+    logger.info(`Tag created: ${tag.tag_id} (${tag.name})`);
+    res.status(201).json({
+      status: "success",
+      data: tag
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getAllTags = async (req, res, next) => {
+  try {
+    const tags = await Tag.getAll();
+    res.status(200).json({
+      status: "success",
+      data: tags
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const addTagToTask = async (req, res, next) => {
+  try {
+    const { taskId, tagId } = req.body;
+    await Tag.addTagToTask(taskId, tagId);
+    
+    logger.info(`Tag ${tagId} added to task ${taskId}`);
+    res.status(200).json({
+      status: "success",
+      message: "Tag added to task successfully"
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const removeTagFromTask = async (req, res, next) => {
+  try {
+    const { taskId, tagId } = req.params;
+    await Tag.removeTagFromTask(taskId, tagId);
+    
+    logger.info(`Tag ${tagId} removed from task ${taskId}`);
+    res.status(200).json({
+      status: "success",
+      message: "Tag removed from task successfully"
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskTags = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const tags = await Tag.getTaskTags(taskId);
+    res.status(200).json({
+      status: "success",
+      data: tags
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createTag,
+  getAllTags,
+  addTagToTask,
+  removeTagFromTask,
+  getTaskTags
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\tag.routes.js ---
+const express = require("express");
+const router = express.Router();
+const {
+  createTag,
+  getAllTags,
+  addTagToTask,
+  removeTagFromTask,
+  getTaskTags
+} = require("./tag.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const {
+  createTagValidation,
+  addTagToTaskValidation,
+  removeTagFromTaskValidation
+} = require("./tag.validation");
+
+router.post("/create", auth, validate(createTagValidation), createTag);
+router.get("/", auth, getAllTags);
+router.post("/attach", auth, validate(addTagToTaskValidation), addTagToTask);
+router.delete("/detach/:taskId/:tagId", auth, validate(removeTagFromTaskValidation), removeTagFromTask);
+router.get("/task/:taskId", auth, getTaskTags);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\tag.validation.js ---
+const { body, param } = require("express-validator");
+
+const createTagValidation = [
+  body("name").trim().notEmpty().withMessage("Tag name is required"),
+  body("color").optional().isHexColor().withMessage("Valid hex color is required"),
+];
+
+const addTagToTaskValidation = [
+  body("taskId").isUUID().withMessage("Valid Task ID is required"),
+  body("tagId").isUUID().withMessage("Valid Tag ID is required"),
+];
+
+const removeTagFromTaskValidation = [
+  param("taskId").isUUID().withMessage("Valid Task ID is required"),
+  param("tagId").isUUID().withMessage("Valid Tag ID is required"),
+];
+
+module.exports = {
+  createTagValidation,
+  addTagToTaskValidation,
+  removeTagFromTaskValidation
+};
+
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_3.json using write_to_file tool.

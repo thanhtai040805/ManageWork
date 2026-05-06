@@ -1,0 +1,2445 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 4 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\task.controller.js ---
+const {
+  getTasksByUserIDService,
+  deleteTaskService,
+  updateTaskByIDService,
+  updateTaskStatusService,
+  createRecurringTasksService,
+  updateTaskWithRecurringOptionService,
+} = require("./task.service");
+const taskModel = require("./task.model");
+const ActivityLog = require("../../shared/models/activityLog.model");
+const Notification = require("../notifications/notification.model");
+const { emitTaskUpdated, emitTaskReordered, emitNotification } = require("../../shared/sockets/socketEmitter");
+const TaskOrderService = require("../../shared/services/taskOrder.service");
+const TaskCacheService = require("../../shared/services/taskCache.service");
+const pool = require("../../shared/config/database");
+const Project = require("../projects/project.model");
+
+const createTask = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      startDate,
+      dueDate,
+      assignedUserId,
+      repeatType = null,
+      repeatDays = [],
+      repeatUntil = null,
+      projectId = null,
+    } = req.body;
+    
+    // Permission check: User must be project member (owner, admin, member)
+    if (projectId) {
+      const ownerCheck = await pool.query(
+        `SELECT owner_id FROM projects WHERE project_id = $1`,
+        [projectId]
+      );
+
+      const isOwner = ownerCheck.rows.length > 0 && ownerCheck.rows[0].owner_id === userId;
+
+      if (!isOwner) {
+        const result = await pool.query(
+          `SELECT role FROM project_members
+           WHERE project_id = $1 AND user_id = $2`,
+          [projectId, userId]
+        );
+
+        if (result.rows.length === 0) {
+          return res.status(403).json({ error: "Not a project member" });
+        }
+
+        const role = result.rows[0].role;
+        if (!['admin', 'member'].includes(role)) {
+          return res.status(403).json({ error: "Insufficient permissions to create tasks in this project" });
+        }
+      }
+
+      // If assignee is provided, verify they are also a member of the project
+      if (assignedUserId) {
+        const members = await Project.getProjectMembers(projectId);
+        const isMember = members.some(m => m.user_id === assignedUserId);
+        if (!isMember) {
+          return res.status(400).json({ message: "Assignee must be a project member" });
+        }
+      }
+    }
+
+    const tasks = await createRecurringTasksService(
+      title,
+      description,
+      status,
+      priority,
+      startDate,
+      dueDate,
+      assignedUserId,
+      repeatType,
+      repeatDays,
+      repeatUntil,
+      projectId
+    );
+
+    if (tasks.length > 0) {
+      await ActivityLog.logTaskCreated(userId, tasks[0].task_id, title);
+      const task = tasks[0];
+      if (task.project_id) {
+        const order = await TaskOrderService.getNextOrder(task.project_id, task.status);
+        await TaskOrderService.setTaskOrder(task.project_id, task.status, task.task_id, order);
+        await TaskCacheService.invalidateProject(task.project_id);
+      }
+      if (task.assigned_to) {
+        await TaskCacheService.invalidateUserTaskCache(task.assigned_to);
+      }
+      if (task.created_by && task.created_by !== task.assigned_to) {
+        await TaskCacheService.invalidateUserTaskCache(task.created_by);
+      }
+      emitTaskUpdated(task, null);
+    }
+
+    return res.status(201).json({
+      tasks: tasks,
+      count: tasks.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTasks = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const tasks = await getTasksByUserIDService(userId);
+    return res.status(200).json(tasks);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskById = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const task = await taskModel.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    return res.status(200).json(task);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteTaskByID = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const task = await taskModel.findById(taskId);
+    await deleteTaskService(taskId);
+    
+    if (task?.project_id) {
+      await TaskOrderService.removeTask(task.project_id, task.status, taskId);
+      await TaskCacheService.invalidateProject(task.project_id);
+      emitTaskUpdated({ task_id: taskId, project_id: task.project_id, status: 'deleted' }, null);
+    }
+    if (task?.assigned_to) {
+      await TaskCacheService.invalidateUserTaskCache(task.assigned_to);
+    }
+    if (task?.created_by && task.created_by !== task.assigned_to) {
+      await TaskCacheService.invalidateUserTaskCache(task.created_by);
+    }
+    
+    return res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateTaskByID = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { taskId } = req.params;
+    const { applyTo, ...updateData } = req.body;
+
+    const currentTask = await taskModel.findById(taskId);
+    if (!currentTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Permission check: User must be project member (owner, admin, member)
+    if (currentTask.project_id) {
+      const ownerCheck = await pool.query(
+        `SELECT owner_id FROM projects WHERE project_id = $1`,
+        [currentTask.project_id]
+      );
+
+      const isOwner = ownerCheck.rows.length > 0 && ownerCheck.rows[0].owner_id === userId;
+
+      if (!isOwner) {
+        const result = await pool.query(
+          `SELECT role FROM project_members
+           WHERE project_id = $1 AND user_id = $2`,
+          [currentTask.project_id, userId]
+        );
+
+        if (result.rows.length === 0) {
+          return res.status(403).json({ error: "Not a project member" });
+        }
+
+        const role = result.rows[0].role;
+        if (!['admin', 'member'].includes(role)) {
+          return res.status(403).json({ error: "Insufficient permissions to edit tasks in this project" });
+        }
+      }
+    } else if (currentTask.created_by !== userId) {
+      // Personal task: only creator can edit
+      return res.status(403).json({ error: "Insufficient permissions to edit this task" });
+    }
+
+    if (currentTask?.recurring_task_id && applyTo === 'future') {
+      const updatedTask = await updateTaskWithRecurringOptionService(
+        taskId,
+        updateData,
+        'future'
+      );
+      return res.status(200).json(updatedTask);
+    }
+
+    const updatedTask = await updateTaskByIDService(taskId, updateData);
+    
+    if (updatedTask) {
+      // If assignee changed, verify the new assignee is a member of the project
+      if (updateData.assignedUserId && updatedTask.project_id) {
+        const members = await Project.getProjectMembers(updatedTask.project_id);
+        const isMember = members.some(m => m.user_id === updateData.assignedUserId);
+        if (!isMember) {
+          return res.status(400).json({ message: "New assignee must be a project member" });
+        }
+      }
+
+      // Invalidate project cache
+      if (updatedTask.project_id) {
+        await TaskCacheService.invalidateProject(updatedTask.project_id);
+      }
+      
+      // Invalidate new assignee's cache
+      if (updatedTask.assigned_to) {
+        await TaskCacheService.invalidateUserTaskCache(updatedTask.assigned_to);
+      }
+      
+      // Invalidate old assignee's cache if changed
+      if (currentTask.assigned_to && currentTask.assigned_to !== updatedTask.assigned_to) {
+        await TaskCacheService.invalidateUserTaskCache(currentTask.assigned_to);
+      }
+      
+      // Invalidate creator's cache
+      if (currentTask.created_by) {
+        await TaskCacheService.invalidateUserTaskCache(currentTask.created_by);
+      }
+      
+      emitTaskUpdated(updatedTask, null);
+    }
+    
+    return res.status(200).json(updatedTask);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateTaskStatus = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { taskId } = req.params;
+    const { status, previousStatus } = req.body;
+
+    const currentTask = await taskModel.findById(taskId);
+    if (!currentTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Permission check: User must be project member (owner, admin, member)
+    if (currentTask.project_id) {
+      const ownerCheck = await pool.query(
+        `SELECT owner_id FROM projects WHERE project_id = $1`,
+        [currentTask.project_id]
+      );
+
+      const isOwner = ownerCheck.rows.length > 0 && ownerCheck.rows[0].owner_id === userId;
+
+      if (!isOwner) {
+        const result = await pool.query(
+          `SELECT role FROM project_members
+           WHERE project_id = $1 AND user_id = $2`,
+          [currentTask.project_id, userId]
+        );
+
+        if (result.rows.length === 0) {
+          return res.status(403).json({ error: "Not a project member" });
+        }
+
+        const role = result.rows[0].role;
+        if (!['admin', 'member'].includes(role)) {
+          return res.status(403).json({ error: "Insufficient permissions to update tasks in this project" });
+        }
+      }
+    } else if (currentTask.created_by !== userId && currentTask.assigned_to !== userId) {
+      // Personal task: only creator or assignee can update status
+      return res.status(403).json({ error: "Insufficient permissions to update this task's status" });
+    }
+
+    const updatedTask = await updateTaskStatusService(taskId, status);
+    
+    if (updatedTask) {
+      if (status === 'done') {
+        await ActivityLog.logTaskCompleted(userId, taskId, updatedTask.title);
+      } else if (previousStatus && previousStatus !== status) {
+        await ActivityLog.logTaskUpdated(userId, taskId, updatedTask.title, `Status changed from ${previousStatus} to ${status}`);
+      }
+      
+      // Notify task creator if status changed and not done by the creator
+      if (previousStatus && previousStatus !== status... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\task.model.js ---
+const pool = require("../../shared/config/database");
+const TaskCacheService = require("../../shared/services/taskCache.service");
+
+class Task {
+  static async create(taskData) {
+    const {
+      projectId,
+      title,
+      description,
+      status,
+      priority,
+      startDate,
+      dueDate,
+      createdBy,
+      assignedTo,
+      recurringTaskId,
+    } = taskData;
+
+    const query = `
+    INSERT INTO tasks (project_id,
+      title,
+      description,
+      status,
+      priority,
+      start_date,
+      due_date,
+      order_index,
+      created_by,
+      assigned_to,
+      recurring_task_id,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      $1, $2, $3,
+      COALESCE($4, 'todo'),
+      COALESCE($5, 'medium'),
+      $6::timestamp,
+      $7::timestamp,
+      COALESCE(
+        (
+          SELECT MAX(order_index) + 1
+          FROM tasks
+          WHERE created_by = $8
+            AND (
+              (project_id = $1) OR
+              ($1 IS NULL AND project_id IS NULL)
+            )
+        ),
+        0
+      ),
+      $8, $9, $10, NOW(), NOW()
+    )
+    RETURNING task_id, project_id, title, description, status, priority, 
+              start_date::text as start_date, due_date::text as due_date, 
+              order_index, created_by, assigned_to, recurring_task_id,
+              created_at::text as created_at, updated_at::text as updated_at;
+  `;
+
+    try {
+      const result = await pool.query(query, [
+        projectId,
+        title,
+        description,
+        status,
+        priority,
+        startDate,
+        dueDate,
+        createdBy,
+        assignedTo,
+        recurringTaskId || null,
+      ]);
+
+      const task = result.rows[0];
+      if (task) {
+        ['start_date', 'due_date', 'created_at', 'updated_at'].forEach(field => {
+          if (task[field]) {
+            const ts = task[field].includes('+') || task[field].endsWith('Z') 
+              ? task[field] 
+              : task[field] + 'Z';
+            task[field] = new Date(ts).toISOString();
+          }
+        });
+      }
+      return task;
+    } catch (error) {
+      console.error("Error creating task:", error);
+      throw error;
+    }
+  }
+
+  static async findById(taskId) {
+    const query = `
+      SELECT t.task_id, t.project_id, t.title, t.description, t.status, t.priority, 
+             t.start_date::text as start_date, t.due_date::text as due_date, 
+             t.order_index, t.created_by, t.assigned_to, t.recurring_task_id,
+             t.created_at::text as created_at, t.updated_at::text as updated_at,
+             u1.username as creator_username, u1.full_name as creator_name,
+             u2.username as assignee_username, u2.full_name as assignee_name,
+             p.name as project_name
+      FROM tasks t
+      LEFT JOIN users u1 ON t.created_by = u1.user_id
+      LEFT JOIN users u2 ON t.assigned_to = u2.user_id
+      LEFT JOIN projects p ON t.project_id = p.project_id
+      WHERE t.task_id = $1
+    `;
+
+    try {
+      const result = await pool.query(query, [taskId]);
+      const task = result.rows[0];
+      if (task) {
+        ['start_date', 'due_date', 'created_at', 'updated_at'].forEach(field => {
+          if (task[field]) {
+            const ts = task[field].includes('+') || task[field].endsWith('Z') 
+              ? task[field] 
+              : task[field] + 'Z';
+            task[field] = new Date(ts).toISOString();
+          }
+        });
+      }
+      return task;
+    } catch (error) {
+      console.error("Error finding task by id:", error);
+      throw error;
+    }
+  }
+
+  static async getProjectTasks(projectId) {
+    const cached = await TaskCacheService.getProjectTasks(projectId);
+    if (cached) return cached;
+
+    const query = `
+      SELECT t.task_id, t.project_id, t.title, t.description, t.status, t.priority, t.start_date, t.due_date, t.order_index, t.created_by, t.assigned_to, t.created_at, t.updated_at,
+             u1.username as creator_username, u1.full_name as creator_name,
+             u2.username as assignee_username, u2.full_name as assignee_name
+      FROM tasks t
+      LEFT JOIN users u1 ON t.created_by = u1.user_id
+      LEFT JOIN users u2 ON t.assigned_to = u2.user_id
+      WHERE t.project_id = $1
+      ORDER BY t.order_index ASC, t.created_at DESC
+    `;
+
+    try {
+      const result = await pool.query(query, [projectId]);
+      const tasks = result.rows;
+      if (tasks.length > 0) {
+        await TaskCacheService.setProjectTasks(projectId, tasks);
+      }
+      return tasks;
+    } catch (error) {
+      console.error("Error getting project tasks:", error);
+      throw error;
+    }
+  }
+
+  static async getUserTasks(userId) {
+    const cached = await TaskCacheService.getUserTasks(userId);
+    if (cached) return cached;
+
+    const query = `
+      SELECT t.task_id, t.project_id, t.title, t.description, t.status, t.priority, 
+             t.start_date::text as start_date, t.due_date::text as due_date, 
+             t.order_index, t.created_by, t.assigned_to, 
+             t.created_at::text as created_at, t.updated_at::text as updated_at,
+             u1.username as creator_username, u1.full_name as creator_name,
+             u2.username as assignee_username, u2.full_name as assignee_name,
+             p.name as project_name
+      FROM tasks t
+      LEFT JOIN users u1 ON t.created_by = u1.user_id
+      LEFT JOIN users u2 ON t.assigned_to = u2.user_id
+      LEFT JOIN projects p ON t.project_id = p.project_id
+      WHERE t.assigned_to = $1 OR t.created_by = $1
+      ORDER BY t.start_date ASC NULLS LAST, t.due_date ASC NULLS LAST, t.created_at DESC
+    `;
+
+    try {
+      const result = await pool.query(query, [userId]);
+      const tasks = result.rows.map(task => {
+        ['start_date', 'due_date', 'created_at', 'updated_at'].forEach(field => {
+          if (task[field]) {
+            const ts = task[field].includes('+') || task[field].endsWith('Z') 
+              ? task[field] 
+              : task[field] + 'Z';
+            task[field] = new Date(ts).toISOString();
+          }
+        });
+        return task;
+      });
+      if (tasks.length > 0) {
+        await TaskCacheService.setUserTasks(userId, tasks);
+      }
+      return tasks;
+    } catch (error) {
+      console.error("Error getting user tasks:", error);
+      throw error;
+    }
+  }
+
+  static async update(taskId, updateData) {
+    const {
+      title,
+      description,
+      status,
+      priority,
+      startDate,
+      dueDate,
+      assignedTo,
+    } = updateData;
+    const query = `
+      UPDATE tasks 
+      SET title = $1, description = $2, status = $3, priority = $4, 
+          start_date = $5::timestamp, due_date = $6::timestamp, 
+          assigned_to = $7, updated_at = NOW()
+      WHERE task_id = $8
+      RETURNING task_id, project_id, title, description, status, priority, 
+                start_date::text as start_date, due_date::text as due_date, 
+                created_by, assigned_to, updated_at::text as updated_at
+    `;
+
+    try {
+      const result = await pool.query(query, [
+        title,
+        description,
+        status,
+        priority,
+        startDate,
+        dueDate,
+        assignedTo,
+        taskId,
+      ]);
+      const task = result.rows[0];
+      if (task) {
+        ['start_date', 'due_date', 'updated_at'].forEach(field => {
+          if (task[field]) {
+            const ts = task[field].includes('+') || task[field].endsWith('Z') 
+              ? task[field] 
+              : task[field] + 'Z';
+            task[field] = new Date(ts).toISOString();
+          }
+        });
+      }
+      return task;
+    } catch (error) {
+      console.error("Error updating task:", error);
+      throw error;
+    }
+  }
+
+  static async delete(taskId) {
+    const query = `DELETE FROM tasks WHERE task_id = $1`;
+    try {
+      await pool.query(query, [taskId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      throw error;
+    }
+  }
+
+  static async updateStatus(taskId, status) {
+    const query = `
+      UPDATE tasks 
+      SET status = $1, updated_at = NOW()
+      WHERE task_id = $2
+      RETURNING task_id, status, updated_at
+    `;
+
+    try {
+      const result = await pool.query(query, [status, taskId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      throw error;
+    }
+  }
+
+  static async updateOrder(tasks) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      for (const task of tasks) {
+        await client.query(
+          "UPDATE tasks SET order_index = $1 WHERE task_id = $2",
+          [task.orderIndex, task.taskId]
+        );
+      }
+      await client.query("COMMIT");
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Error updating task order:", error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async getTaskStats(projectId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_tasks,
+        COUNT(CASE WHEN status = 'todo' THEN 1 END) as todo_tasks,
+        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_tasks,
+        COUNT(CASE WHEN status = 'done' THEN 1 END) as done_tasks,
+        COUNT(CASE WHEN priority = 'high' THEN 1 END) as high_priority_tasks,
+        COUNT(CASE WHEN due_date < NOW() AND status != 'done' THEN 1 END) as overdue_tasks
+      FROM tasks 
+      WHERE project_id = $1
+    `;
+
+    try {
+      const result = await pool.query(query, [projectId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting task stats:", error);
+      throw error;
+    }
+  }
+
+  static async updateSingleOrder(taskId, orderIndex, userId) {
+    const query = `
+      UPDATE tasks 
+      SET order_index = $1, updated_at = NOW()
+      WHERE task_id = $2 AND created_by = $3
+    `;
+    try {
+      await pool.query(query, [orderIndex, taskId, userId]);
+      return true;
+    } catch (error) {
+      console.error("Error updating... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\task.routes.js ---
+const express = require("express");
+const router = express.Router();
+const {
+  createTask,
+  getTasks,
+  getTaskById,
+  deleteTaskByID,
+  updateTaskByID,
+  updateTaskStatus,
+  searchTasks,
+  reorderTasks,
+} = require("./task.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const { createTaskValidation, updateTaskValidation, updateStatusValidation } = require("./task.validation");
+
+router.post("/create", auth, validate(createTaskValidation), createTask);
+router.get("/", auth, getTasks);
+router.get("/:taskId", auth, getTaskById);
+router.get("/search", auth, searchTasks);
+router.post("/delete/:taskId", auth, deleteTaskByID);
+router.post("/edit/:taskId", auth, validate(updateTaskValidation), updateTaskByID);
+router.patch("/status/:taskId", auth, validate(updateStatusValidation), updateTaskStatus);
+router.post("/reorder", auth, reorderTasks);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\task.service.js ---
+require("dotenv").config();
+const taskModel = require("./task.model");
+const recurringTaskModel = require("./models/recurringTask.model");
+const AutomationService = require("./automation.service");
+const Notification = require("../notifications/notification.model");
+const socketEmitter = require("../../shared/sockets/socketEmitter");
+
+const createTodoTaskService = async (
+  title,
+  description,
+  status,
+  priority,
+  startDate,
+  dueDate,
+  assignedUserId,
+  projectId = null
+) => {
+  try {
+    const assignedToId = await AutomationService.autoAssignTask({
+      projectId,
+      assignedTo: assignedUserId,
+      createdBy: assignedUserId
+    });
+
+    const task = await taskModel.create({
+      projectId,
+      title,
+      description,
+      status: status || "todo",
+      priority: priority || "medium",
+      startDate: startDate,
+      dueDate: dueDate,
+      createdBy: assignedUserId,
+      assignedTo: assignedToId,
+    });
+
+    // Notify assigned user if it's not the creator
+    if (assignedToId && assignedToId !== assignedUserId) {
+      const notification = await Notification.createTaskNotification(
+        assignedToId,
+        `You have been assigned a new task: ${title}`
+      );
+      socketEmitter.emitNotification(assignedToId, notification);
+    }
+
+    return task;
+  } catch (error) {
+    console.error("Error creating task:", error);
+    throw error;
+  }
+};
+
+const getTasksService = async () => {
+  try {
+    const tasks = await taskModel.getAll();
+    return tasks;
+  } catch (error) {
+    console.error("Error getting tasks:", error);
+    throw error;
+  }
+};
+
+const updateTaskService = async (taskId, updates) => {
+  try {
+    const task = await taskModel.update(taskId, updates);
+    return task;
+  } catch (error) {
+    console.error("Error updating task:", error);
+    throw error;
+  }
+};
+
+const deleteTaskService = async (taskId) => {
+  try {
+    await taskModel.delete(taskId);
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    throw error;
+  }
+};
+
+const getTasksByUserIDService = async (userId) => {
+  try {
+    const now = new Date();
+    const tasks = await taskModel.getUserTasks(userId);
+    return tasks.map((task) => ({
+      ...task,
+      isOverdue:
+        task.due_date &&
+        new Date(task.due_date) < now &&
+        !["done", "cancelled"].includes(task.status),
+    }));
+  } catch (error) {
+    console.error("Error getting tasks by user ID:", error);
+    throw error;
+  }
+};
+
+const updateTaskByIDService = async (taskId, updateData) => {
+  try {
+    await taskModel.update(taskId, {
+      title: updateData.title,
+      description: updateData.description,
+      status: updateData.status || "todo",
+      priority: updateData.priority || "medium",
+      startDate: updateData.startDate,
+      dueDate: updateData.dueDate,
+      assignedTo: updateData.assignedUserId,
+    });
+    // Return full task data after update
+    const fullTask = await taskModel.findById(taskId);
+
+    // Notify new assignee if changed
+    if (updateData.assignedUserId && updateData.assignedUserId !== fullTask.created_by) {
+       const notification = await Notification.createTaskNotification(
+        updateData.assignedUserId,
+        `Task "${fullTask.title}" has been assigned to you`
+      );
+      socketEmitter.emitNotification(updateData.assignedUserId, notification);
+    }
+
+    return fullTask;
+  } catch (error) {
+    console.error("Error updating task:", error);
+    throw error;
+  }
+};
+
+const updateTaskStatusService = async (taskId, status) => {
+  try {
+    const task = await taskModel.updateStatus(taskId, status);
+    // Get full task data after status update
+    const fullTask = await taskModel.findById(taskId);
+
+    // Notify task creator or assigned user about status change
+    const actorId = fullTask.updated_by || fullTask.assigned_to; // Simple logic for now
+    const notifyId = fullTask.created_by === actorId ? fullTask.assigned_to : fullTask.created_by;
+    
+    if (notifyId && notifyId !== actorId) {
+       const notification = await Notification.createSystemNotification(
+        notifyId,
+        `Task "${fullTask.title}" status updated to ${status}`
+      );
+      socketEmitter.emitNotification(notifyId, notification);
+    }
+
+    return fullTask;
+  } catch (error) {
+    console.error("Error updating task status:", error);
+    throw error;
+  }
+};
+
+// Helper function để kiểm tra 2 dates có cùng ngày không
+const isSameDay = (date1, date2) => {
+  if (!date1 || !date2) return false;
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  return (
+    d1.getDate() === d2.getDate() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getFullYear() === d2.getFullYear()
+  );
+};
+
+// Helper function để generate dates từ recurring rule
+const generateRecurringDates = (startDate, endDate, repeatType, repeatDays) => {
+  const dates = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const current = new Date(start);
+
+  if (repeatType === "weekly") {
+    const dayOfWeek = start.getDay();
+    while (current <= end) {
+      if (current.getDay() === dayOfWeek) {
+        dates.push(new Date(current));
+      }
+      current.setDate(current.getDate() + 1);
+    }
+  } else if (repeatType === "custom") {
+    while (current <= end) {
+      if (repeatDays.includes(current.getDay())) {
+        dates.push(new Date(current));
+      }
+      current.setDate(current.getDate() + 1);
+    }
+  }
+
+  return dates;
+};
+
+const createRecurringTasksService = async (
+  title,
+  description,
+  status,
+  priority,
+  startDate,
+  dueDate,
+  assignedUserId,
+  repeatType = null,
+  repeatDays = [],
+  repeatUntil = null,
+  projectId = null
+) => {
+  try {
+    // Nếu không có recurrence, tạo 1 task duy nhất
+    if (!repeatType || repeatType === "none") {
+      const task = await taskModel.create({
+        projectId,
+        title,
+        description,
+        status: status || "todo",
+        priority: priority || "medium",
+        startDate,
+        dueDate,
+        createdBy: assignedUserId,
+        assignedTo: assignedUserId,
+        recurringTaskId: null,
+      });
+      return [task];
+    }
+
+    // Validation: start và due phải cùng ngày
+    if (!isSameDay(startDate, dueDate)) {
+      throw new Error(
+        "Start date and due date must be on the same day to use recurrence"
+      );
+    }
+
+    // Validate repeatUntil
+    if (!repeatUntil) {
+      throw new Error("repeatUntil is required when repeatType is set");
+    }
+
+    const start = new Date(startDate || dueDate);
+    const due = new Date(dueDate);
+    const end = new Date(repeatUntil);
+
+    // Validate dates
+    if (end < due) {
+      throw new Error("repeatUntil must be after due date");
+    }
+
+    // Validate không được quá 12 tuần
+    const weeksDiff = (end - due) / (1000 * 60 * 60 * 24 * 7);
+    if (weeksDiff > 12) {
+      throw new Error("Repeat period cannot exceed 12 weeks");
+    }
+
+    const assignedToId = await AutomationService.autoAssignTask({
+      projectId,
+      assignedTo: assignedUserId,
+      createdBy: assignedUserId
+    });
+
+    // Bước 1: Tạo RecurringTask template (theo ClickUp pattern)
+    const recurringTask = await recurringTaskModel.create({
+      projectId,
+      title,
+      description,
+      priority: priority || "medium",
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+      repeatType,
+      repeatDays: repeatType === "custom" ? repeatDays : [],
+      createdBy: assignedUserId,
+      assignedTo: assignedToId,
+    });
+
+    // Bước 2: Generate dates và tạo task instances
+    const startHours = start.getUTCHours();
+    const startMinutes = start.getUTCMinutes();
+    const dueHours = due.getUTCHours();
+    const dueMinutes = due.getUTCMinutes();
+
+    const dueYear = due.getUTCFullYear();
+    const dueMonth = due.getUTCMonth();
+    const dueDay = due.getUTCDate();
+    const dueDayOfWeek = due.getDay();
+
+    let targetDays = [];
+    if (repeatType === "weekly") {
+      targetDays = [dueDayOfWeek];
+    } else if (repeatType === "custom") {
+      if (repeatDays.length === 0) {
+        throw new Error("repeatDays is required for custom repeat type");
+      }
+      targetDays = repeatDays;
+    }
+
+    // Bước 3: Tạo các task instances với recurring_task_id
+    const tasks = [];
+    const currentDate = new Date(Date.UTC(dueYear, dueMonth, dueDay));
+    const endUTC = new Date(repeatUntil);
+    const maxTasks = 100;
+    let taskCount = 0;
+
+    while (currentDate <= endUTC && taskCount < maxTasks) {
+      const dayOfWeek = currentDate.getDay();
+
+      if (targetDays.includes(dayOfWeek)) {
+        const year = currentDate.getUTCFullYear();
+        const month = currentDate.getUTCMonth();
+        const day = currentDate.getUTCDate();
+
+        const newStart = new Date(
+          Date.UTC(year, month, day, startHours, startMinutes, 0, 0)
+        );
+        const newDue = new Date(
+          Date.UTC(year, month, day, dueHours, dueMinutes, 0, 0)
+        );
+
+        if (newDue <= endUTC) {
+          const task = await taskModel.create({
+            projectId,
+            title,
+            description,
+            status: status || "todo",
+            priority: priority || "medium",
+            startDate: newStart.toISOString(),
+            dueDate: newDue.toISOString(),
+            createdBy: assignedUserId,
+            assignedTo: recurringTask.assigned_to,
+            recurringTaskId: recurringTask.recurring_task_id, // ← Link đến template
+          });
+
+          tasks.push(task);
+          taskCount++;
+        }
+      }
+
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    }
+
+    if (tasks.length === 0) {
+      throw new Error(
+        "No tasks were created. Please check your recurrence settings."
+      );
+    }
+
+    return tasks;
+  } catch (error) {
+    console.error("Error creating recurring tasks:", error);
+    throw error;
+  }
+};
+
+// Update task với "apply to future" logic (theo ClickUp pattern)
+const updateTaskWithRecurringOptionService = async (
+  taskId,
+  updateData,
+  applyTo = "this" // ... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\task.validation.js ---
+const { body, param } = require("express-validator");
+
+const createTaskValidation = [
+  body("title").notEmpty().withMessage("Title is required").isLength({ max: 200 }),
+  body("description").optional({ nullable: true }).isString(),
+  body("status").optional({ nullable: true }).isIn(["todo", "in_progress", "review", "done", "cancelled", "on_hold"]),
+  body("priority").optional({ nullable: true }).isIn(["low", "medium", "high", "urgent"]),
+  body("startDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
+  body("dueDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
+  body("projectId").optional({ nullable: true }).matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^[0-9]+$/),
+  body("repeatType").optional({ nullable: true }).isIn(["none", "daily", "weekly", "monthly", "custom"]),
+  body("repeatDays").optional({ nullable: true }).isArray(),
+  body("repeatUntil").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
+];
+
+const updateTaskValidation = [
+  param("taskId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^[0-9]+$/).withMessage("Invalid task ID"),
+  body("title").optional({ nullable: true }).isLength({ max: 200 }),
+  body("description").optional({ nullable: true }).isString(),
+  body("status").optional({ nullable: true }).isIn(["todo", "in_progress", "review", "done", "cancelled", "on_hold"]),
+  body("priority").optional({ nullable: true }).isIn(["low", "medium", "high", "urgent"]),
+  body("startDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
+  body("dueDate").optional({ nullable: true }).customSanitizer((value) => value ? new Date(value) : null),
+  body("assignedUserId").optional({ nullable: true }).matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^[0-9]+$/),
+];
+
+const updateStatusValidation = [
+  param("taskId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^[0-9]+$/).withMessage("Invalid task ID"),
+  body("status").isIn(["todo", "in_progress", "review", "on_hold", "done", "cancelled"]),
+];
+
+module.exports = {
+  createTaskValidation,
+  updateTaskValidation,
+  updateStatusValidation,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\task_dependency.controller.js ---
+const TaskDependency = require("./models/task_dependency.model");
+const logger = require("../../shared/utils/logger");
+
+const createDependency = async (req, res, next) => {
+  try {
+    const { taskId, dependsOnTaskId, dependencyType } = req.body;
+    
+    if (taskId === dependsOnTaskId) {
+      return res.status(400).json({ status: "error", message: "A task cannot depend on itself" });
+    }
+
+    const isCircular = await TaskDependency.checkCircularDependency(taskId, dependsOnTaskId);
+    if (isCircular) {
+      return res.status(400).json({ status: "error", message: "Circular dependency detected" });
+    }
+
+    const dependency = await TaskDependency.create({ taskId, dependsOnTaskId, dependencyType });
+    logger.info(`Dependency created: ${dependency.dependency_id} (Task ${taskId} depends on ${dependsOnTaskId})`);
+    
+    res.status(201).json({
+      status: "success",
+      data: dependency
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskDependencies = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const dependencies = await TaskDependency.getTaskDependencies(taskId);
+    res.status(200).json({
+      status: "success",
+      data: dependencies
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteDependency = async (req, res, next) => {
+  try {
+    const { dependencyId } = req.params;
+    await TaskDependency.delete(dependencyId);
+    res.status(200).json({
+      status: "success",
+      message: "Dependency removed successfully"
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createDependency,
+  getTaskDependencies,
+  deleteDependency
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\task_dependency.routes.js ---
+const express = require("express");
+const router = express.Router();
+const {
+  createDependency,
+  getTaskDependencies,
+  deleteDependency
+} = require("./task_dependency.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const {
+  createDependencyValidation,
+  taskIdParamValidation,
+  dependencyIdParamValidation,
+} = require("./task_dependency.validation");
+
+router.post("/create", auth, validate(createDependencyValidation), createDependency);
+router.get("/task/:taskId", auth, validate(taskIdParamValidation), getTaskDependencies);
+router.delete("/:dependencyId", auth, validate(dependencyIdParamValidation), deleteDependency);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\task_dependency.validation.js ---
+const { body, param } = require("express-validator");
+
+const createDependencyValidation = [
+  body("taskId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid task ID"),
+  body("dependsOnTaskId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid depends on task ID"),
+  body("dependencyType").optional().isIn(["blocking", "related"]),
+];
+
+const taskIdParamValidation = [
+  param("taskId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid task ID"),
+];
+
+const dependencyIdParamValidation = [
+  param("dependencyId").matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/).withMessage("Invalid dependency ID"),
+];
+
+module.exports = {
+  createDependencyValidation,
+  taskIdParamValidation,
+  dependencyIdParamValidation,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\models\comment.model.js ---
+const pool = require("../../../shared/config/database");
+
+class Comment {
+  static async create(commentData) {
+    const { taskId, userId, content } = commentData;
+    const query = `
+      INSERT INTO comments (task_id, user_id, content, created_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING comment_id, task_id, user_id, content, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId, userId, content]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      throw error;
+    }
+  }
+
+  static async findById(commentId) {
+    const query = `
+      SELECT c.comment_id, c.task_id, c.user_id, c.content, c.created_at,
+             u.username, u.full_name, u.avatar_url
+      FROM comments c
+      JOIN users u ON c.user_id = u.user_id
+      WHERE c.comment_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [commentId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding comment by id:", error);
+      throw error;
+    }
+  }
+
+  static async getTaskComments(taskId) {
+    const query = `
+      SELECT c.comment_id, c.task_id, c.user_id, c.content, c.created_at,
+             u.username, u.full_name, u.avatar_url
+      FROM comments c
+      JOIN users u ON c.user_id = u.user_id
+      WHERE c.task_id = $1
+      ORDER BY c.created_at ASC
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting task comments:", error);
+      throw error;
+    }
+  }
+
+  static async getUserComments(userId) {
+    const query = `
+      SELECT c.comment_id, c.task_id, c.user_id, c.content, c.created_at,
+             t.title as task_title, p.name as project_name
+      FROM comments c
+      JOIN tasks t ON c.task_id = t.task_id
+      JOIN projects p ON t.project_id = p.project_id
+      WHERE c.user_id = $1
+      ORDER BY c.created_at DESC
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting user comments:", error);
+      throw error;
+    }
+  }
+
+  static async update(commentId, updateData) {
+    const { content } = updateData;
+    const query = `
+      UPDATE comments 
+      SET content = $1
+      WHERE comment_id = $2
+      RETURNING comment_id, task_id, user_id, content, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [content, commentId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      throw error;
+    }
+  }
+
+  static async delete(commentId) {
+    const query = `DELETE FROM comments WHERE comment_id = $1`;
+    
+    try {
+      await pool.query(query, [commentId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      throw error;
+    }
+  }
+
+  static async getCommentStats(taskId) {
+    const query = `
+      SELECT COUNT(*) as total_comments
+      FROM comments 
+      WHERE task_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting comment stats:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = Comment;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\models\recurringTask.model.js ---
+const pool = require("../../../shared/config/database");
+
+class RecurringTask {
+  static async create(recurringTaskData) {
+    const {
+      projectId,
+      title,
+      description,
+      priority,
+      startDate,
+      endDate,
+      repeatType,
+      repeatDays,
+      createdBy,
+      assignedTo,
+    } = recurringTaskData;
+
+    const query = `
+      INSERT INTO recurring_tasks (
+        project_id, title, description, priority,
+        start_date, end_date, repeat_type, repeat_days,
+        created_by, assigned_to, is_active, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5::timestamp, $6::timestamp, $7, $8::integer[], $9, $10, TRUE, NOW(), NOW())
+      RETURNING recurring_task_id, project_id, title, description, priority,
+                start_date::text as start_date, end_date::text as end_date,
+                repeat_type, repeat_days, created_by, assigned_to, is_active,
+                created_at::text as created_at, updated_at::text as updated_at
+    `;
+
+    try {
+      const result = await pool.query(query, [
+        projectId,
+        title,
+        description,
+        priority || 'medium',
+        startDate,
+        endDate,
+        repeatType,
+        repeatDays || [],
+        createdBy,
+        assignedTo,
+      ]);
+
+      const recurringTask = result.rows[0];
+      if (recurringTask) {
+        ['start_date', 'end_date', 'created_at', 'updated_at'].forEach(field => {
+          if (recurringTask[field]) {
+            const ts = recurringTask[field].includes('+') || recurringTask[field].endsWith('Z')
+              ? recurringTask[field]
+              : recurringTask[field] + 'Z';
+            recurringTask[field] = new Date(ts).toISOString();
+          }
+        });
+      }
+      return recurringTask;
+    } catch (error) {
+      console.error("Error creating recurring task:", error);
+      throw error;
+    }
+  }
+
+  static async findById(recurringTaskId) {
+    const query = `
+      SELECT recurring_task_id, project_id, title, description, priority,
+             start_date::text as start_date, end_date::text as end_date,
+             repeat_type, repeat_days, created_by, assigned_to, is_active,
+             created_at::text as created_at, updated_at::text as updated_at
+      FROM recurring_tasks
+      WHERE recurring_task_id = $1
+    `;
+
+    try {
+      const result = await pool.query(query, [recurringTaskId]);
+      if (result.rows.length === 0) return null;
+
+      const recurringTask = result.rows[0];
+      ['start_date', 'end_date', 'created_at', 'updated_at'].forEach(field => {
+        if (recurringTask[field]) {
+          const ts = recurringTask[field].includes('+') || recurringTask[field].endsWith('Z')
+            ? recurringTask[field]
+            : recurringTask[field] + 'Z';
+          recurringTask[field] = new Date(ts).toISOString();
+        }
+      });
+      return recurringTask;
+    } catch (error) {
+      console.error("Error finding recurring task:", error);
+      throw error;
+    }
+  }
+
+  static async update(recurringTaskId, updateData) {
+    const {
+      title,
+      description,
+      priority,
+      startDate,
+      endDate,
+      repeatType,
+      repeatDays,
+      assignedTo,
+      isActive,
+    } = updateData;
+
+    const query = `
+      UPDATE recurring_tasks
+      SET title = COALESCE($1, title),
+          description = COALESCE($2, description),
+          priority = COALESCE($3, priority),
+          start_date = COALESCE($4::timestamp, start_date),
+          end_date = COALESCE($5::timestamp, end_date),
+          repeat_type = COALESCE($6, repeat_type),
+          repeat_days = COALESCE($7::integer[], repeat_days),
+          assigned_to = COALESCE($8, assigned_to),
+          is_active = COALESCE($9, is_active),
+          updated_at = NOW()
+      WHERE recurring_task_id = $10
+      RETURNING recurring_task_id, project_id, title, description, priority,
+                start_date::text as start_date, end_date::text as end_date,
+                repeat_type, repeat_days, created_by, assigned_to, is_active,
+                created_at::text as created_at, updated_at::text as updated_at
+    `;
+
+    try {
+      const result = await pool.query(query, [
+        title,
+        description,
+        priority,
+        startDate,
+        endDate,
+        repeatType,
+        repeatDays,
+        assignedTo,
+        isActive,
+        recurringTaskId,
+      ]);
+
+      const recurringTask = result.rows[0];
+      if (recurringTask) {
+        ['start_date', 'end_date', 'created_at', 'updated_at'].forEach(field => {
+          if (recurringTask[field]) {
+            const ts = recurringTask[field].includes('+') || recurringTask[field].endsWith('Z')
+              ? recurringTask[field]
+              : recurringTask[field] + 'Z';
+            recurringTask[field] = new Date(ts).toISOString();
+          }
+        });
+      }
+      return recurringTask;
+    } catch (error) {
+      console.error("Error updating recurring task:", error);
+      throw error;
+    }
+  }
+
+  static async delete(recurringTaskId) {
+    const query = `DELETE FROM recurring_tasks WHERE recurring_task_id = $1`;
+    try {
+      await pool.query(query, [recurringTaskId]);
+    } catch (error) {
+      console.error("Error deleting recurring task:", error);
+      throw error;
+    }
+  }
+
+  static async getFutureTasks(recurringTaskId, fromDate) {
+    const query = `
+      SELECT task_id, due_date::text as due_date, status
+      FROM tasks
+      WHERE recurring_task_id = $1
+        AND due_date >= $2::timestamp
+        AND status != 'done'
+      ORDER BY due_date ASC
+    `;
+
+    try {
+      const result = await pool.query(query, [recurringTaskId, fromDate]);
+      return result.rows.map(row => ({
+        ...row,
+        due_date: new Date(row.due_date).toISOString(),
+      }));
+    } catch (error) {
+      console.error("Error getting future tasks:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = RecurringTask;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\models\subtask.model.js ---
+const pool = require("../../../shared/config/database");
+
+class Subtask {
+  static async create(subtaskData) {
+    const { taskId, title } = subtaskData;
+    const query = `
+      INSERT INTO subtasks (task_id, title, is_done, created_at)
+      VALUES ($1, $2, FALSE, NOW())
+      RETURNING subtask_id, task_id, title, is_done, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId, title]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating subtask:", error);
+      throw error;
+    }
+  }
+
+  static async findByTaskId(taskId) {
+    const query = `
+      SELECT subtask_id, task_id, title, is_done, created_at
+      FROM subtasks 
+      WHERE task_id = $1
+      ORDER BY created_at ASC
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error finding subtasks by task id:", error);
+      throw error;
+    }
+  }
+
+  static async findById(subtaskId) {
+    const query = `
+      SELECT subtask_id, task_id, title, is_done, created_at
+      FROM subtasks 
+      WHERE subtask_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [subtaskId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding subtask by id:", error);
+      throw error;
+    }
+  }
+
+  static async update(subtaskId, updateData) {
+    const { title, isDone } = updateData;
+    const query = `
+      UPDATE subtasks 
+      SET title = $1, is_done = $2
+      WHERE subtask_id = $3
+      RETURNING subtask_id, task_id, title, is_done, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [title, isDone, subtaskId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating subtask:", error);
+      throw error;
+    }
+  }
+
+  static async toggleStatus(subtaskId) {
+    const query = `
+      UPDATE subtasks 
+      SET is_done = NOT is_done
+      WHERE subtask_id = $1
+      RETURNING subtask_id, task_id, title, is_done, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [subtaskId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error toggling subtask status:", error);
+      throw error;
+    }
+  }
+
+  static async delete(subtaskId) {
+    const query = `DELETE FROM subtasks WHERE subtask_id = $1`;
+    
+    try {
+      await pool.query(query, [subtaskId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting subtask:", error);
+      throw error;
+    }
+  }
+
+  static async getTaskSubtaskStats(taskId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_subtasks,
+        COUNT(CASE WHEN is_done = TRUE THEN 1 END) as completed_subtasks,
+        COUNT(CASE WHEN is_done = FALSE THEN 1 END) as pending_subtasks
+      FROM subtasks 
+      WHERE task_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting subtask stats:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = Subtask;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\models\tag.model.js ---
+const pool = require("../../../shared/config/database");
+
+class Tag {
+  static async create(tagData) {
+    const { name, color } = tagData;
+    const query = `
+      INSERT INTO tags (name, color)
+      VALUES ($1, $2)
+      RETURNING tag_id, name, color
+    `;
+    
+    try {
+      const result = await pool.query(query, [name, color]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating tag:", error);
+      throw error;
+    }
+  }
+
+  static async findById(tagId) {
+    const query = `
+      SELECT tag_id, name, color
+      FROM tags 
+      WHERE tag_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [tagId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding tag by id:", error);
+      throw error;
+    }
+  }
+
+  static async findByName(name) {
+    const query = `
+      SELECT tag_id, name, color
+      FROM tags 
+      WHERE name = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [name]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding tag by name:", error);
+      throw error;
+    }
+  }
+
+  static async getAll() {
+    const query = `
+      SELECT tag_id, name, color
+      FROM tags 
+      ORDER BY name ASC
+    `;
+    
+    try {
+      const result = await pool.query(query);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting all tags:", error);
+      throw error;
+    }
+  }
+
+  static async update(tagId, updateData) {
+    const { name, color } = updateData;
+    const query = `
+      UPDATE tags 
+      SET name = $1, color = $2
+      WHERE tag_id = $3
+      RETURNING tag_id, name, color
+    `;
+    
+    try {
+      const result = await pool.query(query, [name, color, tagId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating tag:", error);
+      throw error;
+    }
+  }
+
+  static async delete(tagId) {
+    const query = `DELETE FROM tags WHERE tag_id = $1`;
+    
+    try {
+      await pool.query(query, [tagId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting tag:", error);
+      throw error;
+    }
+  }
+
+  static async getTaskTags(taskId) {
+    const query = `
+      SELECT t.tag_id, t.name, t.color
+      FROM tags t
+      JOIN task_tags tt ON t.tag_id = tt.tag_id
+      WHERE tt.task_id = $1
+      ORDER BY t.name ASC
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting task tags:", error);
+      throw error;
+    }
+  }
+
+  static async addTagToTask(taskId, tagId) {
+    const query = `
+      INSERT INTO task_tags (task_id, tag_id)
+      VALUES ($1, $2)
+      RETURNING task_id, tag_id
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId, tagId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error adding tag to task:", error);
+      throw error;
+    }
+  }
+
+  static async removeTagFromTask(taskId, tagId) {
+    const query = `DELETE FROM task_tags WHERE task_id = $1 AND tag_id = $2`;
+    
+    try {
+      await pool.query(query, [taskId, tagId]);
+      return true;
+    } catch (error) {
+      console.error("Error removing tag from task:", error);
+      throw error;
+    }
+  }
+
+  static async getTagUsageStats() {
+    const query = `
+      SELECT t.tag_id, t.name, t.color, COUNT(tt.task_id) as usage_count
+      FROM tags t
+      LEFT JOIN task_tags tt ON t.tag_id = tt.tag_id
+      GROUP BY t.tag_id, t.name, t.color
+      ORDER BY usage_count DESC, t.name ASC
+    `;
+    
+    try {
+      const result = await pool.query(query);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting tag usage stats:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = Tag;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\tasks\models\task_dependency.model.js ---
+const pool = require("../../../shared/config/database");
+
+class TaskDependency {
+  static async create(dependencyData) {
+    const { taskId, dependsOnTaskId, dependencyType = "blocking" } = dependencyData;
+    const query = `
+      INSERT INTO task_dependencies (task_id, depends_on_task_id, dependency_type)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId, dependsOnTaskId, dependencyType]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating task dependency:", error);
+      throw error;
+    }
+  }
+
+  static async getTaskDependencies(taskId) {
+    const query = `
+      SELECT td.*, t.title as depends_on_title, t.status as depends_on_status
+      FROM task_dependencies td
+      JOIN tasks t ON td.depends_on_task_id = t.task_id
+      WHERE td.task_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting task dependencies:", error);
+      throw error;
+    }
+  }
+
+  static async getTasksBlockingThis(taskId) {
+    const query = `
+      SELECT td.*, t.title as task_title, t.status as task_status
+      FROM task_dependencies td
+      JOIN tasks t ON td.task_id = t.task_id
+      WHERE td.depends_on_task_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting tasks blocking this:", error);
+      throw error;
+    }
+  }
+
+  static async delete(dependencyId) {
+    const query = `DELETE FROM task_dependencies WHERE dependency_id = $1`;
+    
+    try {
+      await pool.query(query, [dependencyId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting task dependency:", error);
+      throw error;
+    }
+  }
+
+  static async checkCircularDependency(taskId, dependsOnTaskId) {
+    // Basic BFS/DFS to check if taskId is already a dependency of dependsOnTaskId
+    const visited = new Set();
+    const queue = [dependsOnTaskId];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === taskId) return true;
+      if (visited.has(current)) continue;
+      visited.add(current);
+
+      const deps = await this.getTaskDependencies(current);
+      for (const dep of deps) {
+        queue.push(dep.depends_on_task_id);
+      }
+    }
+    return false;
+  }
+}
+
+module.exports = TaskDependency;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\time-tracking\timeEntry.controller.js ---
+const TimeEntry = require("./timeEntry.model");
+
+const createEntry = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { taskId, durationMinutes, description, startedAt } = req.body;
+    const entry = await TimeEntry.create({ taskId, userId, durationMinutes, description, startedAt });
+    res.status(201).json(entry);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getUserEntries = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { limit = 50 } = req.query;
+    const entries = await TimeEntry.getUserEntries(userId, limit);
+    res.json(entries);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskEntries = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const entries = await TimeEntry.getTaskEntries(taskId);
+    res.json(entries);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteEntry = async (req, res, next) => {
+  try {
+    const { entryId } = req.params;
+    await TimeEntry.delete(entryId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskTotalTime = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const total = await TimeEntry.getTotalTimeByTask(taskId);
+    res.json({ totalMinutes: parseInt(total) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createEntry,
+  getUserEntries,
+  getTaskEntries,
+  deleteEntry,
+  getTaskTotalTime
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\time-tracking\timeEntry.model.js ---
+const pool = require("../../shared/config/database");
+
+class TimeEntry {
+  static async create(entryData) {
+    const { taskId, userId, durationMinutes, description, startedAt } = entryData;
+    const query = `
+      INSERT INTO time_entries (task_id, user_id, duration_minutes, description, started_at, created_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      RETURNING entry_id, task_id, user_id, duration_minutes, description, started_at, created_at
+    `;
+    try {
+      const result = await pool.query(query, [taskId, userId, durationMinutes || 0, description, startedAt || new Date()]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating time entry:", error);
+      throw error;
+    }
+  }
+
+  static async getUserEntries(userId, limit = 50) {
+    const query = `
+      SELECT te.*, t.title as task_title
+      FROM time_entries te
+      LEFT JOIN tasks t ON te.task_id = t.task_id
+      WHERE te.user_id = $1
+      ORDER BY te.created_at DESC
+      LIMIT $2
+    `;
+    try {
+      const result = await pool.query(query, [userId, limit]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting user time entries:", error);
+      throw error;
+    }
+  }
+
+  static async getTaskEntries(taskId) {
+    const query = `
+      SELECT te.*, u.username
+      FROM time_entries te
+      JOIN users u ON te.user_id = u.user_id
+      WHERE te.task_id = $1
+      ORDER BY te.created_at DESC
+    `;
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting task time entries:", error);
+      throw error;
+    }
+  }
+
+  static async delete(entryId) {
+    const query = `DELETE FROM time_entries WHERE entry_id = $1`;
+    try {
+      await pool.query(query, [entryId]);
+      return true;
+    } catch (error) {
+      console.error("Error deleting time entry:", error);
+      throw error;
+    }
+  }
+
+  static async getTotalTimeByTask(taskId) {
+    const query = `
+      SELECT COALESCE(SUM(duration_minutes), 0) as total_minutes
+      FROM time_entries WHERE task_id = $1
+    `;
+    try {
+      const result = await pool.query(query, [taskId]);
+      return result.rows[0].total_minutes;
+    } catch (error) {
+      console.error("Error getting total time:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = TimeEntry;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\time-tracking\timeEntry.routes.js ---
+const express = require("express");
+const router = express.Router();
+const timeController = require("./timeEntry.controller");
+const auth = require("../../shared/middlewares/auth");
+
+router.use(auth);
+
+router.post("/", timeController.createEntry);
+router.get("/", timeController.getUserEntries);
+router.get("/task/:taskId", timeController.getTaskEntries);
+router.get("/task/:taskId/total", timeController.getTaskTotalTime);
+router.delete("/:entryId", timeController.deleteEntry);
+
+module.exports = router;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\users\account.routes.js ---
+const express = require("express");
+const router = express.Router();
+const { getAccount, updateProfile } = require("./user.controller");
+const auth = require("../../shared/middlewares/auth");
+
+router.get("/", auth, getAccount);
+router.put("/profile", auth, updateProfile);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\users\user.controller.js ---
+const {
+  createUserService,
+  getUsersService,
+  loginService,
+  getAccountService,
+  updateProfileService,
+} = require("./user.service");
+
+const createUser = async (req, res, next) => {
+  try {
+    const { username, email, password, full_name } = req.body;
+
+    const data = await createUserService(username, email, password, full_name);
+
+    return res.status(200).json({
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getUsers = async (req, res, next) => {
+  try {
+    const users = await getUsersService();
+    return res.status(200).json({
+      users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const login = async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    const data = await loginService(username, password);
+    return res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getAccount = async (req, res, next) => {
+  try {
+    const user = await getAccountService(req.user.username);
+    return res.status(200).json({
+      user_id: user.user_id,
+      username: user.username,
+      email: user.email,
+      full_name: user.full_name,
+      avatar_url: user.avatar_url,
+      role: user.role,
+      theme_color: user.theme_color || "#f87171",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.uid;
+    const { full_name, avatar_url, theme_color } = req.body;
+    const user = await updateProfileService(userId, {
+      fullName: full_name,
+      avatarUrl: avatar_url,
+      themeColor: theme_color,
+    });
+
+    // Return user data in consistent format (same as getAccount)
+    return res.status(200).json({
+      user_id: user.user_id,
+      username: user.username,
+      email: user.email,
+      full_name: user.full_name,
+      avatar_url: user.avatar_url,
+      role: user.role,
+      theme_color: user.theme_color || "#f87171",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createUser,
+  getUsers,
+  login,
+  getAccount,
+  updateProfile,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\users\user.model.js ---
+const pool = require("../../shared/config/database");
+
+class User {
+  static async create(userData) {
+    const { username, email, password, fullName, themeColor } = userData;
+    const query = `
+      INSERT INTO users (username, email, password_hash, full_name, theme_color, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, COALESCE($5, '#f87171'), NOW(), NOW())
+      RETURNING user_id, username, email, full_name, avatar_url, role, theme_color, created_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [username, email, password, fullName, themeColor]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
+  }
+
+  static async findByEmail(email) {
+    const query = `
+      SELECT user_id, username, email, password_hash, full_name, avatar_url, role, theme_color, created_at
+      FROM users WHERE email = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [email]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding user by email:", error);
+      throw error;
+    }
+  }
+
+  static async findByUsername(username) {
+    const query = `
+      SELECT user_id, username, email, password_hash, full_name, avatar_url, role, theme_color, created_at
+      FROM users WHERE username = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [username]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding user by username:", error);
+      throw error;
+    }
+  }
+
+  static async findById(id) {
+    const query = `
+      SELECT user_id, username, email, full_name, avatar_url, role, theme_color, created_at
+      FROM users WHERE user_id = $1
+    `;
+    
+    try {
+      const result = await pool.query(query, [id]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error finding user by id:", error);
+      throw error;
+    }
+  }
+
+  static async getAll() {
+    const query = `
+      SELECT user_id, username, email, full_name, avatar_url, role, theme_color, created_at
+      FROM users ORDER BY created_at DESC
+    `;
+    
+    try {
+      const result = await pool.query(query);
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting all users:", error);
+      throw error;
+    }
+  }
+
+  static async updateProfile(userId, updateData) {
+    const { fullName, avatarUrl, themeColor } = updateData;
+    const query = `
+      UPDATE users 
+      SET full_name = COALESCE($1, full_name), 
+          avatar_url = COALESCE($2, avatar_url), 
+          theme_color = COALESCE($3, theme_color),
+          updated_at = NOW()
+      WHERE user_id = $4
+      RETURNING user_id, username, email, full_name, avatar_url, role, theme_color, updated_at
+    `;
+    
+    try {
+      const result = await pool.query(query, [fullName, avatarUrl, themeColor, userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      throw error;
+    }
+  }
+
+  static async getUserStats(userId) {
+    const query = `
+      SELECT 
+        (SELECT COUNT(*) FROM tasks WHERE assigned_to = $1) as total_tasks,
+        (SELECT COUNT(*) FROM tasks WHERE assigned_to = $1 AND status = 'done') as completed_tasks,
+        (SELECT COUNT(*) FROM projects WHERE owner_id = $1) as owned_projects,
+        (SELECT COUNT(*) FROM team_members WHERE user_id = $1) as team_memberships
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error getting user stats:", error);
+      throw error;
+    }
+  }
+}
+
+module.exports = User;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\users\user.routes.js ---
+const express = require("express");
+const router = express.Router();
+const { createUser, login, getUsers, getAccount, updateProfile } = require("./user.controller");
+const auth = require("../../shared/middlewares/auth");
+const validate = require("../../shared/middlewares/validation.middleware");
+const { registerValidation, loginValidation, updateProfileValidation } = require("./user.validation");
+
+router.post("/register", validate(registerValidation), createUser);
+router.post("/login", validate(loginValidation), login);
+
+router.get("/", auth, getUsers);
+router.get("/account", auth, getAccount);
+router.patch("/profile", auth, validate(updateProfileValidation), updateProfile);
+
+module.exports = router;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\users\user.service.js ---
+require("dotenv").config();
+const userModel = require("./user.model");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+const createUserService = async (username, email, password, fullName) => {
+  try {
+    const existingUsername = await userModel.findByUsername(username);
+    if (existingUsername) {
+      throw new Error("Username already exists");
+    }
+
+    const existingEmail = await userModel.findByEmail(email);
+    if (existingEmail) {
+      throw new Error("Email already exists");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await userModel.create({
+      username,
+      email,
+      password: hashedPassword,
+      fullName,
+    });
+
+    return newUser;
+  } catch (error) {
+    console.error("Error creating user:", error);
+    throw error;
+  }
+};
+
+const getUsersService = async () => {
+  try {
+    const users = await userModel.getAll();
+    return users;
+  } catch (error) {
+    console.error("Error getting users:", error);
+    throw error;
+  }
+};
+
+const loginService = async (username, password) => {
+  try {
+    const user = await userModel.findByUsername(username);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      throw new Error("Invalid password");
+    }
+    const payload = {
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      uid: user.user_id,
+    };
+    const access_token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRE,
+    });
+    return {
+      access_token,
+      data: {
+        ...payload,
+        fullName: user.full_name,
+        avatarUrl: user.avatar_url,
+        themeColor: user.theme_color || "#f87171",
+      },
+    };
+  } catch (error) {
+    console.error("Error logging in:", error);
+    throw error;
+  }
+};
+
+const getAccountService = async (username) => {
+  try {
+    const user = await userModel.findByUsername(username);
+    return user;
+  } catch (error) {
+    console.error("Error getting account:", error);
+    throw error;
+  }
+};
+
+const updateProfileService = async (userId, updateData) => {
+  try {
+    const user = await userModel.updateProfile(userId, updateData);
+    return user;
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    throw error;
+  }
+};
+
+module.exports = {
+  createUserService,
+  getUsersService,
+  loginService,
+  getAccountService,
+  updateProfileService,
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\modules\users\user.validation.js ---
+const { body } = require("express-validator");
+
+const registerValidation = [
+  body("username")
+    .isString()
+    .isLength({ min: 3, max: 30 })
+    .withMessage("Username must be between 3 and 30 characters"),
+  body("email").isEmail().withMessage("Invalid email address"),
+  body("password")
+    .isLength({ min: 6 })
+    .withMessage("Password must be at least 6 characters long"),
+  body("full_name")
+    .optional({ nullable: true })
+    .isString()
+    .isLength({ max: 100 })
+    .withMessage("Full name must be at most 100 characters"),
+];
+
+const loginValidation = [
+  body("username").notEmpty().withMessage("Username is required"),
+  body("password").notEmpty().withMessage("Password is required"),
+];
+
+const updateProfileValidation = [
+  body("full_name").optional({ nullable: true }).isString().isLength({ max: 100 }),
+  body("avatar_url").optional({ nullable: true }).isURL().withMessage("Invalid avatar URL"),
+  body("theme_color").optional({ nullable: true }).isHexColor().withMessage("Invalid hex color"),
+];
+
+module.exports = {
+  registerValidation,
+  loginValidation,
+  updateProfileValidation,
+};
+
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_4.json using write_to_file tool.

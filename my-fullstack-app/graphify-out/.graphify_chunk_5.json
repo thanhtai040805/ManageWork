@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {"id": "backend_src_routes_index_js", "label": "routes/index.js", "file_type": "code", "source_file": "backend/src/routes/index.js"},
+    {"id": "backend_src_shared_sentry_js", "label": "sentry.js", "file_type": "code", "source_file": "backend/src/shared/sentry.js"},
+    {"id": "backend_src_shared_config_database_js", "label": "database.js", "file_type": "code", "source_file": "backend/src/shared/config/database.js"},
+    {"id": "backend_src_shared_config_swagger_js", "label": "swagger.js", "file_type": "code", "source_file": "backend/src/shared/config/swagger.js"},
+    {"id": "backend_src_shared_cron_index_js", "label": "cron/index.js", "file_type": "code", "source_file": "backend/src/shared/cron/index.js"},
+    {"id": "backend_src_shared_cron_taskoverdue_job_js", "label": "taskOverdue.job.js", "file_type": "code", "source_file": "backend/src/shared/cron/taskOverdue.job.js"},
+    {"id": "backend_src_shared_middlewares_auth_js", "label": "auth.js", "file_type": "code", "source_file": "backend/src/shared/middlewares/auth.js"},
+    {"id": "backend_src_shared_middlewares_errorhandler_js", "label": "errorHandler.js", "file_type": "code", "source_file": "backend/src/shared/middlewares/errorHandler.js"},
+    {"id": "backend_src_shared_middlewares_permission_middleware_js", "label": "permission.middleware.js", "file_type": "code", "source_file": "backend/src/shared/middlewares/permission.middleware.js"},
+    {"id": "concept_central_routing_table", "label": "Central Routing Table", "file_type": "rationale", "source_file": "backend/src/routes/index.js"},
+    {"id": "concept_error_propagation_strategy", "label": "Error Propagation & Tracking Strategy", "file_type": "rationale", "source_file": "backend/src/shared/middlewares/errorHandler.js"},
+    {"id": "concept_rbac_model", "label": "Role-Based Access Control (RBAC) Model", "file_type": "rationale", "source_file": "backend/src/shared/middlewares/permission.middleware.js"}
+  ],
+  "edges": [
+    {"source": "backend_src_routes_index_js", "target": "backend_src_shared_middlewares_auth_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/routes/index.js"},
+    {"source": "backend_src_shared_cron_index_js", "target": "backend_src_shared_cron_taskoverdue_job_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/shared/cron/index.js"},
+    {"source": "backend_src_shared_cron_taskoverdue_job_js", "target": "backend_src_shared_config_database_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/shared/cron/taskOverdue.job.js"},
+    {"source": "backend_src_shared_middlewares_errorhandler_js", "target": "backend_src_shared_sentry_js", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/shared/middlewares/errorHandler.js"},
+    {"source": "backend_src_shared_middlewares_permission_middleware_js", "target": "backend_src_shared_config_database_js", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "backend/src/shared/middlewares/permission.middleware.js"},
+    {"source": "backend_src_routes_index_js", "target": "concept_central_routing_table", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.95, "source_file": "backend/src/routes/index.js"},
+    {"source": "backend_src_shared_middlewares_errorhandler_js", "target": "concept_error_propagation_strategy", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "backend/src/shared/middlewares/errorHandler.js"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 15500,
+  "output_tokens": 1250
+}

@@ -1,0 +1,10 @@
+{
+  "nodes": [
+    {"id": "frontend_public_vite_svg", "label": "vite.svg", "file_type": "image", "source_file": "frontend/public/vite.svg"},
+    {"id": "frontend_src_assets_react_svg", "label": "react.svg", "file_type": "image", "source_file": "frontend/src/assets/react.svg"}
+  ],
+  "edges": [],
+  "hyperedges": [],
+  "input_tokens": 1000,
+  "output_tokens": 300
+}

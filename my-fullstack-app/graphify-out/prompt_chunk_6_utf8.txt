@@ -1,0 +1,1975 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 6 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\services\taskCache.service.js ---
+const { redis } = require("../redis/redis");
+
+const TASK_CACHE_PREFIX = "task:cache";
+const TASK_CACHE_TTL = 300;
+
+const getKey = (projectId) => `${TASK_CACHE_PREFIX}:${projectId}`;
+
+const TaskCacheService = {
+  async getProjectTasks(projectId) {
+    if (!redis) return null;
+    try {
+      const cached = await redis.get(getKey(projectId));
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      console.error("Redis cache get error:", error.message);
+      return null;
+    }
+  },
+
+  async setProjectTasks(projectId, tasks) {
+    if (!redis) return;
+    try {
+      await redis.setex(getKey(projectId), TASK_CACHE_TTL, JSON.stringify(tasks));
+    } catch (error) {
+      console.error("Redis cache set error:", error.message);
+    }
+  },
+
+  async invalidateProject(projectId) {
+    if (!redis) return;
+    try {
+      await redis.del(getKey(projectId));
+    } catch (error) {
+      console.error("Redis cache invalidate error:", error.message);
+    }
+  },
+
+  async invalidateUserTasks(userId) {
+    if (!redis) return;
+    try {
+      const keys = [];
+      for await (const key of redis.scanIter(`${TASK_CACHE_PREFIX}:*`)) {
+        keys.push(key);
+      }
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (error) {
+      console.error("Redis cache invalidate error:", error.message);
+    }
+  },
+
+  async getUserTasks(userId) {
+    if (!redis) return null;
+    try {
+      const cached = await redis.get(`user:${userId}:tasks`);
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      console.error("Redis user cache get error:", error.message);
+      return null;
+    }
+  },
+
+  async setUserTasks(userId, tasks) {
+    if (!redis) return;
+    try {
+      await redis.setex(`user:${userId}:tasks`, TASK_CACHE_TTL, JSON.stringify(tasks));
+    } catch (error) {
+      console.error("Redis user cache set error:", error.message);
+    }
+  },
+
+  async invalidateUserTaskCache(userId) {
+    if (!redis) return;
+    try {
+      await redis.del(`user:${userId}:tasks`);
+    } catch (error) {
+      console.error("Redis user cache invalidate error:", error.message);
+    }
+  },
+};
+
+module.exports = TaskCacheService;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\services\taskOrder.service.js ---
+const { redis } = require("../redis/redis");
+
+const TASK_ORDER_PREFIX = "task:order";
+
+const getKey = (projectId, status) => {
+  return `${TASK_ORDER_PREFIX}:${projectId}:${status}`;
+};
+
+const TaskOrderService = {
+  async setTaskOrder(projectId, status, taskId, order) {
+    if (!redis) return null;
+    const key = getKey(projectId, status);
+    await redis.zadd(key, order, taskId);
+  },
+
+  async removeTask(projectId, status, taskId) {
+    if (!redis) return null;
+    const key = getKey(projectId, status);
+    await redis.zrem(key, taskId);
+  },
+
+  async moveTask(projectId, fromStatus, toStatus, taskId, newOrder) {
+    if (!redis) return null;
+    const fromKey = getKey(projectId, fromStatus);
+    const toKey = getKey(projectId, toStatus);
+    
+    await redis.zrem(fromKey, taskId);
+    await redis.zadd(toKey, newOrder, taskId);
+  },
+
+  async getTaskOrder(projectId, status, taskId) {
+    if (!redis) return null;
+    const key = getKey(projectId, status);
+    const score = await redis.zscore(key, taskId);
+    return score ? parseFloat(score) : null;
+  },
+
+  async getOrderedTasks(projectId, status, start = 0, stop = -1) {
+    if (!redis) return [];
+    const key = getKey(projectId, status);
+    return await redis.zrange(key, start, stop);
+  },
+
+  async syncColumn(projectId, status, taskIds) {
+    if (!redis) return;
+    const key = getKey(projectId, status);
+    await redis.del(key);
+    if (taskIds.length > 0) {
+      const args = [];
+      taskIds.forEach((taskId, index) => {
+        args.push(index * 1000, taskId);
+      });
+      await redis.zadd(key, ...args);
+    }
+  },
+
+  async getNextOrder(projectId, status) {
+    if (!redis) return Date.now() * 1000;
+    const key = getKey(projectId, status);
+    const tasks = await redis.zrevrange(key, 0, 0);
+    if (tasks.length === 0) return 1000;
+    const maxScore = await redis.zscore(key, tasks[0]);
+    return maxScore ? parseFloat(maxScore) + 1000 : 1000;
+  },
+
+  async getColumnOrder(projectId, status) {
+    if (!redis) return [];
+    const key = getKey(projectId, status);
+    const tasks = await redis.zrange(key, 0, -1, "WITHSCORES");
+    const result = [];
+    for (let i = 0; i < tasks.length; i += 2) {
+      result.push({ taskId: tasks[i], order: parseFloat(tasks[i + 1]) });
+    }
+    return result;
+  },
+
+  async deleteProject(projectId) {
+    if (!redis) return;
+    const keys = [];
+    const statuses = ["todo", "in_progress", "review", "on_hold", "done"];
+    statuses.forEach(status => {
+      keys.push(getKey(projectId, status));
+    });
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  },
+};
+
+module.exports = TaskOrderService;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\sockets\presenceSubscriber.js ---
+const { subRealtime, redis } = require("../redis/redis");
+
+const friendCache = new Map();
+const CACHE_TTL = 300000; // 5 minutes
+
+const getFriends = async (userId) => {
+  const cached = friendCache.get(userId);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    return cached.friends;
+  }
+
+  // If Redis is disabled, we might not have friends in Redis
+  if (!redis) return [];
+
+  const friends = await redis.smembers(`user:${userId}:friends`);
+  friendCache.set(userId, { friends, timestamp: Date.now() });
+
+  return friends;
+};
+
+let isInitialized = false;
+const initRealtimeSubscriber = (io) => {
+  if (isInitialized) return;
+  isInitialized = true;
+  if (!subRealtime) return;
+  subRealtime.subscribe("presence", "typing");
+
+  subRealtime.on("message", async (channel, message) => {
+    try {
+      const data = JSON.parse(message);
+      if (channel === "presence") {
+        const { type, userId, lastSeen } = data;
+        const friends = await getFriends(userId);
+        for (const friendId of friends) {
+          io.to(`user:${friendId}`).emit(`user:${type}`, {
+            userId,
+            lastSeen: lastSeen || null,
+          });
+        }
+      }
+
+      if (channel === "typing") {
+        const { roomId, userId, userName } = data;
+        io.to(roomId).emit("room:typing", {
+          roomId,
+          userId,
+          userName,
+        });
+      }
+
+    } catch (err) {
+      console.error("Subscriber error:", err);
+    }
+  });
+};
+
+module.exports = initRealtimeSubscriber;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\sockets\socket.js ---
+const { Server } = require("socket.io");
+const { createAdapter } = require("@socket.io/redis-adapter");
+const registerSocketEvents = require("./socketEvents");
+const socketAuth = require("../middlewares/socketAuth");
+const { pub, sub, subRealtime } = require("../redis/redis");
+const initRealtimeSubscriber = require("./presenceSubscriber");
+const logger = require("../utils/logger");
+
+
+const socketEmitter = require("./socketEmitter");
+
+const initSocket = (server) => {
+  const io = new Server(server, {
+    pingInterval: 5000,
+    pingTimeout: 5000,
+    cors: {
+      origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+      credentials: true,
+    },
+  });
+
+  io.use(socketAuth);
+
+  initRealtimeSubscriber(io);
+
+
+  if (process.env.REDIS_ENABLED === "true" && pub && sub) {
+    io.adapter(createAdapter(pub, sub));
+  }
+
+  socketEmitter.setIO(io);
+
+  if (subRealtime) {
+    subRealtime.subscribe("chat_messages");
+    subRealtime.on("message", (channel, message) => {
+      if (channel === "chat_messages") {
+        try {
+          const data = JSON.parse(message);
+          if (data.type === "new_message") {
+            io.to(data.roomId).emit("message:new", {
+              roomId: data.roomId,
+              message: data.message
+            });
+          }
+        } catch (err) {
+          logger.error("Chat message subscriber error", { error: err.message });
+        }
+      }
+    });
+  }
+
+  io.on("connection", (socket) => {
+    logger.info("Socket connected: " + socket.id);
+
+    if (!socket.user) {
+      logger.warn("No user in socket");
+      socket.disconnect();
+      return;
+    }
+
+    socket.join(`user:${socket.user.uid}`);
+
+    if (socket._registered) return;
+    socket._registered = true;
+
+    socket.onAny((event, ...args) => {
+      logger.debug("SERVER GOT EVENT: " + event);
+    });
+
+    registerSocketEvents(io, socket);
+  });
+
+  return io;
+};
+
+module.exports = initSocket;
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\sockets\socketEmitter.js ---
+let io = null;
+
+const setIO = (socketIO) => {
+  io = socketIO;
+};
+
+const getIO = () => io;
+
+const emitToProject = (projectId, event, data) => {
+  if (io) {
+    io.to(`project:${projectId}`).emit(event, data);
+  }
+};
+
+const emitToUser = (userId, event, data) => {
+  if (io) {
+    io.to(`user:${userId}`).emit(event, data);
+  }
+};
+
+const emitTaskUpdated = (task, previousStatus) => {
+  if (!io || !task) {
+    console.log('[SocketEmitter] No io or task, skipping emit');
+    return;
+  }
+  
+  const emitData = {
+    taskId: task.task_id,
+    projectId: task.project_id,
+    title: task.title,
+    status: task.status,
+    previousStatus,
+    updatedAt: task.updated_at,
+    orderIndex: task.order_index,
+  };
+
+  console.log('[SocketEmitter] Emitting task:updated', emitData);
+
+  if (task.project_id) {
+    console.log('[SocketEmitter] Emitting to project channel:', `project:${task.project_id}`);
+    emitToProject(task.project_id, 'task:updated', emitData);
+  }
+
+  if (task.assigned_to) {
+    console.log('[SocketEmitter] Emitting to assigned user:', `user:${task.assigned_to}`);
+    emitToUser(task.assigned_to, 'task:updated', emitData);
+  }
+
+  if (task.created_by) {
+    console.log('[SocketEmitter] Emitting to creator:', `user:${task.created_by}`);
+    emitToUser(task.created_by, 'task:updated', emitData);
+  }
+};
+
+const emitTaskReordered = (projectId, columnId, tasks) => {
+  if (!io || !projectId) return;
+  
+  emitToProject(projectId, 'task:reordered', {
+    columnId,
+    tasks,
+    projectId,
+  });
+};
+
+const emitNotification = (userId, notification) => {
+  if (io && userId) {
+    emitToUser(userId, 'notification:new', notification);
+  }
+};
+
+module.exports = {
+  setIO,
+  getIO,
+  emitToProject,
+  emitToUser,
+  emitTaskUpdated,
+  emitTaskReordered,
+  emitNotification,
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\sockets\socketEvents.js ---
+const chatRoomService = require('../../modules/chat/chat.service');
+const projectModel = require('../../modules/projects/project.model');
+const channelModel = require('../../modules/channels/channel.model');
+const {
+  sendMessage,
+  typing,
+  getMessages,
+  editMessage,
+  deleteMessage,
+  openRoom,
+} = require("./socketService");
+
+const { redis, pub } = require("../redis/redis");
+
+module.exports = (io, socket) => {
+  const userId = socket.user.uid;
+  (async () => {
+    try {
+      if (!redis) return;
+
+      // Cache friends only if user has friends - avoid unnecessary DB calls
+      let friends = await chatRoomService.getFriends({ userId });
+      if (friends.length > 0) {
+        // Clear existing and add fresh - only if we have friends
+        await redis.del(`user:${userId}:friends`);
+        await redis.sadd(`user:${userId}:friends`, ...friends);
+        await redis.expire(`user:${userId}:friends`, 3600);
+      }
+
+      // Check user already online - notify others if new login
+      const isOnline = await redis.sismember("online_users", userId);
+      console.log(`[Login] isOnline check for ${userId}: ${isOnline}`);
+      
+      // Always ensure user is in online_users set
+      const saddResult = await redis.sadd("online_users", userId);
+      const members = await redis.smembers("online_users");
+      console.log(`[Login] sadd result: ${saddResult}, all members: ${JSON.stringify(members)}`);
+      
+      // Clean up stale lastSeen when coming online
+      const delResult = await redis.del(`user:${userId}:lastSeen`);
+      console.log(`[Login] del lastSeen result: ${delResult}`);
+      
+      // Only publish "online" if they weren't already marked online
+      if (!isOnline) {
+        await pub.publish(
+          "presence",
+          JSON.stringify({
+            type: "online",
+            userId,
+          })
+        );
+        console.log(`[Presence] User ${userId} came online (new)`);
+      } else {
+        console.log(`[Presence] User ${userId} reconnected (already online)`);
+      }
+
+      console.log(`User ${userId} connected`);
+      
+      // Join private user room for presence notifications
+      socket.join(`user:${userId}`);
+
+      // join tất cả room chat
+      const rooms = await chatRoomService.getChatRoomsByUser(userId);
+      rooms.forEach((room) => {
+        socket.join(room.room_id);
+      });
+
+      // Join project channels for real-time task updates
+      const projects = await projectModel.getUserProjects(userId);
+      console.log(`[SocketInit] User ${userId} has ${projects.length} projects`);
+      projects.forEach((project) => {
+        console.log(`[SocketInit] Joining project channel: project:${project.project_id}`);
+        socket.join(`project:${project.project_id}`);
+      });
+
+      // Join channel rooms for real-time channel updates
+      const userChannels = await channelModel.getUserChannels(userId, null);
+      console.log(`[SocketInit] User ${userId} has ${userChannels.length} channels`);
+      userChannels.forEach((channel) => {
+        console.log(`[SocketInit] Joining channel: channel:${channel.channel_id}`);
+        socket.join(`channel:${channel.channel_id}`);
+      });
+
+      const onlineUsers = await redis.smembers("online_users");
+      socket.emit("users:online:list", onlineUsers);
+
+    } catch (error) {
+      console.log("Socket init error:", error);
+    }
+  })();
+
+  socket.on("typing", (d) => typing(io, socket, d));
+
+  socket.on("message:send", async (data, ack) => {
+    try {
+      const message = await sendMessage(io, socket, data);
+      ack({ ok: true, message });
+    } catch (err) {
+      ack({ ok: false, error: err.message });
+    }
+  });
+
+  socket.on("message:get", (d) => getMessages(io, socket, d));
+  socket.on("message:edit", (d) => editMessage(io, socket, d));
+  socket.on("message:delete", (d) => deleteMessage(io, socket, d));
+  socket.on("room:open", (payload) => openRoom(io, socket, payload));
+
+  socket.on("message:reaction:toggle", (payload) => require("./socketService").toggleReaction(io, socket, payload));
+  socket.on("message:pin:toggle", (payload) => require("./socketService").togglePin(io, socket, payload));
+  socket.on("room:update", (payload) => require("./socketService").updateRoom(io, socket, payload));
+
+  // Channel real-time events
+  socket.on("channel:join", (payload) => {
+    const { channelId } = payload;
+    socket.join(`channel:${channelId}`);
+    console.log(`[Channel] User ${userId} joined channel:${channelId}`);
+  });
+
+  socket.on("channel:leave", (payload) => {
+    const { channelId } = payload;
+    socket.leave(`channel:${channelId}`);
+    console.log(`[Channel] User ${userId} left channel:${channelId}`);
+  });
+
+  socket.on("channel:post:created", (payload) => {
+    const { channelId, post } = payload;
+    io.to(`channel:${channelId}`).emit("channel:post:new", post);
+  });
+
+  socket.on("channel:reply:created", (payload) => {
+    const { channelId, reply } = payload;
+    io.to(`channel:${channelId}`).emit("channel:reply:new", reply);
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log(`[Disconnect] Event fired for ${userId}, reason: ${reason}`);
+    
+    (async () => {
+      try {
+        if (!redis) return;
+
+        console.log(`[Disconnect] Processing disconnect for ${userId}...`);
+
+        // kiểm tra còn device khác không
+        const sockets = await io.in(`user:${userId}`).fetchSockets();
+        console.log(`[Disconnect] Found ${sockets.length} socket(s) for user ${userId}`);
+        
+        const otherSockets = sockets.filter(s => s.id !== socket.id);
+        if (otherSockets.length > 0) {
+          console.log(`[Disconnect] User ${userId} still has ${otherSockets.length} other sessions, skipping offline`);
+          return;
+        }
+
+        console.log(`[Disconnect] No other sessions, removing ${userId} from online_users...`);
+
+        // Remove from online_users set
+        const remResult = await redis.srem("online_users", userId);
+        console.log(`[Presence] Removed ${userId} from online_users, result: ${remResult}`);
+
+        // Set lastSeen
+        const lastSeen = Date.now();
+        await redis.set(`user:${userId}:lastSeen`, lastSeen);
+        console.log(`[Presence] Set lastSeen for ${userId}: ${lastSeen}`);
+
+        // Publish offline presence
+        await pub.publish(
+          "presence",
+          JSON.stringify({
+            type: "offline",
+            userId,
+            lastSeen,
+          })
+        );
+
+        console.log(`User ${userId} offline complete`);
+
+      } catch (err) {
+        console.error("Disconnect error:", err);
+      }
+    })();
+  });
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\sockets\socketService.js ---
+const chatService = require("../../modules/chat/chat.service");
+const { redis, pub} = require('../redis/redis')
+
+const sendMessage = async (io, socket, data) => {
+    const { roomId, content, parentMessageId, attachments = [], messageType = "text" } = data;
+    console.log("sendMessage called with data:", socket.user.uid);
+    const isMember = await chatService.isMemberOfChatRoom({
+        roomId,
+        userId: socket.user.uid
+    });
+    if (!isMember) return;
+    const senderId = socket.user.uid
+    // Allow empty content if attachments exist (media-only messages)
+    if(!roomId || (!content?.trim() && attachments.length === 0)) return;
+    try {
+        const message = await chatService.sendMessage({
+          roomId,
+          senderId,
+          content: content?.trim() || "",
+          messageType,
+          attachments,
+          parentMessageId
+        });
+
+        // Emit locally first (for single server)
+        io.to(roomId).emit("message:new", { roomId, message });
+
+        // Publish to Redis for horizontal scaling (other servers)
+        if (pub) {
+            await pub.publish("chat_messages", JSON.stringify({
+                type: "new_message",
+                roomId,
+                message
+            }));
+        }
+
+        return message
+    } catch (error) {
+        socket.emit("message:error", {
+            action: "send",
+            code: "SEND_FAILED",
+        });
+    }
+}
+
+const typing = async (io, socket, { roomId }) => {
+  if (!redis) return;
+
+  const userId = socket.user.uid;
+  const userName = socket.user.username;
+  if (!roomId) return;
+
+  const isMember = await chatService.isMemberOfChatRoom({
+    roomId,
+    userId,
+  });
+  if (!isMember) return;
+
+  const key = `typing_${roomId}:${userId}`;
+
+  const exists = await redis.exists(key);
+  if (exists) return;
+
+  await redis.set(key, 1, "EX", 2);
+  await pub.publish(
+    "typing",
+    JSON.stringify({
+      roomId,
+      userId,
+      userName
+    })
+  );
+};
+
+const getMessages = async (io, socket, payload) => {
+    const {
+        roomId,
+        limit = 30,
+        cursorCreatedAt,
+        cursorMessageId,
+    } = payload;
+
+    const isMember = await chatService.isMemberOfChatRoom({
+        roomId,
+        userId: socket.user.uid
+    });
+    if (!isMember) return;
+
+    try {
+        let messages;
+
+        if (!cursorCreatedAt || !cursorMessageId) {
+            messages = await chatService.firsTimeGetMessages({ roomId, limit});
+        } else {
+            messages = await chatService.getMessagesByCursor({
+                roomId,
+                cursorCreatedAt,
+                cursorMessageId,
+                limit
+            });
+        }
+
+        socket.emit("message:list", { roomId, messages });
+    } catch (error) {
+        socket.emit('error', {
+            msg: "Cannot get messages",
+            action: "getMessages"
+        });
+    }
+}
+
+
+const disconnect = (socket) => {
+    console.log('Client disconnected:', socket.id)
+}
+
+const editMessage = async (io , socket, payload) => {
+    const userId = socket.user.uid;
+    const { messageId, newContent, roomId } = payload;
+
+    const isMember = await chatService.isMemberOfChatRoom({
+        roomId,
+        userId: socket.user.uid
+    });
+    if (!isMember) return;
+
+    try {
+        await chatService.updateMessageContent({
+          messageId,
+          newContent,
+          senderId: socket.user.uid,
+        });
+
+        const fullUpdatedMessage = await require("../../modules/chat/models/message.model").getFullMessage(messageId);
+        io.to(roomId).emit("message:update", { roomId, newMessage: fullUpdatedMessage });
+    } catch (error) {
+        socket.emit('error', {
+            msg: "Cannot edit message",
+            action: "editMessage"
+        })
+    }
+}
+
+const deleteMessage = async (io, socket, payload) => {
+    const { messageId,  roomId } = payload;
+
+    const isMember = await chatService.isMemberOfChatRoom({
+        roomId,
+        userId: socket.user.uid
+    });
+    if (!isMember) return;
+
+    try {
+        await chatService.softDeleteMessage(messageId, socket.user.uid);
+        io.to(roomId).emit("message:delete", { roomId, messageId });
+    }
+    catch (error) {
+        socket.emit('error', {
+            msg: "Cannot delete message",
+            action: "deleteMessage"
+        })
+    }
+}
+
+const openRoom = async (io, socket, payload) => {
+    const { roomId } = payload;
+
+    const isMember = await chatService.isMemberOfChatRoom({
+        roomId,
+        userId: socket.user.uid
+    });
+    if (!isMember) return;
+
+    const lastMessageId = await chatService.getLastMessageId(roomId);
+
+    await chatService.markMessagesAsRead({
+        roomId,
+        userId: socket.user.uid,
+        messagesId: lastMessageId
+    });
+
+    socket.to(roomId).emit("room:read", {
+      roomId,
+      userId: socket.user.uid,
+      lastMessageId,
+    });
+}
+
+const toggleReaction = async (io, socket, payload) => {
+    const { messageId, roomId, reactionType } = payload;
+    const userId = socket.user.uid;
+
+    if (!roomId) return socket.emit("error", { msg: "roomId is required" });
+
+    const isMember = await chatService.isMemberOfChatRoom({ roomId, userId });
+    if (!isMember) return;
+
+    try {
+        await chatService.toggleReaction({ messageId, userId, reactionType });
+        
+        // Fetch full updated reactions for this message
+        const allReactions = await require("../../modules/chat/models/messageReaction.model").getByMessage(messageId);
+        
+        io.to(roomId).emit("message:reaction:update", { roomId, messageId, reactions: allReactions });
+    } catch (error) {
+        console.error("toggleReaction error:", error);
+        socket.emit("error", { msg: "Cannot toggle reaction" });
+    }
+}
+
+const togglePin = async (io, socket, payload) => {
+    const { messageId, roomId, isPinned } = payload;
+    const userId = socket.user.uid;
+
+    if (!roomId) return socket.emit("error", { msg: "roomId is required" });
+
+    const role = await chatService.getMemberRole({ roomId, userId });
+    if (role !== 'admin') {
+        return socket.emit("error", { msg: "Only admins can pin messages" });
+    }
+
+    try {
+        await chatService.togglePinMessage(messageId, isPinned);
+        // Include roomId so the frontend knows which room's store to update
+        io.to(roomId).emit("message:pin:update", { roomId, messageId, isPinned });
+    } catch (error) {
+        console.error("togglePin error:", error);
+        socket.emit("error", { msg: "Cannot toggle pin" });
+    }
+}
+
+const updateRoom = async (io, socket, payload) => {
+    const { roomId, updateData } = payload;
+    const userId = socket.user.uid;
+
+    const role = await chatService.getMemberRole({ roomId, userId });
+    if (role !== 'admin') {
+        return socket.emit("error", { msg: "Only admins can update room info" });
+    }
+
+    try {
+        const updatedRoom = await chatService.updateChatRoom(roomId, updateData);
+        io.to(roomId).emit("room:update", updatedRoom);
+    } catch (error) {
+        socket.emit("error", { msg: "Cannot update room" });
+    }
+}
+
+module.exports = {
+  sendMessage,
+  typing,
+  disconnect,
+  getMessages,
+  editMessage,
+  deleteMessage,
+  openRoom,
+  toggleReaction,
+  togglePin,
+  updateRoom
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\utils\logger.js ---
+/**
+ * Professional logger utility for the backend.
+ * Provides consistent formatting and levels without external dependencies.
+ */
+
+const levels = {
+  ERROR: 0,
+  WARN: 1,
+  INFO: 2,
+  DEBUG: 3,
+};
+
+const currentLevel = process.env.NODE_ENV === 'production' ? levels.INFO : levels.DEBUG;
+
+const formatMessage = (level, message, meta) => {
+  const timestamp = new Date().toISOString();
+  const metaString = meta ? ` | meta: ${JSON.stringify(meta)}` : '';
+  return `[${timestamp}] [${level}] ${message}${metaString}`;
+};
+
+const logger = {
+  error: (message, meta) => {
+    if (currentLevel >= levels.ERROR) {
+      console.error(formatMessage('ERROR', message, meta));
+    }
+  },
+  warn: (message, meta) => {
+    if (currentLevel >= levels.WARN) {
+      console.warn(formatMessage('WARN', message, meta));
+    }
+  },
+  info: (message, meta) => {
+    if (currentLevel >= levels.INFO) {
+      console.info(formatMessage('INFO', message, meta));
+    }
+  },
+  debug: (message, meta) => {
+    if (currentLevel >= levels.DEBUG) {
+      console.debug(formatMessage('DEBUG', message, meta));
+    }
+  },
+};
+
+module.exports = logger;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\backend\src\shared\utils\mentionUtils.js ---
+const userModel = require("../../modules/users/user.model");
+const Notification = require("../../modules/notifications/notification.model");
+const socketEmitter = require("../sockets/socketEmitter");
+
+/**
+ * Extracts usernames from a string with @mentions
+ * @param {string} text 
+ * @returns {string[]}
+ */
+const extractMentions = (text) => {
+  if (!text) return [];
+  const mentionRegex = /@(\w+)/g;
+  const matches = text.match(mentionRegex);
+  if (!matches) return [];
+  return matches.map(m => m.substring(1));
+};
+
+/**
+ * Notifies mentioned users in a piece of content
+ * @param {string} text 
+ * @param {string} senderId 
+ * @param {string} type 
+ * @param {string} message 
+ */
+const notifyMentions = async (text, senderId, type, message) => {
+  const usernames = extractMentions(text);
+  if (usernames.length === 0) return;
+
+  for (const username of usernames) {
+    try {
+      const user = await userModel.findByUsername(username);
+      if (user && String(user.user_id) !== String(senderId)) {
+        const notification = await Notification.create({
+          userId: user.user_id,
+          type: type || 'system',
+          message: message || 'You were mentioned'
+        });
+        socketEmitter.emitNotification(user.user_id, notification);
+      }
+    } catch (error) {
+      console.error(`Error notifying mention for ${username}:`, error);
+    }
+  }
+};
+
+module.exports = {
+  extractMentions,
+  notifyMentions
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\eslint.config.js ---
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs['recommended-latest'],
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': 'off',
+      'no-debugger': 'off',
+      'react/props-type': 'off'
+    },
+  },
+])
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\vite.config.js ---
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    port: 3000,
+    proxy: {
+      '/v1/api': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+    },
+  },
+});
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\App.jsx ---
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import SignUp from "./pages/auth/Register";
+import { Login } from "./pages/auth/Login";
+import { Home } from "./pages/home/Home";
+import { useContext, useEffect } from "react";
+import { AuthContext } from "./context/authContext";
+import { ThemeContext } from "./context/themeContext";
+import apiClient from "./services/apiClient";
+import { MyTasks } from "./pages/tasks/MyTasks";
+import { Settings } from "./pages/settings/Settings";
+import { Projects } from "./pages/projects/Projects";
+import { ProjectDetail } from "./pages/projects/ProjectDetail";
+import { ProjectSettings } from "./pages/projects/ProjectSettings";
+import { Layout } from "./layouts/Layout";
+import { Chat } from "./pages/chat/Chat";
+import { Dashboard } from "./pages/dashboard/Dashboard";
+import { ActivityLog } from "./pages/activity/ActivityLog";
+import { PeopleDirectory } from "./pages/people/PeopleDirectory";
+import useSocket from "./hooks/useSocket";
+import useSocketRegister from "./hooks/useSocketRegister";
+
+function App() {
+  const { auth, setAuth, appLoading, setAppLoading } = useContext(AuthContext);
+  const { setPrimaryColor } = useContext(ThemeContext);
+
+  useEffect(() => {
+    const fetchAccount = async () => {
+      setAppLoading(true);
+      try {
+        const res = await apiClient.get(`/v1/api/account`);
+        if (res) {
+          // Get theme color from response (middleware already fetches it)
+          const userThemeColor = res.theme_color || "#f87171";
+
+          setAuth({
+            isAuthenticated: true,
+            user: {
+              uid: res.user_id,
+              email: res.email,
+              name: res.username,
+              username: res.username,
+              fullName: res.full_name,
+              avatarUrl: res.avatar_url,
+              role: res.role,
+              themeColor: userThemeColor,
+            },
+          });
+
+          // Theme color will be synced by the useEffect below
+        }
+      } catch (error) {
+        console.error("Error fetching account:", error);
+        // If fetch fails (e.g., no token, unauthorized), reset to default theme
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          const defaultColor = "#f87171";
+          setPrimaryColor(defaultColor);
+          localStorage.removeItem("theme_color");
+          localStorage.removeItem("access_token");
+        }
+      } finally {
+        setAppLoading(false);
+      }
+    };
+
+    // Only fetch if we have a token
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      fetchAccount();
+    } else {
+      setAppLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync theme color when auth.user.themeColor changes (from login or account fetch)
+  useEffect(() => {
+    if (auth.isAuthenticated && auth.user.themeColor) {
+      setPrimaryColor(auth.user.themeColor);
+      localStorage.setItem("theme_color", auth.user.themeColor);
+    }
+  }, [auth.user.themeColor, auth.isAuthenticated, setPrimaryColor]);
+
+  useSocket();
+  useSocketRegister();
+
+  return (
+    <BrowserRouter>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/tasks" element={<MyTasks />} />
+            <Route path="/my-task" element={<MyTasks />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:projectId" element={<ProjectDetail />} />
+            <Route
+              path="/projects/:projectId/settings"
+              element={<ProjectSettings />}
+            />
+            <Route path="/my-task" element={<MyTasks />} />
+            <Route path="/settings" element={<Settings />} />
+
+            <Route path="/chat" element={<Chat />}>
+              <Route path="channels/:channelId" element={<Chat />} />
+              <Route path="rooms/:roomId" element={<Chat />} />
+            </Route>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/activity" element={<ActivityLog />} />
+            <Route path="/people" element={<PeopleDirectory />} />
+          </Route>
+
+          <Route path="/register" element={<SignUp />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
+      </div>
+    </BrowserRouter>
+  );
+}
+
+export default App;
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\main.jsx ---
+import { createRoot } from 'react-dom/client'
+import App from './App.jsx'
+import './index.css'
+import { AuthWrapper } from './context/authContext.jsx'
+import { ThemeProvider } from './context/themeContext.jsx'
+import { ErrorBoundary } from './components/common'
+import { SocketProvider } from "./context/socketContext";
+
+
+createRoot(document.getElementById("root")).render(
+  <ErrorBoundary>
+    <AuthWrapper>
+      <ThemeProvider>
+        <SocketProvider>
+          <App />
+        </SocketProvider>
+      </ThemeProvider>
+    </AuthWrapper>
+  </ErrorBoundary>,
+);
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\common\ConfirmModal.jsx ---
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { X, AlertTriangle } from "lucide-react";
+
+let confirmRoot = null;
+let confirmContainer = null;
+
+function ConfirmModalContent({
+  title = "Confirm",
+  message = "Are you sure?",
+  confirmText = "OK",
+  cancelText = "Cancel",
+  variant = "default",
+  onConfirm,
+  onCancel,
+}) {
+  React.useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onCancel();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel]);
+
+  const variantStyles = {
+    default: "bg-slate-900",
+    danger: "bg-rose-500",
+    warning: "bg-amber-500",
+  };
+
+  const buttonStyles = variantStyles[variant] || variantStyles.default;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-6">
+          <div className="flex items-start gap-4">
+            {(variant === "danger" || variant === "warning") && (
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full flex-shrink-0 ${variant === "danger" ? "bg-rose-100" : "bg-amber-100"}`}>
+                <AlertTriangle size={20} className={variant === "danger" ? "text-rose-500" : "text-amber-500"} />
+              </div>
+            )}
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+              <p className="mt-2 text-sm text-slate-600">{message}</p>
+            </div>
+            <button onClick={onCancel} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+        <div className="flex gap-3 bg-slate-50 px-6 py-4">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm ${buttonStyles} hover:opacity-90`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function confirm(options = {}) {
+  const {
+    title = "Confirm",
+    message = "Are you sure?",
+    confirmText = "OK",
+    cancelText = "Cancel",
+    variant = "default",
+  } = options;
+
+  return new Promise((resolve) => {
+    if (!confirmContainer) {
+      confirmContainer = document.createElement("div");
+      confirmContainer.id = "confirm-modal-root";
+      document.body.appendChild(confirmContainer);
+      confirmRoot = createRoot(confirmContainer);
+    }
+
+    const handleConfirm = () => {
+      resolve(true);
+      confirmRoot.render(null);
+    };
+
+    const handleCancel = () => {
+      resolve(false);
+      confirmRoot.render(null);
+    };
+
+    confirmRoot.render(
+      <ConfirmModalContent
+        title={title}
+        message={message}
+        confirmText={confirmText}
+        cancelText={cancelText}
+        variant={variant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
+    );
+  });
+}
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\common\ErrorBoundary.jsx ---
+import React from "react";
+import { AlertCircle } from "lucide-react";
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error caught by boundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="text-red-500" size={24} />
+              <h2 className="text-xl font-bold text-slate-900">
+                Something went wrong
+              </h2>
+            </div>
+            <p className="text-slate-600 mb-4">
+              We're sorry, but something unexpected happened. Please try refreshing the page.
+            </p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              className="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\common\Header.jsx ---
+import { Bell, Calendar, Search, LogOut, Settings, ChevronRight, Globe, MessageSquare, CheckCircle, AlertCircle, Inbox } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useContext, useState, useEffect } from "react";
+import apiClient from "../../services/apiClient";
+import { notificationService } from "../../services/notification.service";
+import { ThemeContext } from "../../context/themeContext";
+import { AuthContext } from "../../context/authContext";
+
+export const Header = ({ onTaskSelect }) => {
+  const { primaryColor } = useContext(ThemeContext);
+  const { auth, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.length > 1) {
+        handleSearch();
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const notifsRes = await notificationService.getNotificationsAPI({ limit: 10 });
+        setNotifications(Array.isArray(notifsRes) ? notifsRes : []);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      }
+    };
+
+    const fetchUnreadCount = async () => {
+      try {
+        const countRes = await notificationService.getUnreadCountAPI();
+        setUnreadCount(countRes?.unreadCount || 0);
+      } catch (error) {
+        console.error("Error fetching unread count:", error);
+      }
+    };
+    
+    fetchNotifications();
+    fetchUnreadCount();
+
+    const handleRealtimeNotification = () => {
+      fetchNotifications();
+      fetchUnreadCount();
+    };
+    
+    window.addEventListener("notification:received", handleRealtimeNotification);
+
+    const intervalId = setInterval(() => {
+      fetchNotifications();
+      fetchUnreadCount();
+    }, 30000);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("notification:received", handleRealtimeNotification);
+    };
+  }, []);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllAsReadAPI();
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+    }
+  };
+
+  const handleMarkRead = async (id) => {
+    try {
+      await notificationService.markAsReadAPI(id);
+      setNotifications(notifications.map(n => n.notification_id === id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error marking as read:", error);
+    }
+  };
+
+  const handleSearch = async () => {
+    setIsSearching(true);
+    try {
+      const response = await apiClient.get(`/v1/api/search?query=${searchQuery}`);
+      const resultsData = response?.results;
+
+      // Handle both array and object formats from backend
+      let results = [];
+      if (Array.isArray(resultsData)) {
+        // Backend returns flat array with type field
+        results = resultsData;
+      } else if (resultsData && typeof resultsData === 'object') {
+        // Backend returns object with separate arrays (legacy format)
+        if (resultsData.projects?.length) results.push(...resultsData.projects.map(p => ({ ...p, type: 'project' })));
+        if (resultsData.tasks?.length) results.push(...resultsData.tasks.map(t => ({ ...t, type: 'task' })));
+        if (resultsData.users?.length) results.push(...resultsData.users.map(u => ({ ...u, type: 'user' })));
+      }
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Search error:", error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleResultClick = async (result) => {
+    setSearchQuery("");
+    setSearchResults([]);
+    if (result.type === 'project') {
+      navigate(`/projects/${result.project_id || result.id}`);
+    } else if (result.type === 'task') {
+      try {
+        const response = await apiClient.get(`/v1/api/tasks/${result.task_id}`);
+        onTaskSelect(response);
+      } catch (error) {
+        console.error("Error fetching task:", error);
+        notificationService.error("Failed to load task details");
+      }
+    } else if (result.type === 'user') {
+      navigate(`/people?search=${result.username || result.full_name}`);
+    }
+  };
+
+  return (
+    <header className="sticky top-0 w-full z-50 glass border-b border-slate-200/50 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-4">
+      {/* Logo */}
+      <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
+        <div
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110"
+          style={{ backgroundColor: primaryColor }}
+        >
+          <span className="text-lg sm:text-xl font-black">M</span>
+        </div>
+        <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 hidden xs:block">
+          Manage<span style={{ color: primaryColor }}>Work</span>
+        </span>
+      </Link>
+
+      {/* Search Bar */}
+      <div className="flex-1 max-w-2xl mx-0 sm:mx-4 md:mx-12">
+        <div className="relative group w-full">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+            <Search size={20} />
+          </div>
+          <input
+            type="text"
+            placeholder="Search projects, tasks, or members..."
+            className="w-full pl-[40px]! bg-slate-100/50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-indigo-500/30 focus:ring-4 focus:ring-indigo-500/5 transition-all text-sm font-medium"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          {(isSearching || searchResults.length > 0) && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-2xl border border-slate-200/50 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                  {isSearching ? "Searching..." : "Search Results"}
+                </span>
+                <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                  {searchResults.length}
+                </span>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                {searchResults.map((result) => {
+                  const typeColors = {
+                    project: { bg: 'bg-indigo-100', text: 'text-indigo-600', icon: '📁' },
+                    task: { bg: 'bg-emerald-100', text: 'text-emerald-600', icon: '✓' },
+                    user: { bg: 'bg-amber-100', text: 'text-amber-600', icon: '👤' }
+                  };
+                  const colors = typeColors[result.type] || typeColors.task;
+
+                  return (
+                    <button
+                      key={`${result.type}-${result.project_id || result.task_id || result.user_id}`}
+                      onClick={() => handleResultClick(result)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left group border-b border-slate-50 last:border-b-0"
+                    >
+                      <div className={`w-9 h-9 rounded-lg ${colors.bg} flex items-center justify-center text-sm ${colors.text}`}>
+                        {colors.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                          {result.name}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>
+                            {result.type}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                    </button>
+                  );
+                })}
+
+                {!isSearching && searchResults.length === 0 && searchQuery.length > 1 && (
+                  <div className="py-8 px-4 text-center">
+                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Search size={20} className="text-slate-400" />
+                    </div>
+                    <p className="text-sm text-slate-500 font-medium">
+                      No results found for "<span className="text-slate-700">{searchQuery}</span>"
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+        <div className="flex items-center gap-1 sm:gap-2 pr-2 sm:pr-6 border-r border-slate-200">
+          <div className="relative">
+            <button
+ ... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\common\index.js ---
+export { Header } from "./Header";
+export { default as ErrorBoundary } from "./ErrorBoundary";
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\common\MentionInput.jsx ---
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { AtSign } from "lucide-react";
+
+export function MentionInput({
+  value,
+  onChange,
+  onSend,
+  placeholder = "Type a message...",
+  members = [],
+  disabled = false,
+}) {
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState("");
+  const [mentionPosition, setMentionPosition] = useState(0);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const textareaRef = useRef(null);
+  const containerRef = useRef(null);
+
+  const filteredMembers = members.filter((m) =>
+    m.full_name?.toLowerCase().includes(mentionSearch.toLowerCase()) ||
+    m.name?.toLowerCase().includes(mentionSearch.toLowerCase())
+  );
+
+  const showAllOption = mentionSearch === "" || "all".includes(mentionSearch.toLowerCase());
+
+  useEffect(() => {
+    if (showMentions) {
+      setSelectedMentionIndex(0);
+    }
+  }, [mentionSearch]);
+
+  const updateDropdownPosition = () => {
+    if (textareaRef.current) {
+      const rect = textareaRef.current.getBoundingClientRect();
+      const dropdownHeight = 200;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      
+      let top;
+      if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+        top = rect.top - dropdownHeight - 8;
+      } else {
+        top = rect.top - 8;
+      }
+      
+      setDropdownPos({
+        top: top,
+        left: rect.left
+      });
+    }
+  };
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursorPos);
+    const lastAtPos = textBeforeCursor.lastIndexOf("@");
+
+    if (lastAtPos !== -1) {
+      const textAfterAt = textBeforeCursor.slice(lastAtPos + 1);
+      if (!textAfterAt.includes(" ") && textAfterAt.length >= 0) {
+        setShowMentions(true);
+        setMentionSearch(textAfterAt);
+        setMentionPosition(lastAtPos);
+        setTimeout(updateDropdownPosition, 0);
+      }
+    } else {
+      setShowMentions(false);
+    }
+
+    onChange(val);
+  };
+
+  const insertMention = (member) => {
+    const cursorPos = textareaRef.current?.selectionStart || value.length;
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const textAfterCursor = value.slice(cursorPos);
+    const lastAtPos = textBeforeCursor.lastIndexOf("@");
+
+    const newValue =
+      textBeforeCursor.slice(0, lastAtPos) +
+      `@${member.full_name || member.name} ` +
+      textAfterCursor;
+
+    onChange(newValue);
+    setShowMentions(false);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  };
+
+  const insertAll = () => {
+    const cursorPos = textareaRef.current?.selectionStart || value.length;
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const textAfterCursor = value.slice(cursorPos);
+    const lastAtPos = textBeforeCursor.lastIndexOf("@");
+
+    const newValue =
+      textBeforeCursor.slice(0, lastAtPos) + "@all " + textAfterCursor;
+
+    onChange(newValue);
+    setShowMentions(false);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  };
+
+  const handleKeyDown = (e) => {
+    if (showMentions) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedMentionIndex((prev) =>
+          Math.min(prev + 1, filteredMembers.length + (showAllOption ? 0 : 0))
+        );
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedMentionIndex((prev) => Math.max(prev - 1, 0));
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (showAllOption && selectedMentionIndex === 0) {
+          insertAll();
+        } else if (filteredMembers.length > 0) {
+          const adjustIndex = showAllOption ? selectedMentionIndex - 1 : selectedMentionIndex;
+          if (adjustIndex >= 0) {
+            insertMention(filteredMembers[adjustIndex]);
+          }
+        }
+      } else if (e.key === "Escape") {
+        setShowMentions(false);
+      }
+    } else if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSend?.();
+    }
+  };
+
+  const mentionList = showAllOption 
+    ? [{ user_id: "@all", full_name: "@all", isAll: true }, ...filteredMembers]
+    : filteredMembers;
+
+  const dropdown = showMentions && mentionList.length > 0 && (
+    <div 
+      className="fixed w-64 bg-white rounded-lg shadow-xl border border-gray-200 max-h-48 overflow-y-auto z-[99999]"
+      style={{ 
+        top: dropdownPos.top, 
+        left: dropdownPos.left 
+      }}
+    >
+      {mentionList.map((member, idx) => (
+        <button
+          type="button"
+          key={member.user_id || member.id}
+          onClick={() => member.isAll ? insertAll() : insertMention(member)}
+          className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 ${idx === selectedMentionIndex ? "bg-gray-100" : ""
+            }`}
+        >
+          {member.isAll ? (
+            <>
+              <AtSign size={14} className="text-gray-500" />
+              <span className="font-medium">@all</span>
+              <span className="text-xs text-gray-400">Notify all</span>
+            </>
+          ) : (
+            <>
+              {member.avatar_url ? (
+                <img
+                  src={member.avatar_url}
+                  alt={member.full_name || member.name}
+                  className="w-6 h-6 rounded-full"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
+                  {(member.full_name || member.name)?.[0]?.toUpperCase()}
+                </div>
+              )}
+              <span>{member.full_name || member.name}</span>
+            </>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full bg-transparent border-none focus:ring-0 text-sm resize-none placeholder:text-gray-400"
+        rows={2}
+      />
+
+      {typeof document !== 'undefined' && createPortal(dropdown, document.body)}
+    </div>
+  );
+}
+
+export default MentionInput;
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\common\SkeletonLoader.jsx ---
+import React from 'react';
+
+export const Skeleton = ({ className }) => (
+  <div className={`skeleton ${className}`} />
+);
+
+export const ProjectCardSkeleton = () => (
+  <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm space-y-4">
+    <div className="flex justify-between items-start">
+      <Skeleton className="h-10 w-10 rounded-2xl" />
+      <Skeleton className="h-6 w-16 rounded-full" />
+    </div>
+    <div className="space-y-2">
+      <Skeleton className="h-6 w-3/4" />
+      <Skeleton className="h-4 w-full" />
+    </div>
+    <div className="pt-4 flex justify-between">
+      <Skeleton className="h-4 w-20" />
+      <Skeleton className="h-4 w-12" />
+    </div>
+  </div>
+);
+
+export const TaskCardSkeleton = () => (
+  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+    <div className="flex justify-between">
+      <Skeleton className="h-4 w-20 rounded-full" />
+      <Skeleton className="h-4 w-4 rounded-full" />
+    </div>
+    <Skeleton className="h-5 w-full" />
+    <Skeleton className="h-4 w-2/3" />
+    <div className="flex justify-between pt-2">
+      <Skeleton className="h-6 w-6 rounded-lg" />
+      <Skeleton className="h-4 w-16" />
+    </div>
+  </div>
+);
+
+export const HeaderSkeleton = () => (
+  <div className="w-full flex p-5 bg-white border-b border-slate-100 items-center justify-between">
+    <Skeleton className="h-8 w-32" />
+    <Skeleton className="h-12 w-[50%] rounded-xl" />
+    <div className="flex gap-4">
+      <Skeleton className="h-10 w-10 rounded-full" />
+      <Skeleton className="h-10 w-10 rounded-full" />
+    </div>
+  </div>
+);
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\common\StatCard.jsx ---
+export const StatCard = ({ title, value, icon: Icon, colorClass, subtitle }) => (
+  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-slate-500 font-medium">{title}</h3>
+      <div className={`p-2 rounded-lg ${colorClass} bg-opacity-10`}>
+        <Icon className={colorClass} size={20} />
+      </div>
+    </div>
+    <div className="text-3xl font-bold text-slate-800 mb-1">{value}</div>
+    {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+  </div>
+);
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\navigation\index.js ---
+export { VerticalNav } from "./VerticalNav";
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\components\navigation\VerticalNav.jsx ---
+import {
+  HomeIcon,
+  LogOutIcon,
+  SettingsIcon,
+  WorkflowIcon,
+  FolderKanban,
+  MessageCircleIcon,
+  BarChart2,
+  ActivityIcon,
+  Users,
+} from "lucide-react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { useContext } from "react";
+import { AuthContext } from "../../context/authContext";
+import { ThemeContext } from "../../context/themeContext";
+
+export const VerticalNav = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const menu = [
+    { href: "/", label: "Home", icon: HomeIcon },
+    { href: "/projects", label: "Projects", icon: FolderKanban },
+    { href: "/my-task", label: "My Tasks", icon: WorkflowIcon },
+    { href: "/chat", label: "DMs", icon: MessageCircleIcon },
+    { href: "/people", label: "People", icon: Users },
+    { href: "/dashboard", label: "Analytics", icon: BarChart2 },
+    { href: "/activity", label: "Activity", icon: ActivityIcon },
+    { href: "/settings", label: "Settings", icon: SettingsIcon },
+  ];
+
+  const { auth } = useContext(AuthContext);
+  const { primaryColor } = useContext(ThemeContext);
+
+  const isActive = (href) => {
+    if (href === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname.startsWith(href);
+  };
+
+  return (
+    <nav
+      className="group flex flex-col justify-between h-full bg-primary w-16"
+      style={{ backgroundColor: primaryColor }}
+    >
+      <div className="flex-1 flex flex-col">
+        {/* user info */}
+        <div className="flex flex-col items-center mt-4 mb-6">
+          <img
+            src={auth.user?.avatarUrl || ""}
+            className="h-10 w-10 rounded-full object-cover border border-white/30"
+          />
+        </div>
+
+        {/* menu */}
+        <ul className="block items-center gap-2 flex-1 overflow-y-auto">
+          {menu.map(({ href, label, icon: Icon }) => {
+            const active = isActive(href);
+            return (
+              <li key={href}>
+                <NavLink
+                  to={href}
+                  className={`flex flex-col items-center justify-center py-3 rounded-lg
+                        ${active ? "bg-white/20" : "hover:bg-white/10"}`}
+                >
+                  <Icon size={20} className="text-white mb-1" />
+
+                  <span className="text-white text-[11px] leading-tight whitespace-nowrap">
+                    {label}
+                  </span>
+                </NavLink>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {/* logout luôn nằm cuối */}
+      <div
+        onClick={() => {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          localStorage.removeItem("theme_color");
+          navigate("/login");
+        }}
+        className="
+    flex flex-col items-center justify-center
+    py-4 cursor-pointer
+    text-white hover:bg-white/10
+  "
+      >
+        <LogOutIcon size={20} />
+        <span className="text-[11px] mt-1">Logout</span>
+      </div>
+    </nav>
+  );
+};
+
+
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_6.json using write_to_file tool.

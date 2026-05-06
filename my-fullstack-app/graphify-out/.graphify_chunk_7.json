@@ -1,0 +1,23 @@
+{
+  "nodes": [
+    {"id": "frontend_src_context_authcontext_jsx", "label": "authContext.jsx", "file_type": "code", "source_file": "frontend/src/context/authContext.jsx"},
+    {"id": "frontend_src_context_socketcontext_jsx", "label": "socketContext.jsx", "file_type": "code", "source_file": "frontend/src/context/socketContext.jsx"},
+    {"id": "frontend_src_context_themecontext_jsx", "label": "themeContext.jsx", "file_type": "code", "source_file": "frontend/src/context/themeContext.jsx"},
+    {"id": "frontend_src_features_calendar_kanbanview_jsx", "label": "KanBanView.jsx", "file_type": "code", "source_file": "frontend/src/features/calendar/KanBanView.jsx"},
+    {"id": "frontend_src_features_calendar_monthview_jsx", "label": "MonthView.jsx", "file_type": "code", "source_file": "frontend/src/features/calendar/MonthView.jsx"},
+    {"id": "frontend_src_features_calendar_weekview_jsx", "label": "WeekView.jsx", "file_type": "code", "source_file": "frontend/src/features/calendar/WeekView.jsx"},
+    {"id": "frontend_src_features_chat_channelmembersmodal_jsx", "label": "ChannelMembersModal.jsx", "file_type": "code", "source_file": "frontend/src/features/chat/ChannelMembersModal.jsx"},
+    {"id": "concept_react_state_management_strategy", "label": "React State Management Strategy", "file_type": "rationale", "source_file": "frontend/src/context/authContext.jsx"},
+    {"id": "concept_drag_and_drop_reordering", "label": "Drag-and-Drop Reordering Architecture", "file_type": "rationale", "source_file": "frontend/src/features/calendar/KanBanView.jsx"},
+    {"id": "concept_realtime_frontend_synchronization", "label": "Real-time Frontend Synchronization", "file_type": "rationale", "source_file": "frontend/src/features/calendar/KanBanView.jsx"}
+  ],
+  "edges": [
+    {"source": "frontend_src_features_calendar_kanbanview_jsx", "target": "frontend_src_context_socketcontext_jsx", "relation": "references", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": "frontend/src/features/calendar/KanBanView.jsx"},
+    {"source": "frontend_src_features_calendar_kanbanview_jsx", "target": "concept_drag_and_drop_reordering", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/features/calendar/KanBanView.jsx"},
+    {"source": "frontend_src_features_calendar_kanbanview_jsx", "target": "concept_realtime_frontend_synchronization", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/features/calendar/KanBanView.jsx"},
+    {"source": "frontend_src_context_themecontext_jsx", "target": "concept_theme_customization", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "frontend/src/context/themeContext.jsx"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 15000,
+  "output_tokens": 1200
+}

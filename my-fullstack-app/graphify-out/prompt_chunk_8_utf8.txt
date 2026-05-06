@@ -1,0 +1,2958 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 8 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\TypingIndicator.jsx ---
+import { useEffect, useState, useMemo, useContext } from "react";
+import { useTypingStore } from "@/stores/chat/typingStore";
+import { useChatStore } from "@/stores/chat/chatStore";
+import { AuthContext } from "../../context/authContext";
+import { ThemeContext } from "@/context/themeContext";
+
+export const TypingIndicator = () => {
+  const { auth } = useContext(AuthContext);
+  const { primaryColor } = useContext(ThemeContext);
+  const currentUserId = auth?.user?.uid;
+  const currentRoomId = useChatStore((s) => s.currentRoomId);
+  const typingUsersObj = useTypingStore(
+    (s) => s.typingUsers[currentRoomId] || {}
+  );
+
+  const typingUsers = useMemo(
+    () =>
+      Object.values(typingUsersObj).filter(
+        (u) => u.userId !== currentUserId
+      ),
+    [typingUsersObj, currentUserId]
+  );
+
+  const [visibleUsers, setVisibleUsers] = useState([]);
+
+  useEffect(() => {
+    if (typingUsers.length > 0) {
+      setVisibleUsers(typingUsers);
+    } else {
+      const t = setTimeout(() => setVisibleUsers([]), 500);
+      return () => clearTimeout(t);
+    }
+  }, [typingUsers]);
+
+  if (!visibleUsers.length) return null;
+  const names = visibleUsers.map((u) => u.name);
+
+  return (
+    <div className="px-6 pb-2 relative z-0">
+      <div
+        className="inline-flex items-center gap-2.5 rounded-2xl px-3 py-1.5 text-[11px] bg-white/60 backdrop-blur-sm border border-gray-200/50 shadow-sm animate-in slide-in-from-bottom-2 fade-in duration-300"
+        style={{
+          color: "#667781",
+        }}
+      >
+        <div className="flex items-center gap-1">
+          <span
+            className="h-1 w-1 rounded-full animate-bounce bg-gray-400"
+            style={{ animationDelay: "0ms" }}
+          />
+          <span
+            className="h-1 w-1 rounded-full animate-bounce bg-gray-400"
+            style={{ animationDelay: "150ms" }}
+          />
+          <span
+            className="h-1 w-1 rounded-full animate-bounce bg-gray-400"
+            style={{ animationDelay: "300ms" }}
+          />
+        </div>
+        <span className="font-bold uppercase tracking-tight opacity-80">
+          {names.length === 1
+            ? `${names[0]}`
+            : names.length === 2
+            ? `${names[0]} & ${names[1]}`
+            : `${names[0]} and others`}
+          <span className="ml-1 font-medium lowercase italic">is typing...</span>
+        </span>
+      </div>
+    </div>
+  );
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\userItem.jsx ---
+import { useContext } from "react";
+import { ThemeContext } from "@/context/themeContext";
+
+export const UserItem = ({ user, onClick }) => {
+  const { primaryColor } = useContext(ThemeContext);
+
+  return (
+    <div
+      onClick={onClick}
+      className="px-3 py-3 cursor-pointer border-b border-gray-100 hover:bg-[#f5f6f6] transition"
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="w-11 h-11 rounded-full text-white text-sm font-semibold flex items-center justify-center"
+          style={{ backgroundColor: primaryColor }}
+        >
+          {(user.full_name || "U").charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="font-medium text-sm text-gray-900 truncate">{user.full_name}</p>
+          <p className="text-xs text-gray-500">Start private chat</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\utils\messageGrouping.js ---
+const TIME_GAP_THRESHOLD = 5 * 60 * 1000;
+
+export const isNewDay = (currentMsg, prevMsg) => {
+  if (!prevMsg) return true;
+  const currentDate = new Date(currentMsg.created_at).toDateString();
+  const prevDate = new Date(prevMsg.created_at).toDateString();
+  return currentDate !== prevDate;
+};
+
+export const isFirstInGroup = (msg, index, messages) => {
+  const prevMsg = messages[index - 1];
+  if (!prevMsg) return true;
+  
+  if (isNewDay(msg, prevMsg)) return true;
+  if (prevMsg.sender_id !== msg.sender_id) return true;
+  
+  const timeDiff = new Date(msg.created_at) - new Date(prevMsg.created_at);
+  return timeDiff > TIME_GAP_THRESHOLD;
+};
+
+export const isLastInGroup = (msg, index, messages) => {
+  const nextMsg = messages[index + 1];
+  if (!nextMsg) return true;
+  
+  const currentDate = new Date(msg.created_at).toDateString();
+  const nextDate = new Date(nextMsg.created_at).toDateString();
+  
+  if (currentDate !== nextDate) return true;
+  if (nextMsg.sender_id !== msg.sender_id) return true;
+  
+  return false;
+};
+
+export const getMessageGroups = (messages) => {
+  return messages.map((msg, index) => ({
+    message: msg,
+    showDateSeparator: isNewDay(msg, messages[index - 1]),
+    isFirstInGroup: isFirstInGroup(msg, index, messages),
+    isLastInGroup: isLastInGroup(msg, index, messages),
+  }));
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\projects\ProjectActivity.jsx ---
+import { useState, useEffect } from "react";
+import { Activity, Clock, User, Loader2 } from "lucide-react";
+import { activityService } from "../../services/activity.service";
+
+export const ProjectActivity = ({ projectId }) => {
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (projectId) {
+      loadActivity();
+    }
+  }, [projectId]);
+
+  const loadActivity = async () => {
+    setLoading(true);
+    try {
+      const data = await activityService.getProjectActivity(projectId);
+      setActivities(data || []);
+    } catch (error) {
+      console.error("Error loading project activity:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatAction = (action) => {
+    return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (activities.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+        <Activity className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+        <p className="text-slate-500 text-sm">No project activity recorded yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-1">
+        <h3 className="text-sm font-bold text-slate-900">Recent Activity</h3>
+        <span className="text-xs text-slate-500">{activities.length} logs</span>
+      </div>
+      
+      <div className="space-y-3">
+        {activities.slice(0, 10).map((activity) => (
+          <div key={activity.log_id} className="bg-white p-3 rounded-xl border border-slate-100 hover:border-indigo-100 transition-colors shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                <Activity size={14} className="text-indigo-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900 leading-snug">
+                  {formatAction(activity.action)}
+                </p>
+                <div className="flex items-center gap-2 mt-1.5">
+                   <div className="flex items-center gap-1">
+                    <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-bold">
+                      {activity.full_name?.[0] || "?"}
+                    </div>
+                    <span className="text-[11px] text-slate-500">{activity.full_name || activity.username}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">•</span>
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <Clock size={10} />
+                    {new Date(activity.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\AddTask.jsx ---
+import React, { useContext, useState, useMemo } from "react";
+import { AuthContext } from "../../context/authContext";
+import {
+  createToDoTaskAPI,
+  editTaskByIDAPI,
+} from "../../services/task.service";
+import { notificationService } from "../../services/notification.service";
+import { useTaskForm, parseDateTimeLocal } from "./hooks/useTaskForm";
+import { RecurrenceSection } from "./components/RecurrenceSection";
+import { getStatusOptionsForDisplay, PRIORITY_OPTIONS } from "../../utils/taskColors";
+
+export const AddTask = ({
+  onClose = () => { },
+  onAddSuccess = () => { },
+  task,
+  onEditSuccess = () => { },
+  defaultProjectId = null,
+  members = [],
+}) => {
+  const {
+    auth: { user },
+  } = useContext(AuthContext);
+
+  const isEditMode = !!task;
+
+  const {
+    form,
+    setForm,
+    handleOnChange,
+    toggleRepeatDay,
+    taskCount,
+    getMaxRepeatUntilDate,
+    calculateTaskCount,
+    isSameDayString,
+  } = useTaskForm(task, isEditMode);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+// Validation cho recurrence
+      if (form.repeat_type !== "none" && !isEditMode) {
+        // Kiểm tra start và due phải cùng ngày
+        if (!isSameDayString(form.start_date, form.due_date)) {
+          notificationService.warning("Để sử dụng tính năng lặp lại, Start date và Due date phải trong cùng một ngày");
+          return;
+        }
+        if (!form.repeat_until) {
+          notificationService.warning("Vui lòng chọn ngày kết thúc lặp lại");
+          return;
+        }
+        if (form.repeat_type === "custom" && form.repeat_days?.length === 0) {
+          notificationService.warning("Vui lòng chọn ít nhất một ngày trong tuần");
+          return;
+        }
+        if (taskCount === 0) {
+          notificationService.warning("Không có tasks nào được tạo. Vui lòng kiểm tra lại ngày bắt đầu và kết thúc");
+          return;
+        }
+        if (taskCount > 100) {
+          notificationService.warning("Số lượng tasks vượt quá giới hạn (tối đa 100 tasks)");
+          return;
+        }
+        // Validate repeat_until không được quá 12 tuần
+        const dueDate = new Date(form.due_date);
+        const repeatUntil = new Date(form.repeat_until + "T23:59:59");
+        const weeksDiff = (repeatUntil - dueDate) / (1000 * 60 * 60 * 24 * 7);
+        if (weeksDiff > 12) {
+          notificationService.warning("Khoảng thời gian lặp lại không được vượt quá 12 tuần");
+          return;
+        }
+      }
+    try {
+      // Convert datetime-local to ISO string
+      const startDateISO = form.start_date
+        ? parseDateTimeLocal(form.start_date)
+        : null;
+      const dueDateISO = form.due_date
+        ? parseDateTimeLocal(form.due_date)
+        : null;
+      // repeat_until chỉ cần date, không cần time
+      const repeatUntilISO = form.repeat_until
+        ? new Date(form.repeat_until + "T23:59:59").toISOString()
+        : null;
+      let response;
+      if (isEditMode) {
+        // Edit mode - không hỗ trợ recurrence
+        response = await editTaskByIDAPI(task.task_id, {
+          title: form.title,
+          description: form.description,
+          status: form.status,
+          priority: form.priority,
+          startDate: startDateISO,
+          dueDate: dueDateISO,
+          assignedUserId: form.assigned_to || null,
+        });
+        console.log("Task edited successfully:", response);
+        onEditSuccess(response);
+      } else {
+        // Create mode - hỗ trợ recurrence
+        response = await createToDoTaskAPI(
+          form.title,
+          form.description,
+          form.status,
+          form.priority,
+          startDateISO,
+          dueDateISO,
+          form.assigned_to || null,
+          form.repeat_type !== "none" ? form.repeat_type : null,
+          form.repeat_type !== "none" ? form.repeat_days : [],
+          repeatUntilISO,
+          defaultProjectId
+        );
+        setForm({
+          title: "",
+          description: "",
+          priority: "medium",
+          start_date: "",
+          due_date: "",
+          status: "todo",
+          repeat_type: "none",
+          repeat_days: [],
+          repeat_until: "",
+        });
+      }
+      // Đóng modal trước, sau đó gọi callback để refresh
+      onClose();
+      // Gọi callback sau khi đóng modal để refresh tasks list
+      if (!isEditMode) {
+        const { tasks } = response;
+        // Chờ một chút để modal đóng hoàn toàn trước khi refresh
+        console.log("ADD TASK DATA:", response);
+        onAddSuccess(tasks);
+      }
+    } catch (error) {
+      console.error("Error creating task:", error);
+      notificationService.error("Có lỗi xảy ra khi tạo tasks: " + (error.response?.data?.error || error.message));
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-900/40 px-4 py-4 backdrop-blur-sm">
+      <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-8 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              New task
+            </p>
+            <h3 className="mt-2 text-2xl font-bold text-slate-900">
+              Add to your to-do list
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Close"
+          >
+            &#10005;
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="grid gap-6 px-8 py-4">
+          <div className="grid gap-2">
+            <label
+              htmlFor="title"
+              className="text-sm font-medium text-slate-600"
+            >
+              Title
+            </label>
+            <input
+              id="title"
+              type="text"
+              name="title"
+              placeholder="Project kickoff meeting"
+              onChange={handleOnChange}
+              value={form.title}
+              required
+              className="rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <label
+              htmlFor="description"
+              className="text-sm font-medium text-slate-600"
+            >
+              Description
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              onChange={handleOnChange}
+              value={form.description}
+              placeholder="Add details, action items, or links..."
+              rows={4}
+              className="resize-none h-24 rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <label
+                htmlFor="status"
+                className="text-sm font-medium text-slate-600"
+              >
+                Status
+              </label>
+              <select
+                id="status"
+                name="status"
+                value={form.status}
+                onChange={handleOnChange}
+                className="rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+              >
+                {getStatusOptionsForDisplay().map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-2">
+              <span className="text-sm font-medium text-slate-600">
+                Priority
+              </span>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
+                {PRIORITY_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className="flex cursor-pointer items-center gap-2 text-sm font-medium capitalize text-slate-600"
+                  >
+                    <input
+                      type="radio"
+                      name="priority"
+                      value={opt.value}
+                      onChange={handleOnChange}
+                      checked={form.priority === opt.value}
+                      className="h-4 w-4 accent-indigo-500"
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-slate-600">
+                Assignee
+              </label>
+              <AssigneeSelect
+                members={members}
+                value={form.assigned_to || ""}
+                onChange={(userId) => setForm(prev => ({ ...prev, assigned_to: userId }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2">
+              <label
+                htmlFor="start_date"
+                className="text-sm font-medium text-slate-600"
+              >
+                Start date & time
+              </label>
+              <input
+                id="start_date"
+                type="datetime-local"
+                name="start_date"
+                onChange={handleOnChange}
+                value={form.start_date}
+                className="rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+
+            <div className="gr... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\AttachmentManager.jsx ---
+import { useState, useEffect, useRef } from "react";
+import { Paperclip, X, Loader2, Download, Trash2, FileText, Image as ImageIcon, File, Plus } from "lucide-react";
+import axios from "axios";
+import { notificationService } from "../../services/notification.service";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/v1/api";
+const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:8888";
+
+export const AttachmentManager = ({ taskId }) => {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    fetchFiles();
+  }, [taskId]);
+
+  const fetchFiles = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/files/task/${taskId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      });
+      setFiles(res?.data?.data || []);
+    } catch (error) {
+      console.error("Failed to fetch files", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("taskId", taskId);
+
+    try {
+      const res = await axios.post(`${API_URL}/files/upload`, formData, {
+        headers: { 
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          "Content-Type": "multipart/form-data"
+        },
+      });
+      setFiles([res?.data?.data, ...files]);
+    } catch (error) {
+      console.error("Failed to upload file", error);
+      notificationService.error("Upload failed. Max size 10MB.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async (fileId) => {
+    try {
+      await axios.delete(`${API_URL}/files/${fileId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      });
+      setFiles(files.filter(f => f.file_id !== fileId));
+    } catch (error) {
+      console.error("Failed to delete file", error);
+    }
+  };
+
+  const getFileIcon = (type) => {
+    if (type.startsWith("image/")) return <ImageIcon size={20} className="text-blue-500" />;
+    if (type.includes("pdf")) return <FileText size={20} className="text-rose-500" />;
+    return <File size={20} className="text-slate-500" />;
+  };
+
+  const formatSize = (bytes) => {
+    if (!bytes) return "";
+    const kb = bytes / 1024;
+    return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(1)} KB`;
+  };
+
+  if (loading) return <Loader2 className="animate-spin text-slate-400" size={16} />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Paperclip size={18} className="text-slate-500" />
+          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+            Attachments ({files.length})
+          </h3>
+        </div>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors flex items-center gap-1"
+        >
+          {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+          Upload
+        </button>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleUpload} 
+          className="hidden" 
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {files.map(file => (
+          <div 
+            key={file.file_id}
+            className="group relative flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-200 hover:shadow-md transition-all"
+          >
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center">
+              {getFileIcon(file.file_type)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-900 truncate" title={file.file_url.split('/').pop()}>
+                {file.file_url.split('/').pop()}
+              </p>
+              <p className="text-xs text-slate-400">
+                {file.uploader_name} • {new Date(file.created_at).toLocaleDateString()}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <a 
+                href={`${BASE_URL}${file.file_url}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                download
+                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+              >
+                <Download size={16} />
+              </a>
+              <button 
+                onClick={() => handleDelete(file.file_id)}
+                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {files.length === 0 && !isUploading && (
+          <div className="col-span-full py-6 text-center bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+            <p className="text-sm text-slate-400">No attachments yet.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\CompletedTaskCard.jsx ---
+import { getStatusLabel, STATUS_COLORS } from "../../utils/taskColors";
+
+const formatRelativeTime = (value) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+};
+
+const CompletedTaskCard = ({ task }) => {
+  const colors = STATUS_COLORS[task.status] || STATUS_COLORS.done;
+  const toneClass = colors.tone || "text-emerald-500";
+
+  return (
+    <div className="group relative flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span
+          className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${toneClass}`}
+        />
+        <div className="flex-1">
+          <h3 className="text-base font-semibold text-slate-700 line-through">
+            {task.title}
+          </h3>
+          {task.description && (
+            <p className="mt-1 text-sm text-slate-500 line-clamp-2">
+              {task.description}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+        <span>{getStatusLabel(task.status)}</span>
+        <span>Completed {formatRelativeTime(task.completed_at)}</span>
+      </div>
+    </div>
+  );
+};
+
+export { CompletedTaskCard };
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\DependencyManager.jsx ---
+import { useState, useEffect } from "react";
+import { Link2, Plus, X, Loader2, AlertCircle, CheckCircle2, Circle } from "lucide-react";
+import axios from "axios";
+import { notificationService } from "../../services/notification.service";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/v1/api";
+
+export const DependencyManager = ({ taskId, projectId }) => {
+  const [dependencies, setDependencies] = useState([]);
+  const [availableTasks, setAvailableTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetchData();
+  }, [taskId]);
+
+  const fetchData = async () => {
+    try {
+      const [depRes, tasksRes] = await Promise.all([
+        axios.get(`${API_URL}/dependencies/task/${taskId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }),
+        axios.get(`${API_URL}/tasks`, { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } })
+      ]);
+      setDependencies(depRes?.data?.data || []);
+      setAvailableTasks((tasksRes?.data?.data || []).filter(t => t.task_id !== taskId));
+    } catch (error) {
+      console.error("Failed to fetch dependencies", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdd = async (dependsOnTaskId) => {
+    try {
+      const res = await axios.post(`${API_URL}/dependencies/create`, 
+        { taskId, dependsOnTaskId, dependencyType: "blocking" },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+      );
+      // Re-fetch to get titles
+      fetchData();
+      setIsAdding(false);
+    } catch (error) {
+      notificationService.error(error.response?.data?.message || "Failed to add dependency");
+    }
+  };
+
+  const handleDelete = async (dependencyId) => {
+    try {
+      await axios.delete(`${API_URL}/dependencies/${dependencyId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      });
+      setDependencies(dependencies.filter(d => d.dependency_id !== dependencyId));
+    } catch (error) {
+      console.error("Failed to delete dependency", error);
+    }
+  };
+
+  if (loading) return <Loader2 className="animate-spin text-slate-400" size={16} />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Link2 size={18} className="text-slate-500" />
+          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+            Dependencies
+          </h3>
+        </div>
+        <button
+          onClick={() => setIsAdding(!isAdding)}
+          className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors flex items-center gap-1"
+        >
+          <Plus size={12} />
+          Add Dependency
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {dependencies.map(dep => (
+          <div 
+            key={dep.dependency_id}
+            className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:border-amber-200 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className={dep.depends_on_status === 'done' ? 'text-emerald-500' : 'text-amber-500'}>
+                {dep.depends_on_status === 'done' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-900">{dep.depends_on_title}</p>
+                <p className="text-xs text-slate-400">Blocks this task • {dep.depends_on_status}</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => handleDelete(dep.dependency_id)}
+              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ))}
+
+        {dependencies.length === 0 && !isAdding && (
+          <div className="py-4 text-center bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+            <p className="text-sm text-slate-400">No dependencies set.</p>
+          </div>
+        )}
+      </div>
+
+      {isAdding && (
+        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-lg space-y-3">
+          <input
+            autoFocus
+            className="w-full text-sm border-b border-slate-200 focus:border-indigo-500 focus:outline-none py-1"
+            placeholder="Search tasks to depend on..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="max-h-48 overflow-y-auto space-y-1">
+            {availableTasks
+              .filter(t => t.title.toLowerCase().includes(search.toLowerCase()))
+              .filter(t => !dependencies.some(d => d.depends_on_task_id === t.task_id))
+              .map(task => (
+                <button
+                  key={task.task_id}
+                  onClick={() => handleAdd(task.task_id)}
+                  className="w-full text-left px-2 py-2 text-xs rounded-lg hover:bg-slate-50 flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Circle size={12} className="text-slate-300" />
+                    <span className="truncate max-w-[200px]">{task.title}</span>
+                  </div>
+                  <Plus size={12} className="opacity-0 group-hover:opacity-100 text-indigo-500" />
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\index.js ---
+export { default as TaskCard } from "./TaskCard";
+export { AddTask } from "./AddTask";
+export { TaskDetail } from "./TaskDetail";
+export { TaskStatus } from "./TaskStatus";
+export { CompletedTaskCard } from "./CompletedTaskCard";
+export { MyTasksHeader } from "./MyTasksHeader";
+export { TaskFilters, applyFilters } from "./TaskFilters";
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\MyTasksHeader.jsx ---
+import React from "react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { formatDateRange } from "../../utils/dateHelpers";
+import { TaskFilters } from "./TaskFilters";
+
+export const MyTasksHeader = ({
+  viewType,
+  onViewTypeChange,
+  currentDate,
+  dateRange,
+  onPrevious,
+  onNext,
+  onToday,
+  onAddTask,
+  onSearch,
+  filters,
+  onFilterChange,
+  onClearFilters,
+  projects,
+}) => {
+  return (
+    <div className="flex items-center justify-between rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
+      <div className="flex items-center gap-4">
+        {/* View Type Toggle */}
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 p-1">
+          <button
+            type="button"
+            onClick={() => onViewTypeChange("kanban")}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition ${viewType === "kanban"
+              ? "bg-indigo-500 text-white"
+              : "text-slate-600 hover:bg-slate-100"
+              }`}
+          >
+            KanBan
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewTypeChange("week")}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition ${viewType === "week"
+              ? "bg-indigo-500 text-white"
+              : "text-slate-600 hover:bg-slate-100"
+              }`}
+          >
+            Week
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewTypeChange("month")}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition ${viewType === "month"
+              ? "bg-indigo-500 text-white"
+              : "text-slate-600 hover:bg-slate-100"
+              }`}
+          >
+            Month
+          </button>
+        </div>
+
+        {/* Date Navigation */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onPrevious}
+            className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            type="button"
+            onClick={onToday}
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        {/* Date Range Display */}
+        <div className="flex items-center gap-2 text-slate-600">
+          <Calendar size={18} />
+          <span className="text-sm font-medium">
+            {formatDateRange(dateRange.start, dateRange.end, viewType)}
+          </span>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative ml-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            placeholder="Tìm kiếm công việc..."
+            className="h-10 pl-[40px]! w-64 rounded-xl border border-slate-200 bg-slate-50 pr-4 text-sm transition focus:border-indigo-500 focus:bg-white focus:outline-none"
+            onChange={(e) => onSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Filters */}
+        <TaskFilters
+          filters={filters}
+          onFilterChange={onFilterChange}
+          onClearFilters={onClearFilters}
+          projects={projects}
+        />
+      </div>
+
+      {/* Add Task Button */}
+      <button
+        type="button"
+        onClick={onAddTask}
+        className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+      >
+        <Plus size={16} />
+        Add Task
+      </button>
+    </div>
+  );
+};
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\ProjectTaskFilters.jsx ---
+import { useState, useMemo } from "react";
+import { Filter, X, Calendar, Flag, Users, Search, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { PRIORITY_COLORS, getStatusOptionsForDisplay } from "../../utils/taskColors";
+
+const statusOptions = getStatusOptionsForDisplay();
+
+const priorityOptions = [
+  { value: "high", label: "High", ...PRIORITY_COLORS.high },
+  { value: "medium", label: "Medium", ...PRIORITY_COLORS.medium },
+  { value: "low", label: "Low", ...PRIORITY_COLORS.low }
+];
+
+const quickFilters = [
+  { id: "my_tasks", label: "My Tasks", icon: Users, description: "Assigned to me or created by me" },
+  { id: "overdue", label: "Overdue", icon: AlertCircle, description: "Past due date" },
+  { id: "this_week", label: "This Week", icon: Calendar, description: "Due this week" },
+  { id: "completed", label: "Completed", icon: CheckCircle, description: "Done status" },
+];
+
+export const ProjectTaskFilters = ({
+  filters,
+  onFilterChange,
+  members = [],
+  onClearFilters,
+  onSearchChange,
+  searchQuery
+}) => {
+  const [showFilters, setShowFilters] = useState(false);
+
+  const memberCount = members.length;
+  const showMemberSelect = memberCount >= 3;
+
+  const hasActiveFilters = useMemo(() => {
+    return filters.status?.length > 0 ||
+      filters.priority?.length > 0 ||
+      filters.assignee?.length > 0 ||
+      filters.creator?.length > 0 ||
+      filters.dateRange ||
+      filters.quickFilter !== null;
+  }, [filters]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.status?.length) count += filters.status.length;
+    if (filters.priority?.length) count += filters.priority.length;
+    if (filters.assignee?.length) count += filters.assignee.length;
+    if (filters.creator?.length) count += filters.creator.length;
+    if (filters.dateRange) count++;
+    if (filters.quickFilter) count++;
+    return count;
+  }, [filters]);
+
+  const toggleStatus = (status) => {
+    const current = filters.status || [];
+    const updated = current.includes(status)
+      ? current.filter(s => s !== status)
+      : [...current, status];
+    onFilterChange({ ...filters, status: updated });
+  };
+
+  const togglePriority = (priority) => {
+    const current = filters.priority || [];
+    const updated = current.includes(priority)
+      ? current.filter(p => p !== priority)
+      : [...current, priority];
+    onFilterChange({ ...filters, priority: updated });
+  };
+
+  const toggleAssignee = (userId) => {
+    const current = filters.assignee || [];
+    if (userId === "me") {
+      const isSelected = current.includes("me");
+      onFilterChange({ ...filters, assignee: isSelected ? [] : ["me"] });
+    } else {
+      const updated = current.includes(userId)
+        ? current.filter(id => id !== userId)
+        : [...current, userId];
+      onFilterChange({ ...filters, assignee: updated });
+    }
+  };
+
+  const toggleCreator = (userId) => {
+    const current = filters.creator || [];
+    if (userId === "me") {
+      const isSelected = current.includes("me");
+      onFilterChange({ ...filters, creator: isSelected ? [] : ["me"] });
+    } else {
+      const updated = current.includes(userId)
+        ? current.filter(id => id !== userId)
+        : [...current, userId];
+      onFilterChange({ ...filters, creator: updated });
+    }
+  };
+
+  const handleAssigneeSelect = (e) => {
+    const value = e.target.value;
+    if (value === "") {
+      onFilterChange({ ...filters, assignee: [] });
+    } else if (value === "me") {
+      onFilterChange({ ...filters, assignee: ["me"] });
+    } else {
+      onFilterChange({ ...filters, assignee: [value] });
+    }
+  };
+
+  const handleCreatorSelect = (e) => {
+    const value = e.target.value;
+    if (value === "") {
+      onFilterChange({ ...filters, creator: [] });
+    } else if (value === "me") {
+      onFilterChange({ ...filters, creator: ["me"] });
+    } else {
+      onFilterChange({ ...filters, creator: [value] });
+    }
+  };
+
+  const handleQuickFilter = (filterId) => {
+    const newQuickFilter = filters.quickFilter === filterId ? null : filterId;
+    onFilterChange({ ...filters, quickFilter: newQuickFilter });
+  };
+
+  const clearAll = () => {
+    onClearFilters();
+    setShowFilters(false);
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+        <input
+          type="text"
+          placeholder="Search tasks (e.g., priority:high assignee:me)"
+          value={searchQuery}
+          onChange={(e) => onSearchChange?.(e.target.value)}
+          className="w-full pl-[40px]! pr-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange?.("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* Quick Filters */}
+      {quickFilters.map((qf) => (
+        <button
+          key={qf.id}
+          onClick={() => handleQuickFilter(qf.id)}
+          className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${filters.quickFilter === qf.id
+              ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+              : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+            }`}
+        >
+          <qf.icon size={16} />
+          {qf.label}
+        </button>
+      ))}
+
+      {/* Advanced Filters Button */}
+      <div className="relative">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition ${hasActiveFilters
+              ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+              : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+            }`}
+        >
+          <Filter size={18} />
+          <span className="font-medium">Filters</span>
+          {activeFilterCount > 0 && (
+            <span className="w-5 h-5 bg-indigo-500 text-white text-xs rounded-full flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+
+        {showFilters && (
+          <>
+            <div className="fixed inset-0 z-0" onClick={() => setShowFilters(false)} />
+            <div className="absolute top-full right-0 mt-2 w-[420px] bg-white rounded-2xl shadow-xl border border-slate-200 z-10 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                <h3 className="font-semibold text-slate-900">Advanced Filters</h3>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearAll}
+                    className="text-xs text-rose-600 hover:underline font-medium"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-[70vh] overflow-y-auto p-4 space-y-5">
+                {/* Quick Filters in Panel */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 block">
+                    Quick Filters
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {quickFilters.map((qf) => (
+                      <button
+                        key={qf.id}
+                        onClick={() => handleQuickFilter(qf.id)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition ${filters.quickFilter === qf.id
+                            ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                            : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100"
+                          }`}
+                      >
+                        <qf.icon size={14} />
+                        <span className="font-medium">{qf.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Status Filter */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">
+                    Status
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {statusOptions.map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => toggleStatus(opt.value)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filters.status?.includes(opt.value)
+                            ? `${opt.bg} ${opt.text}`
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Priority Filter */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">
+                    Priority
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {priorityOptions.map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => togglePriority(opt.value)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filters.priority?.includes(opt.value)
+                            ? `${opt.bg} ${opt.text}`
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                    ... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\SubtaskItem.jsx ---
+import { useState } from "react";
+import { CheckCircle2, Circle, Trash2, Edit2, X, Check } from "lucide-react";
+
+export const SubtaskItem = ({ subtask, onToggle, onDelete, onUpdate }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [title, setTitle] = useState(subtask.title);
+
+  const handleUpdate = () => {
+    if (title.trim() === "") return;
+    onUpdate(subtask.subtask_id, { title });
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="group flex items-center gap-3 py-2 px-3 hover:bg-slate-50 rounded-lg transition-all border border-transparent hover:border-slate-100">
+      <button
+        onClick={() => onToggle(subtask.subtask_id)}
+        className={`flex-shrink-0 transition-colors ${
+          subtask.is_done ? "text-emerald-500" : "text-slate-300 hover:text-slate-400"
+        }`}
+      >
+        {subtask.is_done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+      </button>
+
+      {isEditing ? (
+        <div className="flex-1 flex items-center gap-2">
+          <input
+            autoFocus
+            className="flex-1 bg-white border border-indigo-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleUpdate();
+              if (e.key === "Escape") {
+                setTitle(subtask.title);
+                setIsEditing(false);
+              }
+            }}
+          />
+          <button onClick={handleUpdate} className="text-emerald-500 hover:bg-emerald-50 p-1 rounded">
+            <Check size={14} />
+          </button>
+          <button onClick={() => setIsEditing(false)} className="text-slate-400 hover:bg-slate-100 p-1 rounded">
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <span
+          className={`flex-1 text-sm transition-all cursor-pointer ${
+            subtask.is_done ? "text-slate-400 line-through" : "text-slate-700"
+          }`}
+          onClick={() => setIsEditing(true)}
+        >
+          {subtask.title}
+        </span>
+      )}
+
+      {!isEditing && (
+        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+          <button
+            onClick={() => setIsEditing(true)}
+            className="p-1 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded transition-colors"
+          >
+            <Edit2 size={14} />
+          </button>
+          <button
+            onClick={() => onDelete(subtask.subtask_id)}
+            className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\SubtaskList.jsx ---
+import { useState, useEffect } from "react";
+import { Plus, ListChecks, Loader2, Check, X } from "lucide-react";
+import { SubtaskItem } from "./SubtaskItem";
+import { 
+  getTaskSubtasksAPI, 
+  createSubtaskAPI, 
+  toggleSubtaskAPI, 
+  deleteSubtaskAPI,
+  updateSubtaskAPI 
+} from "../../services/subtaskService";
+
+export const SubtaskList = ({ taskId }) => {
+  const [subtasks, setSubtasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newTitle, setNewTitle] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+
+  useEffect(() => {
+    fetchSubtasks();
+  }, [taskId]);
+
+  const fetchSubtasks = async () => {
+    try {
+      const res = await getTaskSubtasksAPI(taskId);
+      setSubtasks(res.data);
+    } catch (error) {
+      console.error("Failed to fetch subtasks", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdd = async () => {
+    if (newTitle.trim() === "") return;
+    try {
+      const res = await createSubtaskAPI(taskId, newTitle);
+      setSubtasks([...subtasks, res.data]);
+      setNewTitle("");
+      setIsAdding(false);
+    } catch (error) {
+      console.error("Failed to add subtask", error);
+    }
+  };
+
+  const handleToggle = async (subtaskId) => {
+    try {
+      const res = await toggleSubtaskAPI(subtaskId);
+      setSubtasks(subtasks.map(s => s.subtask_id === subtaskId ? res.data : s));
+    } catch (error) {
+      console.error("Failed to toggle subtask", error);
+    }
+  };
+
+  const handleDelete = async (subtaskId) => {
+    try {
+      await deleteSubtaskAPI(subtaskId);
+      setSubtasks(subtasks.filter(s => s.subtask_id !== subtaskId));
+    } catch (error) {
+      console.error("Failed to delete subtask", error);
+    }
+  };
+
+  const handleUpdate = async (subtaskId, data) => {
+    try {
+      const res = await updateSubtaskAPI(subtaskId, data);
+      setSubtasks(subtasks.map(s => s.subtask_id === subtaskId ? res.data : s));
+    } catch (error) {
+      console.error("Failed to update subtask", error);
+    }
+  };
+
+  const completedCount = subtasks.filter(s => s.is_done).length;
+  const progress = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
+
+  if (loading) return <div className="flex justify-center p-4"><Loader2 className="animate-spin text-slate-400" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ListChecks size={18} className="text-slate-500" />
+          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+            Subtasks ({completedCount}/{subtasks.length})
+          </h3>
+        </div>
+        {subtasks.length > 0 && (
+          <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-emerald-500 transition-all duration-500" 
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        {subtasks.map(subtask => (
+          <SubtaskItem 
+            key={subtask.subtask_id} 
+            subtask={subtask}
+            onToggle={handleToggle}
+            onDelete={handleDelete}
+            onUpdate={handleUpdate}
+          />
+        ))}
+      </div>
+
+      {isAdding ? (
+        <div className="flex items-center gap-2 mt-2 px-3">
+          <input
+            autoFocus
+            className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            placeholder="What needs to be done?"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAdd();
+              if (e.key === "Escape") setIsAdding(false);
+            }}
+          />
+          <button 
+            onClick={handleAdd}
+            className="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <Check size={16} />
+          </button>
+          <button 
+            onClick={() => setIsAdding(false)}
+            className="text-slate-400 hover:bg-slate-100 p-1.5 rounded-lg transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setIsAdding(true)}
+          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-500 hover:bg-slate-50 rounded-lg transition-all group"
+        >
+          <Plus size={16} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
+          <span>Add subtask</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TagManager.jsx ---
+import { useState, useEffect } from "react";
+import { Tag as TagIcon, Plus, X, Loader2, Check } from "lucide-react";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/v1/api";
+
+const COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", "#64748b"
+];
+
+export const TagManager = ({ taskId }) => {
+  const [allTags, setAllTags] = useState([]);
+  const [taskTags, setTaskTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+
+  useEffect(() => {
+    fetchData();
+  }, [taskId]);
+
+  const fetchData = async () => {
+    try {
+      const [allRes, taskRes] = await Promise.all([
+        axios.get(`${API_URL}/tags`, { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }),
+        axios.get(`${API_URL}/tags/task/${taskId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } })
+      ]);
+      setAllTags(allRes?.data?.data || []);
+      setTaskTags(taskRes?.data?.data || []);
+    } catch (error) {
+      console.error("Failed to fetch tags", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAttach = async (tagId) => {
+    try {
+      await axios.post(`${API_URL}/tags/attach`, 
+        { taskId, tagId },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+      );
+      const tag = allTags.find(t => t.tag_id === tagId);
+      if (tag) {
+        setTaskTags([...taskTags, tag]);
+      } else {
+        await fetchData();
+      }
+    } catch (error) {
+      console.error("Failed to attach tag", error);
+    }
+  };
+
+  const handleDetach = async (tagId) => {
+    try {
+      await axios.delete(`${API_URL}/tags/detach/${taskId}/${tagId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      });
+      setTaskTags(taskTags.filter(t => t.tag_id !== tagId));
+    } catch (error) {
+      console.error("Failed to detach tag", error);
+    }
+  };
+
+  const handleCreateAndAttach = async () => {
+    if (!newTagName.trim()) return;
+    try {
+      const res = await axios.post(`${API_URL}/tags/create`, 
+        { name: newTagName, color: selectedColor },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+      );
+      const newTag = res?.data?.data;
+      if (newTag) {
+        setAllTags([...allTags, newTag]);
+        await handleAttach(newTag.tag_id);
+        setNewTagName("");
+        setIsAdding(false);
+      }
+    } catch (error) {
+      console.error("Failed to create tag", error);
+    }
+  };
+
+  if (loading) return <Loader2 className="animate-spin text-slate-400" size={16} />;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <TagIcon size={14} className="text-slate-500" />
+        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tags</label>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {(taskTags || []).map(tag => {
+          if (!tag) return null;
+          const tagColor = tag?.color || "#64748b";
+          const tagName = tag?.name || "Unnamed";
+          return (
+          <span 
+            key={tag.tag_id}
+            style={{ backgroundColor: `${tagColor}15`, color: tagColor, borderColor: `${tagColor}30` }}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border group transition-all"
+          >
+            {tagName}
+            <button 
+              onClick={() => handleDetach(tag.tag_id)}
+              className="hover:bg-black/5 rounded-full transition-colors"
+            >
+              <X size={10} />
+            </button>
+          </span>
+          );
+        })}
+        
+        <button 
+          onClick={() => setIsAdding(!isAdding)}
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
+        >
+          <Plus size={12} />
+          Add Tag
+        </button>
+      </div>
+
+      {isAdding && (
+        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-lg space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="space-y-2">
+            <input
+              autoFocus
+              className="w-full text-sm border-b border-slate-200 focus:border-indigo-500 focus:outline-none py-1"
+              placeholder="Tag name..."
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {COLORS.map(color => (
+                <button
+                  key={color}
+                  onClick={() => setSelectedColor(color)}
+                  style={{ backgroundColor: color }}
+                  className={`w-5 h-5 rounded-full transition-transform ${selectedColor === color ? 'scale-125 ring-2 ring-offset-1 ring-slate-300' : 'hover:scale-110'}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="max-h-32 overflow-y-auto space-y-1">
+            {allTags
+              .filter(tag => !taskTags.some(tt => tt.tag_id === tag.tag_id))
+              .filter(tag => tag.name.toLowerCase().includes(newTagName.toLowerCase()))
+              .map(tag => {
+                const tagColor = tag?.color || "#64748b";
+                return (
+                <button
+                  key={tag.tag_id}
+                  onClick={() => handleAttach(tag.tag_id)}
+                  className="w-full text-left px-2 py-1.5 text-xs rounded-lg hover:bg-slate-50 flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tagColor }} />
+                    <span>{tag.name}</span>
+                  </div>
+                  <Plus size={12} className="opacity-0 group-hover:opacity-100 text-slate-400" />
+                </button>
+              );
+            })}
+          </div>
+
+          {newTagName && !allTags.some(t => t.name.toLowerCase() === newTagName.toLowerCase()) && (
+            <button
+              onClick={handleCreateAndAttach}
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-all font-medium"
+            >
+              <Plus size={12} />
+              Create "{newTagName}"
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TaskActivity.jsx ---
+import { useState, useEffect } from "react";
+import { Activity, Clock, User, Loader2 } from "lucide-react";
+import { activityService } from "../../services/activity.service";
+
+export const TaskActivity = ({ taskId }) => {
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (taskId) {
+      loadActivity();
+    }
+  }, [taskId]);
+
+  const loadActivity = async () => {
+    setLoading(true);
+    try {
+      const data = await activityService.getTaskActivity(taskId);
+      setActivities(data || []);
+    } catch (error) {
+      console.error("Error loading task activity:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatAction = (action) => {
+    return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+        <span className="ml-3 text-slate-500 text-sm">Loading activity...</span>
+      </div>
+    );
+  }
+
+  if (activities.length === 0) {
+    return (
+      <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+        <Activity className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+        <p className="text-slate-500 text-sm">No activity recorded for this task yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Activity size={18} className="text-slate-500" />
+        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+          Activity History
+        </h3>
+      </div>
+      
+      <div className="relative">
+        <div className="absolute left-[17px] top-2 bottom-2 w-0.5 bg-slate-100" />
+        
+        <div className="space-y-6">
+          {activities.map((activity, index) => (
+            <div key={activity.log_id} className="relative flex gap-4">
+              <div className="relative z-10 flex items-center justify-center w-9 h-9 rounded-full bg-white border-2 border-slate-100 shadow-sm shrink-0">
+                <Activity size={14} className="text-indigo-500" />
+              </div>
+              
+              <div className="flex-1 pt-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-slate-900 leading-tight">
+                    {formatAction(activity.action)}
+                  </p>
+                  <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap bg-slate-50 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    {new Date(activity.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3 mt-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-700">
+                      {activity.full_name?.[0] || activity.username?.[0] || "?"}
+                    </div>
+                    <span className="text-xs text-slate-600 font-medium">
+                      {activity.full_name || activity.username}
+                    </span>
+                  </div>
+                  
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <Clock size={10} />
+                    {new Date(activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TaskCard.jsx ---
+import { Clock3, MoreHorizontal } from "lucide-react";
+import { useState, useEffect } from "react";
+import { TaskDetail } from "./TaskDetail";
+import { deleteTaskByIDAPI, updateTaskStatusAPI, editTaskByIDAPI } from "../../services/task.service";
+import { notificationService } from "../../services/notification.service";
+import { getPriorityLabel, getStatusLabel, STATUS_OPTIONS, PRIORITY_OPTIONS, getStatusSelectClass } from "../../utils/taskColors";
+
+const formatDate = (value) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  // Format: "DD MMM YYYY, HH:mm"
+  return date.toLocaleString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const TaskCard = ({ task, onDelete, onEditSuccess, onStatusChange, onCardClick }) => {
+  const [currentTask, setCurrentTask] = useState(task);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  useEffect(() => {
+    setCurrentTask(task);
+  }, [task]);
+
+  const handleCardClick = () => {
+    if (onCardClick) {
+      onCardClick(task);
+    } else {
+      setIsDetailOpen(true);
+    }
+  };
+
+  const handleDelete = () => {
+    deleteTaskByIDAPI(currentTask?.task_id)
+      .then(() => {
+        onDelete(currentTask?.task_id);
+        notificationService.success("Task deleted successfully");
+      })
+      .catch((error) => {
+        console.error("Error deleting task:", error);
+        notificationService.error(error.response?.data?.message || "Failed to delete task");
+      });
+  };
+
+  const handleStatusChange = async (e) => {
+    e.stopPropagation();
+    const newStatus = e.target.value;
+    if (newStatus === currentTask.status) return;
+
+    setIsUpdatingStatus(true);
+    try {
+      const updatedTask = await updateTaskStatusAPI(currentTask.task_id, newStatus, currentTask.status);
+      setCurrentTask({ ...currentTask, status: newStatus });
+      if (onStatusChange) {
+        onStatusChange(updatedTask);
+      }
+      if (onEditSuccess) {
+        onEditSuccess(updatedTask);
+      }
+    } catch (error) {
+      console.error("Error updating task status:", error);
+      notificationService.error(error.response?.data?.message || "Failed to update status");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handlePriorityChange = async (newPriority) => {
+    if (newPriority === currentTask.priority) return;
+
+    try {
+      const updatedTask = await editTaskByIDAPI(
+        currentTask.task_id,
+        { priority: newPriority },
+        'this'
+      );
+      setCurrentTask({ ...currentTask, priority: newPriority });
+      if (onEditSuccess) {
+        onEditSuccess(updatedTask);
+      }
+      notificationService.success("Priority updated");
+    } catch (error) {
+      console.error("Error updating priority:", error);
+      notificationService.error(error.response?.data?.message || "Failed to update priority");
+    }
+  };
+
+  return (
+    <>
+      <article
+        onClick={handleCardClick}
+        className="group relative flex flex-col gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-1 hover:shadow-lg"
+      >
+        <div className="flex-1">
+          <header className="flex items-start justify-between gap-4 mb-3">
+            <div className="flex items-center gap-3">
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-300"
+              />
+              <h3 className="text-xl font-bold text-slate-900">
+                {currentTask.title}
+              </h3>
+            </div>
+          </header>
+
+          <div className="mb-4">
+            <p className="text-base text-slate-700 leading-relaxed whitespace-pre-wrap break-words line-clamp-6">
+              {currentTask.description || "No description provided."}
+            </p>
+          </div>
+
+          <footer className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-medium">
+            <div 
+              className="text-slate-400 flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <span>Priority:</span>
+              <select
+                value={currentTask.priority || "medium"}
+                onChange={(e) => handlePriorityChange(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="text-xs font-medium px-2 py-1 rounded border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition bg-slate-100 text-slate-600 hover:bg-slate-200"
+              >
+                {PRIORITY_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value} className="bg-white text-slate-900">{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div 
+              className="text-slate-400 flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <span>Status:</span>
+              <select
+                value={currentTask.status || "todo"}
+                onChange={handleStatusChange}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                disabled={isUpdatingStatus}
+                className={`text-xs font-medium px-2 py-1 rounded border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition ${getStatusSelectClass(currentTask.status)} ${isUpdatingStatus ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {STATUS_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value} className="bg-white text-slate-900">{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            {currentTask.start_date && (
+              <span className="flex items-center gap-1 text-slate-400">
+                <Clock3 size={14} />
+                Start: {formatDate(currentTask.start_date)}
+              </span>
+            )}
+            {currentTask.due_date && (
+              <span className="flex items-center gap-1 text-slate-400">
+                <Clock3 size={14} />
+                Due: {formatDate(currentTask.due_date)}
+              </span>
+            )}
+          </footer>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-6">
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              handleDelete();
+            }}
+            type="button"
+            className="rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          >
+            Delete Task
+          </button>
+        </div>
+      </article>
+
+      {isDetailOpen && (
+        <TaskDetail 
+          task={currentTask} 
+          onClose={() => setIsDetailOpen(false)}
+          onUpdate={(updatedTask) => {
+            setCurrentTask(updatedTask);
+            if (onEditSuccess) {
+              onEditSuccess(updatedTask);
+            }
+          }}
+        />
+      )}
+    </>
+  );
+};
+
+export default TaskCard;
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TaskComments.jsx ---
+import { useState, useEffect } from "react";
+import { MessageSquare, Send, User, Trash2, Loader2 } from "lucide-react";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8888/v1/api";
+
+export const TaskComments = ({ taskId }) => {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newComment, setNewComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchComments();
+  }, [taskId]);
+
+  const fetchComments = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/comments/task/${taskId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      });
+      setComments(res?.data?.data || []);
+    } catch (error) {
+      console.error("Failed to fetch comments", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await axios.post(`${API_URL}/comments/create`, 
+        { taskId, content: newComment },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+      );
+      setComments([res?.data?.data, ...comments]);
+      setNewComment("");
+    } catch (error) {
+      console.error("Failed to post comment", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (commentId) => {
+    try {
+      await axios.delete(`${API_URL}/comments/${commentId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      });
+      setComments(comments.filter(c => c.comment_id !== commentId));
+    } catch (error) {
+      console.error("Failed to delete comment", error);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) return <div className="flex justify-center p-4 md:p-8"><Loader2 className="animate-spin text-slate-400" /></div>;
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center gap-2">
+        <MessageSquare size={16} md:size={18} className="text-slate-500" />
+        <h3 className="text-xs md:text-sm font-semibold text-slate-700 uppercase tracking-wide">
+          Activity & Comments ({comments.length})
+        </h3>
+      </div>
+
+      {/* Comment Form */}
+      <form onSubmit={handleSubmit} className="relative">
+        <textarea
+          className="w-full bg-white border border-slate-200 rounded-xl p-2 md:p-3 pb-10 md:pb-12 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none min-h-[80px] md:min-h-[100px]"
+          placeholder="Write a comment..."
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+        />
+        <div className="absolute bottom-2 md:bottom-3 right-2 md:right-3 flex items-center gap-2">
+          <span className="text-xs text-slate-400 hidden sm:inline">Cmd+Enter</span>
+          <button
+            type="submit"
+            disabled={!newComment.trim() || isSubmitting}
+            className="bg-indigo-600 text-white px-3 md:px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 md:gap-2"
+          >
+            {isSubmitting ? <Loader2 size={14} md:size={16} className="animate-spin" /> : <Send size={14} md:size={16} />}
+            <span className="hidden md:inline">Post</span>
+          </button>
+        </div>
+      </form>
+
+      {/* Comments List - with max height for scrolling */}
+      <div className="max-h-[300px] md:max-h-[400px] lg:max-h-[500px] overflow-y-auto custom-scrollbar space-y-3 md:space-y-4 pr-1">
+        {comments.length === 0 ? (
+          <div className="text-center py-6 md:py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <p className="text-xs md:text-sm text-slate-400">No comments yet. Start the conversation!</p>
+          </div>
+        ) : (
+          comments.map(comment => (
+            <div key={comment.comment_id} className="group flex gap-2 md:gap-3">
+              <div className="flex-shrink-0 w-7 md:w-8 h-7 md:h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                <User size={14} md:size={16} />
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <span className="text-xs md:text-sm font-semibold text-slate-900">{comment.user_name}</span>
+                    <span className="text-[10px] md:text-xs text-slate-400">{formatDate(comment.created_at)}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleDelete(comment.comment_id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"
+                  >
+                    <Trash2 size={12} md:size={14} />
+                  </button>
+                </div>
+                <div className="text-xs md:text-sm text-slate-700 bg-white border border-slate-100 rounded-lg px-2 md:px-3 py-1.5 md:py-2 shadow-sm">
+                  {comment.content}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TaskDetail.jsx ---
+import {
+  X,
+  Calendar,
+  User,
+  Clock,
+  Flag,
+  FileText,
+  CheckCircle2,
+  Circle,
+  Star,
+  UserPlus
+} from "lucide-react";
+import { useContext } from "react";
+import { AuthContext } from "../../context/authContext";
+import ReactMarkdown from "react-markdown";
+import { SubtaskList } from "./SubtaskList";
+import { TaskComments } from "./TaskComments";
+import { TagManager } from "./TagManager";
+import { AttachmentManager } from "./AttachmentManager";
+import { DependencyManager } from "./DependencyManager";
+import { TaskActivity } from "./TaskActivity";
+import { TimeLog } from "./TimeLog";
+import { useTaskDetail } from "./hooks/useTaskDetail";
+import { TaskApplyToModal } from "./components/TaskApplyToModal";
+import {
+  normalizeEnum,
+  formatDate,
+  formatUser,
+  getStatusColor,
+  getPriorityColor
+} from "./utils/formatters";
+import { getStatusBadgeClass, getStatusLabel, STATUS_OPTIONS, PRIORITY_OPTIONS } from "../../utils/taskColors";
+import { formatDateTimeLocal } from "./hooks/useTaskForm";
+
+export const TaskDetail = ({
+  onClose = () => { },
+  task,
+  onUpdate,
+  myDayTaskIdsSet,
+  onToggleMyDay,
+}) => {
+  const {
+    isEditing,
+    setIsEditing,
+    formData,
+    projectMembers,
+    isSaving,
+    showApplyToModal,
+    setShowApplyToModal,
+    applyToOption,
+    setApplyToOption,
+    isRecurringTask,
+    handleFieldChange,
+    handleFieldBlur,
+    handleFieldFocus,
+    handleSave,
+  } = useTaskDetail(task, onUpdate);
+
+  const { auth } = useContext(AuthContext);
+  const currentUser = auth?.user;
+  const isAssignedToMe = String(formData.assigned_to) === String(currentUser?.uid);
+
+  const isInMyDay = myDayTaskIdsSet?.has(String(task?.task_id));
+  const description = formData.description?.trim() || "No description provided.";
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 sm:p-6 md:p-12 backdrop-blur-md overflow-hidden animate-in fade-in duration-300">
+        <div className="relative w-full max-w-6xl bg-white rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] flex flex-col max-h-[90vh] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-white sticky top-0 z-20">
+            <div className="flex-1 min-w-0">
+              {isEditing.title ? (
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => handleFieldChange("title", e.target.value)}
+                  onBlur={() => handleFieldBlur("title")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.target.blur();
+                    }
+                    if (e.key === "Escape") {
+                      handleFieldChange("title", task?.title || "");
+                      setIsEditing((prev) => ({ ...prev, title: false }));
+                    }
+                  }}
+                  className="text-lg md:text-xl font-semibold text-slate-900 w-full border-2 border-indigo-500 rounded px-2 md:px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  autoFocus
+                />
+              ) : (
+                <h2
+                  className="text-lg md:text-xl font-semibold text-slate-900 cursor-text hover:bg-slate-50 rounded px-2 py-1 -mx-2 transition truncate"
+                  onClick={() => handleFieldFocus("title")}
+                  title={formData.title || "Untitled Task"}
+                >
+                  {formData.title || "Untitled Task"}
+                </h2>
+              )}
+            </div>
+            <div className="flex items-center gap-2 ml-2 md:ml-4">
+              {isSaving && (
+                <span className="text-xs text-slate-500">Saving...</span>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Main Content - Flex Layout */}
+          <div className="flex-1 overflow-hidden">
+            <div className="flex flex-col lg:flex-row h-full">
+              {/* Left Side - Main Content */}
+              <div className="flex-1 p-6 lg:p-8 space-y-8 overflow-y-auto min-h-0 custom-scrollbar">
+                {/* Description Section */}
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-slate-500" />
+                    <h3 className="text-xs md:text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                      Description
+                    </h3>
+                  </div>
+                  <div className="min-h-[120px] md:min-h-[150px] lg:min-h-[200px]">
+                    {isEditing.description ? (
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) =>
+                          handleFieldChange("description", e.target.value)
+                        }
+                        onBlur={() => handleFieldBlur("description")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            handleFieldChange("description", task?.description || "");
+                            setIsEditing((prev) => ({
+                              ...prev,
+                              description: false,
+                            }));
+                          }
+                        }}
+                        className="w-full min-h-[120px] md:min-h-[150px] lg:min-h-[200px] text-sm leading-relaxed text-slate-700 border-2 border-indigo-500 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
+                        autoFocus
+                        placeholder="Add a description..."
+                      />
+                    ) : (
+                      <div
+                        className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap break-words cursor-text hover:bg-slate-50 rounded-xl px-3 md:px-4 py-2 md:py-3 min-h-[120px] md:min-h-[150px] lg:min-h-[200px] border border-transparent hover:border-indigo-100 transition-all bg-white/50 backdrop-blur-sm"
+                        onClick={() => handleFieldFocus("description")}
+                      >
+                        <div className="prose prose-sm max-w-none">
+                          <ReactMarkdown>{description}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {/* Subtasks Section */}
+                <section className="pt-3 md:pt-4 border-t border-slate-100">
+                  <SubtaskList taskId={task?.task_id} />
+                </section>
+
+                {/* Attachments Section */}
+                <section className="pt-3 md:pt-4 border-t border-slate-100">
+                  <AttachmentManager taskId={task?.task_id} />
+                </section>
+
+                {/* Dependencies Section */}
+                <section className="pt-3 md:pt-4 border-t border-slate-100">
+                  <DependencyManager taskId={task?.task_id} projectId={task?.project_id} />
+                </section>
+
+                {/* Comments Section */}
+                <section className="pt-4 md:pt-6 border-t border-slate-100">
+                  <TaskComments taskId={task?.task_id} />
+                </section>
+
+                {/* Activity History Section */}
+                <section className="pt-4 md:pt-6 border-t border-slate-100">
+                  <TaskActivity taskId={task?.task_id} />
+                </section>
+              </div>
+
+              {/* Right Sidebar - Details */}
+              <div className="w-full lg:w-[360px] xl:w-[400px] bg-slate-50 p-3 md:p-4 lg:p-6 space-y-3 md:space-y-4 lg:space-y-6 border-t lg:border-t-0 border-slate-200 overflow-y-auto min-h-0 custom-scrollbar flex-shrink-0">
+                {/* Status */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    Status
+                  </label>
+                  <div>
+                    {isEditing.status ? (
+                      <select
+                        value={formData.status}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          handleFieldChange("status", newValue);
+                          setIsEditing((prev) => ({ ...prev, status: false }));
+                          handleSave("this", { ...formData, status: newValue });
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        autoFocus
+                      >
+                        {STATUS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFieldFocus("status");
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-md border text-sm font-medium cursor-pointer hover:opacity-80 transition ${getStatusColor(
+                          formData.status
+                        )}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {formData.sta... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TaskDetailHeader.jsx ---
+import { X } from "lucide-react";
+
+export const TaskDetailHeader = ({
+  formData,
+  isEditing,
+  isSaving,
+  onClose,
+  handleFieldChange,
+  handleFieldBlur,
+  handleFieldFocus,
+  setIsEditing,
+  task,
+}) => {
+  return (
+    <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-white sticky top-0 z-20">
+      <div className="flex-1 min-w-0">
+        {isEditing.title ? (
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => handleFieldChange("title", e.target.value)}
+            onBlur={() => handleFieldBlur("title")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.target.blur();
+              }
+              if (e.key === "Escape") {
+                handleFieldChange("title", task?.title || "");
+                setIsEditing((prev) => ({ ...prev, title: false }));
+              }
+            }}
+            className="text-xl font-semibold text-slate-900 w-full border-2 border-indigo-500 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            autoFocus
+          />
+        ) : (
+          <h2
+            className="text-xl font-semibold text-slate-900 cursor-text hover:bg-slate-50 rounded px-2 py-1 -mx-2 transition truncate"
+            onClick={() => handleFieldFocus("title")}
+            title={formData.title || "Untitled Task"}
+          >
+            {formData.title || "Untitled Task"}
+          </h2>
+        )}
+      </div>
+      <div className="flex items-center gap-2 ml-4">
+        {isSaving && (
+          <span className="text-xs text-slate-500">Saving...</span>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TaskDetailsSidebar.jsx ---
+import { Calendar, User, Clock, Flag, CheckCircle2, Circle } from "lucide-react";
+import { TagManager } from "./TagManager";
+import { normalizeEnum, formatDate, formatUser, getStatusColor, getPriorityColor, getPriorityBgColor } from "./utils/formatters";
+import { getStatusLabel, getPriorityLabel, STATUS_OPTIONS, PRIORITY_OPTIONS } from "../../utils/taskColors";
+import { formatDateTimeLocal } from "./hooks/useTaskForm";
+import { editTaskByIDAPI } from "../../services/task.service";
+
+export const TaskDetailsSidebar = ({
+  task,
+  formData,
+  isEditing,
+  handleFieldChange,
+  handleFieldBlur,
+  handleFieldFocus,
+  handleSave,
+  setIsEditing,
+  onUpdate,
+}) => {
+  return (
+    <div className="col-span-10 md:col-span-4 bg-slate-50 p-4 md:p-6 space-y-4 md:space-y-6 border-t md:border-t-0 border-slate-200 overflow-y-auto h-full">
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          Status
+        </label>
+        <div>
+          {isEditing.status ? (
+            <select
+              value={formData.status}
+              onChange={async (e) => {
+                const newValue = e.target.value;
+                handleFieldChange("status", newValue);
+                // Save immediately with new value
+                if (task?.task_id) {
+                  try {
+                    const updateData = {
+                      status: newValue,
+                      priority: formData.priority,
+                      title: formData.title,
+                      description: formData.description,
+                      startDate: formData.start_date ? new Date(formData.start_date).toISOString() : null,
+                      dueDate: formData.due_date ? new Date(formData.due_date).toISOString() : null,
+                    };
+                    const updatedTask = await editTaskByIDAPI(task.task_id, updateData);
+                    setIsEditing((prev) => ({ ...prev, status: false }));
+                    if (onUpdate) onUpdate(updatedTask);
+                  } catch (error) {
+                    console.error("Failed to update status:", error);
+                  }
+                }
+              }}
+              onBlur={() =>
+                setIsEditing((prev) => ({ ...prev, status: false }))
+              }
+              className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              autoFocus
+            >
+              {STATUS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          ) : (
+            <button
+              onClick={() => handleFieldFocus("status")}
+              className={`w-full text-left px-3 py-2 rounded-md border text-sm font-medium cursor-pointer hover:opacity-80 transition flex items-center gap-2 ${getStatusColor(formData.status)}`}
+            >
+              {formData.status === "done" ? (
+                <CheckCircle2 size={16} />
+              ) : formData.status === "in_progress" ? (
+                <Circle size={16} className="fill-current" />
+              ) : (
+                <Circle size={16} />
+              )}
+              <span>{normalizeEnum(formData.status)}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="border-t border-slate-200"></div>
+
+      <div className="space-y-4">
+        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          Details
+        </h4>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
+            <Flag size={14} />
+            Priority
+          </label>
+          <div>
+            {isEditing.priority ? (
+              <select
+                value={formData.priority}
+                onChange={async (e) => {
+                  const newValue = e.target.value;
+                  handleFieldChange("priority", newValue);
+                  if (task?.task_id) {
+                    try {
+                      const updateData = {
+                        priority: newValue,
+                        status: formData.status,
+                        title: formData.title,
+                        description: formData.description,
+                        startDate: formData.start_date ? new Date(formData.start_date).toISOString() : null,
+                        dueDate: formData.due_date ? new Date(formData.due_date).toISOString() : null,
+                      };
+                      const updatedTask = await editTaskByIDAPI(task.task_id, updateData);
+                      setIsEditing((prev) => ({ ...prev, priority: false }));
+                      if (onUpdate) onUpdate(updatedTask);
+                    } catch (error) {
+                      console.error("Failed to update priority:", error);
+                    }
+                  }
+                }}
+                onBlur={() =>
+                  setIsEditing((prev) => ({
+                    ...prev,
+                    priority: false,
+                  }))
+                }
+                className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                autoFocus
+              >
+                {PRIORITY_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            ) : (
+              <button
+                onClick={() => handleFieldFocus("priority")}
+                className={`w-full text-left px-3 py-2 rounded-md border text-sm font-medium cursor-pointer hover:opacity-80 transition flex items-center gap-2 ${getPriorityBgColor(formData.priority)} ${getPriorityColor(formData.priority)}`}
+              >
+                <Flag size={14} />
+                <span>{normalizeEnum(formData.priority)}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200"></div>
+
+        <div className="pt-2">
+          <TagManager taskId={task?.task_id} />
+        </div>
+
+        <div className="border-t border-slate-200"></div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
+            <User size={14} />
+            Assignee
+          </label>
+          <div className="px-3 py-2 rounded-md border border-slate-200 bg-white text-sm text-slate-700">
+            {formatUser(task?.assignee_name, task?.assignee_username)}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200"></div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
+            <Calendar size={14} />
+            Start Date
+          </label>
+          <div>
+            {isEditing.startDate ? (
+              <input
+                type="datetime-local"
+                value={
+                  formData.start_date
+                    ? formatDateTimeLocal(formData.start_date)
+                    : ""
+                }
+                onChange={(e) =>
+                  handleFieldChange("start_date", e.target.value)
+                }
+                onBlur={() => handleFieldBlur("start_date")}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    handleFieldChange("start_date", task?.start_date || "");
+                    setIsEditing((prev) => ({
+                      ...prev,
+                      startDate: false,
+                    }));
+                  }
+                }}
+                className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                autoFocus
+              />
+            ) : (
+              <button
+                onClick={() => handleFieldFocus("startDate")}
+                className="w-full text-left px-3 py-2 rounded-md border border-slate-200 bg-white text-sm text-slate-700 cursor-pointer hover:bg-slate-50 transition"
+              >
+                {formData.start_date
+                  ? formatDate(formData.start_date, {
+                    withTime: true,
+                  })
+                  : "None"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200"></div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
+            <Clock size={14} />
+            Due Date
+          </label>
+          <div>
+            {isEditing.dueDate ? (
+              <input
+                type="datetime-local"
+                value={
+                  formData.due_date
+                    ? formatDateTimeLocal(formData.due_date)
+                    : ""
+                }
+                onChange={(e) =>
+                  handleFieldChange("due_date", e.target.value)
+                }
+                onBlur={() => handleFieldBlur("due_date")}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    handleFieldChange("due_date", task?.due_date || "");
+                    setIsEditing((prev) => ({
+                      ...prev,
+                      dueDate: false,
+                    }));
+                  }
+                }}
+                className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                autoFocus
+              />
+            ) : (
+              <button
+                onClick={() => handleFieldFocus("dueDate")}
+                className="w-full text-left px-3 py-2 rounded-md border border-slate-200 bg-white text-sm text-slate-700 cursor-pointer hover:bg-slate-50 transition"
+              >
+                ... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TaskFilters.jsx ---
+import { useState, useCallback } from "react";
+import { Filter, X, Calendar, Flag, FolderKanban } from "lucide-react";
+import { STATUS_COLORS, PRIORITY_COLORS, getStatusOptionsForDisplay } from "../../utils/taskColors";
+
+export const TaskFilters = ({
+  filters,
+  onFilterChange,
+  projects = [],
+  onClearFilters
+}) => {
+  const [showFilters, setShowFilters] = useState(false);
+
+  const hasActiveFilters = filters.status?.length > 0 || 
+    filters.priority?.length > 0 || 
+    filters.projectId ||
+    filters.dateRange;
+
+  const statusOptions = getStatusOptionsForDisplay();
+
+  const priorityOptions = [
+    { value: "high", label: "High", ...PRIORITY_COLORS.high },
+    { value: "medium", label: "Medium", ...PRIORITY_COLORS.medium },
+    { value: "low", label: "Low", ...PRIORITY_COLORS.low }
+  ];
+
+  const toggleStatus = (status) => {
+    const current = filters.status || [];
+    const updated = current.includes(status)
+      ? current.filter(s => s !== status)
+      : [...current, status];
+    onFilterChange({ ...filters, status: updated });
+  };
+
+  const togglePriority = (priority) => {
+    const current = filters.priority || [];
+    const updated = current.includes(priority)
+      ? current.filter(p => p !== priority)
+      : [...current, priority];
+    onFilterChange({ ...filters, priority: updated });
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowFilters(!showFilters)}
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition ${
+          hasActiveFilters 
+            ? "bg-indigo-50 border-indigo-300 text-indigo-700" 
+            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+        }`}
+      >
+        <Filter size={18} />
+        <span className="font-medium">Filters</span>
+        {hasActiveFilters && (
+          <span className="w-5 h-5 bg-indigo-500 text-white text-xs rounded-full flex items-center justify-center">
+            ✓
+          </span>
+        )}
+      </button>
+
+      {showFilters && (
+        <>
+          <div className="fixed inset-0 z-0" onClick={() => setShowFilters(false)} />
+          <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-10">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900">Filters</h3>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => {
+                    onClearFilters();
+                    setShowFilters(false);
+                  }}
+                  className="text-xs text-rose-600 hover:underline"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+
+            {/* Status Filter */}
+            <div className="mb-4">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Status
+              </label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {statusOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => toggleStatus(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      filters.status?.includes(opt.value)
+                        ? `${opt.bg} ${opt.text}`
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Priority Filter */}
+            <div className="mb-4">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Priority
+              </label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {priorityOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => togglePriority(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      filters.priority?.includes(opt.value)
+                        ? `${opt.bg} ${opt.text}`
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Project Filter */}
+            {projects.length > 0 && (
+              <div className="mb-4">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Project
+                </label>
+                <select
+                  value={filters.projectId || ""}
+                  onChange={(e) => onFilterChange({ ...filters, projectId: e.target.value || null })}
+                  className="w-full mt-2 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                >
+                  <option value="">All Projects</option>
+                  {projects.map(p => (
+                    <option key={p.project_id} value={p.project_id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Date Range */}
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Due Date
+              </label>
+              <select
+                value={filters.dateRange || ""}
+                onChange={(e) => onFilterChange({ ...filters, dateRange: e.target.value || null })}
+                className="w-full mt-2 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              >
+                <option value="">Any time</option>
+                <option value="today">Today</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="this_week">This Week</option>
+                <option value="this_month">This Month</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export const applyFilters = (tasks, filters) => {
+  let filtered = [...tasks];
+
+  if (filters.status?.length > 0) {
+    filtered = filtered.filter(t => filters.status.includes(t.status));
+  }
+
+  if (filters.priority?.length > 0) {
+    filtered = filtered.filter(t => filters.priority.includes(t.priority));
+  }
+
+  if (filters.projectId) {
+    filtered = filtered.filter(t => t.project_id === filters.projectId);
+  }
+
+  if (filters.dateRange) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const endOfWeek = new Date(now);
+    endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    filtered = filtered.filter(t => {
+      if (!t.due_date) return false;
+      const due = new Date(t.due_date);
+      
+      switch (filters.dateRange) {
+        case "today":
+          return due.toDateString() === now.toDateString();
+        case "tomorrow":
+          return due.toDateString() === tomorrow.toDateString();
+        case "this_week":
+          return due >= now && due <= endOfWeek;
+        case "this_month":
+          return due >= now && due <= endOfMonth;
+        case "overdue":
+          return due < now && t.status !== "done";
+        default:
+          return true;
+      }
+    });
+  }
+
+  return filtered;
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\tasks\TaskStatus.jsx ---
+import { TrendingUp } from "lucide-react";
+import { getStatusTone, getStatusOptionsForDisplay, STATUS_COLORS } from "../../utils/taskColors";
+
+const TaskStatus = ({ stats }) => {
+  const counts = {
+    done: stats?.done ?? 0,
+    in_progress: stats?.in_progress ?? 0,
+    todo: stats?.todo ?? 0,
+  };
+  const statusOptions = getStatusOptionsForDisplay();
+
+  const total =
+    stats?.total ??
+    Object.values(counts).reduce((accumulator, value) => accumulator + value, 0);
+
+  const getPercentage = (value) => {
+    if (!total) return 0;
+    return Math.round((value / total) * 100);
+  };
+
+  return (
+    <section className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
+      <header className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            Task Status
+          </p>
+          <h4 className="mt-2 text-lg font-semibold text-slate-900">
+            Team progress
+          </h4>
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
+          <TrendingUp size={14} /> Weekly
+        </span>
+      </header>
+      <div className="mt-6 grid gap-4">
+        {statusOptions.map((item) => {
+          const percent = getPercentage(counts[item.value] || 0);
+          const tone = item.tone || "text-slate-500";
+          const bgClass = item.bg || "bg-slate-100";
+          return (
+            <div key={item.value} className="flex items-center gap-4">
+              <div
+                className={`flex h-16 w-16 items-center justify-center rounded-full border-[6px] border-current ${tone} bg-white`}
+              >
+                <span className="text-lg font-semibold">{percent}%</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between text-sm font-medium text-slate-600">
+                  <span>{item.label}</span>
+                  <span className={tone}>{counts[item.value] || 0}</span>
+                </div>
+                <div className={`mt-2 h-2 rounded-full ${bgClass}`}>
+                  <div
+                    className={`h-2 rounded-full ${tone.replace("text", "bg")}`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
+export { TaskStatus };
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_8.json using write_to_file tool.

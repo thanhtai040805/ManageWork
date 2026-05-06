@@ -1,0 +1,2772 @@
+﻿You are a graphify extraction subagent. Below are the contents of several files. Extract a knowledge graph fragment.
+Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
+
+Rules:
+- EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
+- INFERRED: reasonable inference (shared data structure, implied dependency)
+- AMBIGUOUS: uncertain - flag for review, do not omit
+
+Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
+  Do not re-extract imports - AST already has those.
+Doc/paper files: extract named concepts, entities, citations. For rationale (WHY decisions were made, trade-offs, design intent): store as a `rationale` attribute on the relevant concept node.
+Image files: if you see binary content, describe its purpose based on filename and context.
+
+Node ID format: lowercase, only `[a-z0-9_]`, no dots or slashes. Format: `{stem}_{entity}`.
+
+Output exactly this JSON (no other text):
+{"nodes":[{"id":"session_validatetoken","label":"Human Readable Name","file_type":"code|document|paper|image|rationale","source_file":"relative/path","source_location":null,"source_url":null,"captured_at":null,"author":null,"contributor":null}],"edges":[{"source":"node_id","target":"node_id","relation":"calls|implements|references|cites|conceptually_related_to|shares_data_with|semantically_similar_to|rationale_for","confidence":"EXTRACTED|INFERRED|AMBIGUOUS","confidence_score":1.0,"source_file":"relative/path","source_location":null,"weight":1.0}],"hyperedges":[{"id":"snake_case_id","label":"Human Readable Label","nodes":["node_id1","node_id2","node_id3"],"relation":"participate_in|implement|form","confidence":"EXTRACTED|INFERRED","confidence_score":0.75,"source_file":"relative/path"}],"input_tokens":0,"output_tokens":0}
+
+FILE CONTENTS:
+CHUNK 7 of 12
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\context\authContext.jsx ---
+import { createContext, useState } from "react";
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const AuthContext = createContext({
+  isAuthenticated: false,
+  user: {
+    uid: "",
+    email: "",
+    name: "",
+    username: "",
+    fullName: "",
+    avatarUrl: "",
+    role: "",
+    themeColor: "#f87171",
+  },
+});
+
+export const AuthWrapper = (props) => {
+   const [auth, setAuth] = useState({
+     isAuthenticated: false,
+     user: {
+       uid: "",
+       email: "",
+       name: "",
+       username: "",
+       fullName: "",
+       avatarUrl: "",
+       role: "",
+       themeColor: "#f87171",
+     },
+   });
+   const [appLoading, setAppLoading] = useState(true);
+  return (
+    <AuthContext.Provider value={{ auth, setAuth, appLoading, setAppLoading }}>
+      {props.children}
+    </AuthContext.Provider>
+  );
+}
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\context\socketContext.jsx ---
+import { createContext, useContext, useEffect } from "react";
+import socket, { getToken } from "@/socket/socket";
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const SocketContext = createContext(null);
+
+export const SocketProvider = ({ children }) => {
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return; // Chỉ connect khi có token
+
+    console.log("CONNECTING SOCKET...");
+    socket.connect();
+
+    socket.on("connect", () => {
+      console.log("SOCKET CONNECTED", socket.id);
+    });
+
+    socket.on("connect_error", (e) => {
+      console.log("CONNECT ERROR", e.message);
+    });
+
+    return () => socket.disconnect();
+  }, []);
+
+  return (
+    <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
+  );
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useSocket = () => useContext(SocketContext);
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\context\themeContext.jsx ---
+import { createContext, useState, useEffect } from "react";
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const ThemeContext = createContext({
+  primaryColor: "#f87171",
+  setPrimaryColor: () => {},
+});
+
+export const ThemeProvider = ({ children }) => {
+  // Helper function to darken/lighten color
+  const shadeColor = (color, percent) => {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = ((num >> 8) & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
+    return "#" + (0x1000000 + (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+      (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+      (B < 255 ? (B < 1 ? 0 : B) : 255)).toString(16).slice(1);
+  };
+
+  // Initialize with color from localStorage or default
+  const getInitialColor = () => {
+    if (typeof window !== 'undefined') {
+      const savedColor = localStorage.getItem("theme_color");
+      return savedColor || "#f87171";
+    }
+    return "#f87171";
+  };
+
+  const [primaryColor, setPrimaryColorState] = useState(getInitialColor);
+
+  // Update CSS variable when color changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const root = document.documentElement;
+      root.style.setProperty("--color-primary", primaryColor);
+      
+      // Calculate darker shade for primary-dark
+      const darkerShade = shadeColor(primaryColor, -20);
+      root.style.setProperty("--color-primary-dark", darkerShade);
+    }
+  }, [primaryColor]);
+
+  const setPrimaryColor = (color) => {
+    setPrimaryColorState(color);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("theme_color", color);
+    }
+  };
+
+  return (
+    <ThemeContext.Provider value={{ primaryColor, setPrimaryColor }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\calendar\index.js ---
+export { WeekView } from "./WeekView";
+export { MonthView } from "./MonthView";
+export { KanBanView } from "./KanBanView";
+
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\calendar\KanBanView.jsx ---
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import {
+  DndContext,
+  pointerWithin,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Clock3, AlertCircle } from "lucide-react";
+import { updateTaskStatusAPI, reorderTasksAPI } from "../../services/task.service";
+import { getPriorityBadge, getPriorityLabel } from "../../utils/taskColors";
+import { useTaskRealtime } from "../tasks/hooks/useTaskRealtime";
+
+const formatDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+
+const KANBAN_COLUMNS = [
+  { id: "todo", label: "To Do", color: "bg-rose-500" },
+  { id: "in_progress", label: "In Progress", color: "bg-blue-500" },
+  { id: "review", label: "Review", color: "bg-amber-500" },
+  { id: "on_hold", label: "On Hold", color: "bg-slate-500" },
+  { id: "done", label: "Done", color: "bg-emerald-500" },
+];
+
+const normalizeTasks = (tasks) => {
+  const result = {
+    tasks: {},
+    columns: {},
+    taskToColumn: {},
+  };
+
+  KANBAN_COLUMNS.forEach((col) => {
+    result.columns[col.id] = [];
+  });
+
+  tasks.forEach((task) => {
+    result.tasks[task.task_id] = task;
+    const col = task.status || "todo";
+    const targetCol = result.columns[col] ? col : "todo";
+    result.columns[targetCol].push(task.task_id);
+    result.taskToColumn[task.task_id] = targetCol;
+  });
+
+  Object.keys(result.columns).forEach((colId) => {
+    result.columns[colId].sort((a, b) => {
+      const taskA = result.tasks[a];
+      const taskB = result.tasks[b];
+      return (taskA?.order_index || 0) - (taskB?.order_index || 0);
+    });
+  });
+
+  return result;
+};
+
+const TaskCard = React.memo(function TaskCard({ task, onClick }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.task_id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "done";
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md transition"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="mt-1 cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical size={14} />
+      </button>
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onClick(task)}>
+        <h4 className="text-sm font-semibold text-slate-900 truncate">{task.title}</h4>
+        {task.description && (
+          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
+        )}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <span className={`text-xs px-1.5 py-0.5 rounded ${getPriorityBadge(task.priority)}`}>
+            {getPriorityLabel(task.priority)}
+          </span>
+          {isOverdue && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white flex items-center gap-1">
+              <AlertCircle size={10} /> Overdue
+            </span>
+          )}
+        </div>
+        {task.due_date && (
+          <div className={`flex items-center gap-1 mt-2 text-xs ${isOverdue ? "text-red-500" : "text-slate-400"}`}>
+            <Clock3 size={12} />
+            {formatDate(task.due_date)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+function KanBanColumn({ id, label, color, taskIds, tasks, onTaskClick }) {
+  const { setNodeRef, isOver } = useDroppable({ id, data: { type: "column" } });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex-1 min-w-[140px] lg:min-w-[160px] xl:min-w-[180px] flex flex-col rounded-3xl bg-slate-100/40 border backdrop-blur-sm transition-all duration-300 ${isOver ? "border-indigo-400 ring-4 ring-indigo-500/10 bg-white/50" : "border-slate-200/50"
+        }`}
+    >
+      <div className="flex items-center gap-2 p-4 border-b border-slate-200/50">
+        <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${color}`} />
+        <span className="text-sm font-bold text-slate-800 tracking-tight uppercase">{label}</span>
+        <span className="text-[10px] font-black text-slate-400 ml-auto bg-white/50 px-2 py-0.5 rounded-full border border-slate-200/50">{taskIds.length}</span>
+      </div>
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto custom-scrollbar">
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          {taskIds.map((taskId) => (
+            <TaskCard key={taskId} task={tasks[taskId]} onClick={onTaskClick} />
+          ))}
+        </SortableContext>
+        {taskIds.length === 0 && (
+          <div className="text-center text-xs text-slate-400 py-4">No tasks</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelete, projectId, userId }) => {
+  const [activeId, setActiveId] = useState(null);
+  const [board, setBoard] = useState({ tasks: {}, columns: {}, taskToColumn: {} });
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [localUpdate, setLocalUpdate] = useState(false);
+  const [, setTick] = useState(0);
+
+  const handleRemoteTaskUpdated = useCallback((data) => {
+    if (!data || data.status === 'deleted') {
+      setLocalUpdate(false);
+      return;
+    }
+    setBoard(prev => {
+      const taskExists = prev.tasks[data.taskId];
+      if (taskExists) {
+        const updatedTask = {
+          ...prev.tasks[data.taskId],
+          status: data.status,
+          updatedAt: data.updatedAt,
+        };
+
+        if (data.orderIndex !== undefined) {
+          updatedTask.order_index = data.orderIndex;
+        }
+
+        let newTaskToColumn = prev.taskToColumn;
+        let newColumns = prev.columns;
+
+        if (data.status && data.status !== prev.taskToColumn[data.taskId]) {
+          const oldColumn = prev.taskToColumn[data.taskId];
+          newTaskToColumn = {
+            ...prev.taskToColumn,
+            [data.taskId]: data.status,
+          };
+
+          if (oldColumn && newColumns[oldColumn]) {
+            newColumns = {
+              ...newColumns,
+              [oldColumn]: newColumns[oldColumn].filter(id => id !== data.taskId),
+              [data.status]: [...newColumns[data.status], data.taskId],
+            };
+          }
+        }
+
+        return {
+          ...prev,
+          tasks: {
+            ...prev.tasks,
+            [data.taskId]: updatedTask,
+          },
+          taskToColumn: newTaskToColumn,
+          columns: newColumns,
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleRemoteTaskReordered = useCallback((data) => {
+    if (!data || !data.tasks || !data.columnId) return;
+
+    setBoard(prev => {
+      const newColumns = { ...prev.columns };
+      const orderedTaskIds = data.tasks.map(t => t.taskId);
+
+      if (newColumns[data.columnId]) {
+        newColumns[data.columnId] = orderedTaskIds;
+      }
+
+      const newTasks = { ...prev.tasks };
+      data.tasks.forEach(t => {
+        if (newTasks[t.taskId]) {
+          newTasks[t.taskId] = { ...newTasks[t.taskId], order_index: t.orderIndex };
+        }
+      });
+
+      return {
+        ...prev,
+        columns: newColumns,
+        tasks: newTasks,
+      };
+    });
+    setLocalUpdate(true);
+  }, []);
+
+  useTaskRealtime({
+    projectId,
+    userId,
+    onTaskUpdated: handleRemoteTaskUpdated,
+    onTaskReordered: handleRemoteTaskReordered,
+  });
+
+  useEffect(() => {
+    if (!localUpdate) {
+      const normalized = normalizeTasks(tasks);
+      setBoard(normalized);
+    }
+    setInitialLoad(false);
+  }, [tasks, localUpdate]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragStart = useCallback((event) => {
+    setActiveId(event.active.id);
+  }, []);
+
+  const calculateNewOrderIndex = useCallback((columnTasks, toIndex) => {
+    const prev = toIndex > 0 ? columnTasks[toIndex - 1] : null;
+    const next = toIndex < columnTasks.length ? columnTasks[toIndex] : null;
+
+    const prevOrder = prev?.order_index ?? 0;
+    const nextOrder = next?.order_index ?? prevOrder + 1000;
+
+    return (prevOrder + nextOrder) / 2;
+  }, []);
+
+  const handleDragEnd = useCallback(async (event) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const sourceColId = board.taskToColumn[active.id];
+    if (!sourceColId) return;
+
+    let destColId;
+    if (over.data?.current?.type === "column") {
+      destColId = over.id;
+    } else {
+      destColId = board.taskToColumn[over.id] || sourceColId;
+    }
+
+    if (!destColId) return;
+
+    const sourceCol = [...board.columns[sourceColId]];
+    const destCol = sourceColId === destColId ? sourceCol : [...board.columns[destColId]];
+
+    const fromIndex = sourceCol.indexOf(active.id);
+    const overIndex = destColId === sourceColId
+      ? sourceCol.indexOf(over.id)
+      : destCol.indexOf(over.id);
+
+    if (fromIndex === -1) return;
+
+    const toIndex = overIndex === -1 ? destCol.length : overIndex;
+
+    const prevBoard = {
+      tasks: { ...board.tasks },
+      columns: Object.fromEntries(
+        Object.entries(board.columns).map(([k, v]) => [k, [...v]])
+      ),
+      taskToColumn: { ...board.taskToColumn },
+    };
+
+    let newBoard;
+    let apiCall = null;
+
+    if (sourceColId === destColId) {
+      const newTaskId... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\calendar\MonthView.jsx ---
+import React from "react";
+import { getMonthDays, isSameDay } from "../../utils/dateHelpers";
+import { getStatusBadgeClass, getPriorityLabel, getAutoStatus } from "../../utils/taskColors";
+
+export const MonthView = ({
+  currentDate,
+  tasks,
+  onTaskClick,
+}) => {
+  const monthDays = getMonthDays(currentDate);
+
+  return (
+    <div className="rounded-3xl bg-white p-4 md:p-6 shadow-lg shadow-slate-100 overflow-x-auto">
+      <div className="grid grid-cols-7 gap-1 md:gap-2 mb-4 min-w-[700px]">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+          <div key={day} className="text-center text-xs md:text-sm font-semibold text-slate-500 py-2">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 md:gap-2 min-w-[700px]">
+        {monthDays.map((dayObj, index) => {
+          const day = dayObj.date;
+          const dayKey = day.toISOString().split("T")[0];
+          const dayTasks = tasks.filter((task) => isSameDay(task.due_date, day));
+          const isToday = day.toDateString() === new Date().toDateString();
+          const isCurrentMonth = dayObj.isCurrentMonth;
+
+          return (
+            <div key={index} className={`min-h-[80px] p-2 rounded-lg border ${isToday ? "border-indigo-500 bg-indigo-50" : "border-slate-200"} ${!isCurrentMonth ? "opacity-40" : ""}`}>
+              <div className={`text-xs md:text-sm font-medium mb-1 ${isToday ? "text-indigo-600" : "text-slate-600"}`}>{day.getDate()}</div>
+              <div className="space-y-1">
+                {dayTasks.slice(0, 3).map((task) => (
+                  <div key={task.task_id} onClick={() => onTaskClick(task)} className={`text-xs p-1 rounded truncate cursor-pointer font-medium ${getStatusBadgeClass(getAutoStatus(task))}`}>
+                    {task.title}
+                  </div>
+                ))}
+                {dayTasks.length > 3 && <div className="text-xs text-slate-400">+{dayTasks.length - 3} more</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\calendar\WeekView.jsx ---
+import React, { useMemo } from "react";
+import { X } from "lucide-react";
+import { getWeekDays, isSameDay } from "../../utils/dateHelpers";
+import { getPriorityBadgeClass, getStatusBadgeClass, getStatusSelectClass, getPriorityLabel, getStatusLabel, getAutoStatus, STATUS_OPTIONS, PRIORITY_OPTIONS } from "../../utils/taskColors";
+import { updateTaskStatusAPI } from "../../services/task.service";
+import { deleteTaskByIDAPI } from "../../services/task.service";
+import { confirm } from "../../components/common/ConfirmModal";
+
+export const WeekView = ({
+  currentDate,
+  tasks,
+  onTaskClick,
+  onTaskDelete,
+  onTaskStatusChange,
+}) => {
+  const weekDays = useMemo(() => {
+    return getWeekDays(currentDate);
+  }, [currentDate]);
+
+  const tasksByDay = useMemo(() => {
+    const grouped = {};
+    weekDays.forEach((day) => {
+      grouped[day.toISOString().split("T")[0]] = {
+        day,
+        tasks: tasks.filter((task) => isSameDay(task.due_date, day)),
+      };
+    });
+    return grouped;
+  }, [weekDays, tasks]);
+
+  const handleStatusChange = async (taskId, newStatus, e) => {
+    e.stopPropagation();
+    const task = tasks.find((t) => t.task_id === taskId);
+    if (!task || task.status === newStatus) return;
+
+    try {
+      const updatedTask = await updateTaskStatusAPI(taskId, newStatus, task.status);
+      onTaskStatusChange(updatedTask);
+    } catch (error) {
+      console.error("Error updating task status:", error);
+    }
+  };
+
+  const handleDeleteTask = async (taskId, e) => {
+    e.stopPropagation();
+    const ok = await confirm({
+      title: "Delete Task",
+      message: "Are you sure you want to delete this task?",
+      confirmText: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
+    
+    deleteTaskByIDAPI(taskId)
+      .then(() => {
+        onTaskDelete(taskId);
+      })
+      .catch((error) => {
+        console.error("Error deleting task:", error);
+      });
+  };
+
+  return (
+    <div className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-100 overflow-x-auto">
+      <div className="grid grid-cols-7 gap-3 min-w-[1200px]">
+        {weekDays.map((day) => {
+          const dayKey = day.toISOString().split("T")[0];
+          const dayTasks = tasksByDay[dayKey]?.tasks || [];
+          const isToday = day.toDateString() === new Date().toDateString();
+          const dayName = day.toLocaleDateString("en-US", { weekday: "short" });
+          const dayNumber = day.getDate();
+          const monthName = day.toLocaleDateString("en-US", { month: "short" });
+
+          const dayTodoTasks = dayTasks.filter((task) => task.status !== "done");
+          const dayCompletedTasks = dayTasks.filter((task) => task.status === "done");
+
+          return (
+            <div key={dayKey} className={`flex flex-col rounded-xl border-2 ${isToday ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-white"}`}>
+              <div className={`p-3 border-b ${isToday ? "bg-indigo-100 border-indigo-200" : "bg-slate-50 border-slate-200"}`}>
+                <div className="text-xs font-semibold text-slate-500 uppercase">{dayName}</div>
+                <div className={`text-2xl font-bold mt-1 ${isToday ? "text-indigo-600" : "text-slate-900"}`}>{dayNumber}</div>
+                <div className="text-xs text-slate-400 mt-1">{monthName}</div>
+                <div className="mt-2 text-xs text-slate-500">{dayTodoTasks.length} task{dayTodoTasks.length !== 1 ? "s" : ""}</div>
+              </div>
+
+              <div className="flex-1 p-3 space-y-2 overflow-y-auto min-h-[500px] max-h-[700px]">
+                {dayTasks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-xs text-slate-400">No tasks</p>
+                  </div>
+                ) : (
+                  <>
+                    {dayTodoTasks.map((task) => (
+                      <div key={task.task_id} onClick={() => onTaskClick(task)} className="group relative p-2 rounded-lg bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-sm transition cursor-pointer">
+                        <button onClick={(e) => handleDeleteTask(task.task_id, e)} className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-100 text-rose-500 transition" title="Delete task">
+                          <X size={14} />
+                        </button>
+
+                        <div className="text-sm font-semibold text-slate-900 line-clamp-2">{task.title}</div>
+                        {task.description && <div className="text-sm text-slate-600 mt-2 line-clamp-4 leading-relaxed">{task.description}</div>}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <span className={`text-xs px-2 py-0.5 rounded ${getPriorityBadgeClass(task.priority)}`}>
+                            {getPriorityLabel(task.priority)}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${getStatusBadgeClass(getAutoStatus(task))}`}>
+                            {getStatusLabel(getAutoStatus(task))}
+                          </span>
+                          <select value={task.status || "todo"} onChange={(e) => handleStatusChange(task.task_id, e.target.value, e)} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} className={`text-xs font-medium px-2 py-0.5 rounded border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition ${getStatusSelectClass(task.status)}`}>
+                            {STATUS_OPTIONS.map(opt => (
+                              <option key={opt.value} value={opt.value} className="bg-white text-slate-900">{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {task.due_date && <div className="text-xs text-slate-400 mt-1">{new Date(task.due_date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</div>}
+                      </div>
+                    ))}
+
+                    {dayCompletedTasks.map((task) => (
+                      <div key={task.task_id} className="group p-2 rounded-lg bg-emerald-50 border border-emerald-200 opacity-75 flex items-start gap-2">
+                        <div className="text-sm font-semibold text-slate-700 line-clamp-2 line-through">{task.title}</div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\CategoryItem.jsx ---
+import { useState } from "react";
+import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
+import { ChannelItem } from "./ChannelItem";
+
+export function CategoryItem({ category, activeChannelId, onChannelClick }) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  const channels = category.channels || [];
+
+  return (
+    <div className="mb-1">
+      <div 
+        className="flex items-center justify-between px-3 py-1.5 group cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-1">
+          <span className="text-gray-400">
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+            {category.name}
+          </span>
+        </div>
+        <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity">
+          <MoreHorizontal size={12} className="text-gray-500" />
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div className="space-y-0.5 ml-2">
+          {channels.map((channel) => (
+            <ChannelItem
+              key={channel.channel_id}
+              channel={channel}
+              active={activeChannelId === channel.channel_id}
+              onClick={() => onChannelClick(channel)}
+            />
+          ))}
+          {channels.length === 0 && (
+            <div className="px-4 py-2 text-[11px] text-gray-400 italic">
+              No channels yet
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default CategoryItem;
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\ChannelItem.jsx ---
+import { useContext } from "react";
+import { ThemeContext } from "@/context/themeContext";
+
+export function ChannelItem({ channel, active, onClick }) {
+  const { primaryColor } = useContext(ThemeContext);
+
+  return (
+    <div
+      onClick={onClick}
+      className={`relative px-4 py-2.5 cursor-pointer rounded-xl transition-all duration-200 group select-none ${
+        active 
+          ? "bg-gray-100" 
+          : "hover:bg-gray-50"
+      }`}
+    >
+      {active && (
+        <div 
+          className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full"
+          style={{ backgroundColor: primaryColor }}
+        />
+      )}
+
+      <div className="flex items-center gap-3">
+        <div className={`text-[14px] ${active ? "font-bold text-gray-900" : "font-medium text-gray-600"}`}>
+          {channel.is_public ? (
+            <span className="opacity-70">#</span>
+          ) : (
+            <span className="opacity-50">🔒</span>
+          )}
+        </div>
+        <span className={`text-[13px] truncate ${active ? "font-semibold text-gray-900" : "text-gray-700 font-medium"}`}>
+          {channel.name}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export default ChannelItem;
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\ChannelMembersModal.jsx ---
+import { useState } from "react";
+import { toast } from "react-toastify";
+import { X, Search } from "lucide-react";
+import { addChannelMemberAPI, removeChannelMemberAPI } from "@/services/channel.service";
+
+export function ChannelMembersModal({
+  isOpen,
+  onClose,
+  channelId,
+  currentUserId,
+  members = [],
+  availableUsers = [],
+  onMembersChange,
+}) {
+  const [search, setSearch] = useState("");
+
+  const filteredUsers = availableUsers.filter(
+    (u) => u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleAddMember = async (userId) => {
+    try {
+      await addChannelMemberAPI(channelId, userId, "member");
+      const user = availableUsers.find((u) => u.user_id === userId);
+      if (user) {
+        onMembersChange([...members, { ...user, role: "member" }]);
+      }
+      toast.success("Member added");
+    } catch (error) {
+      toast.error("Failed to add member");
+    }
+  };
+
+  const handleRemoveMember = async (userId) => {
+    try {
+      await removeChannelMemberAPI(channelId, userId);
+      onMembersChange(members.filter((m) => m.user_id !== userId));
+      toast.success("Member removed");
+    } catch (error) {
+      toast.error("Failed to remove member");
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[400px] max-h-[500px] flex flex-col shadow-2xl">
+        <div className="px-4 py-3 border-b flex items-center justify-between">
+          <h3 className="font-bold text-gray-900">Channel Members</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Current Members */}
+        <div className="border-b">
+          <div className="px-4 py-2 bg-gray-50">
+            <p className="text-xs font-semibold text-gray-500">Current Members ({members.length})</p>
+          </div>
+          <div className="max-h-[180px] overflow-y-auto p-2">
+            {members.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No members yet</p>
+            ) : (
+              <div className="space-y-1">
+                {members.map((member) => (
+                  <div key={member.user_id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded group">
+                    <div className="flex items-center gap-2">
+                      {member.avatar_url ? (
+                        <img src={member.avatar_url} alt={member.full_name} className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
+                          {member.full_name?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium">{member.full_name}</p>
+                        <p className="text-xs text-gray-400">{member.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 capitalize">{member.role}</span>
+                      {member.user_id !== currentUserId && (
+                        <button
+                          onClick={() => handleRemoveMember(member.user_id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Add Members */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="px-4 py-2 bg-gray-50">
+            <p className="text-xs font-semibold text-gray-500">Add Members</p>
+          </div>
+
+          <div className="px-4 py-2">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search users..."
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/5"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2">
+            {filteredUsers.length > 0 ? (
+              <div className="space-y-1">
+                {filteredUsers.map((user) => (
+                  <div key={user.user_id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                    <div className="flex items-center gap-2">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.full_name} className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
+                          {user.full_name?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium">{user.full_name}</p>
+                        <p className="text-xs text-gray-400">{user.email}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleAddMember(user.user_id)}
+                      className="px-3 py-1 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg"
+                    >
+                      Add
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-4">
+                {search ? "No users found" : "No more users to add"}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default ChannelMembersModal;
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\ChannelSidebar.jsx ---
+import { useState, useContext, useEffect, useMemo } from "react";
+import { 
+  Hash, Lock, Plus, Search, Settings, 
+  ChevronDown, ChevronRight, Folder
+} from "lucide-react";
+import { ThemeContext } from "@/context/themeContext";
+import { useChannelStore } from "@/stores/chat/channelStore";
+import { getProjectsAPI, getProjectMembersAPI } from "@/services/project.service";
+
+export function ChannelSidebar({ projectId, onProjectChange, onChannelSelect }) {
+  const { primaryColor } = useContext(ThemeContext);
+  const { channels, loading, fetchChannels, setCurrentChannel } = useChannelStore();
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId || null);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState({});
+
+  useEffect(() => {
+    getProjectsAPI().then((data) => {
+      setProjects(data?.projects || data || []);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchChannels(null);
+  }, []);
+
+  const groupedChannels = useMemo(() => {
+    const groups = { public: [], byProject: {} };
+    
+    channels.forEach((channel) => {
+      if (!channel.project_id) {
+        groups.public.push(channel);
+      } else {
+        if (!groups.byProject[channel.project_id]) {
+          groups.byProject[channel.project_id] = [];
+        }
+        groups.byProject[channel.project_id].push(channel);
+      }
+    });
+
+    return groups;
+  }, [channels]);
+
+  const getProjectName = (projectId) => {
+    const project = projects.find(p => p.project_id === projectId);
+    return project?.name || "Unknown Project";
+  };
+
+  const toggleProjectExpand = (projectId) => {
+    setExpandedProjects(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
+
+  const handleProjectChange = (newProjectId) => {
+    setSelectedProjectId(newProjectId);
+    onProjectChange?.(newProjectId);
+  };
+
+  const handleChannelClick = (channel) => {
+    setCurrentChannel(channel);
+    onChannelSelect?.(channel);
+  };
+
+  const handleCreateChannel = () => {
+    setShowCreateChannel(true);
+  };
+
+  return (
+    <div className="w-[280px] h-full border-r border-gray-200/60 bg-white flex flex-col">
+      {/* Header */}
+      <div className="px-4 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-black text-gray-900 tracking-tight">Channels</h3>
+          <button 
+            onClick={handleCreateChannel}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+            title="Add Channel"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedProjectId || ""}
+            onChange={(e) => handleProjectChange(e.target.value || null)}
+            className="flex-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/5"
+          >
+            <option value="">All Projects</option>
+            {projects.map((p) => (
+              <option key={p.project_id} value={p.project_id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Channel List */}
+      <div className="flex-1 overflow-y-auto py-2 px-1 custom-scrollbar">
+        {loading ? (
+          <div className="px-4 py-8 text-center text-gray-400 text-sm">
+            Loading...
+          </div>
+        ) : channels.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-sm text-gray-400 mb-3">No channels yet</p>
+            <button
+              onClick={handleCreateChannel}
+              className="text-xs font-semibold text-white px-4 py-2 rounded-lg"
+              style={{ backgroundColor: primaryColor }}
+            >
+              Create Channel
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {/* Public Channels (no project) */}
+            {groupedChannels.public.length > 0 && (
+              <div>
+                <div className="px-2 py-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                  <Hash size={12} />
+                  Public
+                </div>
+                {groupedChannels.public.map((channel) => (
+                  <div
+                    key={channel.channel_id}
+                    onClick={() => handleChannelClick(channel)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-700 ml-2"
+                  >
+                    <Hash size={16} className="text-gray-400" />
+                    <span className="truncate">{channel.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Channels by Project */}
+            {Object.entries(groupedChannels.byProject).map(([projectId, projectChannels]) => (
+              <div key={projectId}>
+                <div 
+                  className="px-2 py-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 cursor-pointer hover:bg-gray-100 rounded"
+                  onClick={() => toggleProjectExpand(projectId)}
+                >
+                  {expandedProjects[projectId] ? (
+                    <ChevronDown size={12} />
+                  ) : (
+                    <ChevronRight size={12} />
+                  )}
+                  <Folder size={12} />
+                  {getProjectName(projectId)}
+                </div>
+                {expandedProjects[projectId] !== false && projectChannels.map((channel) => (
+                  <div
+                    key={channel.channel_id}
+                    onClick={() => handleChannelClick(channel)}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-700 ml-4"
+                  >
+                    {channel.is_public ? (
+                      <Hash size={16} className="text-gray-400" />
+                    ) : (
+                      <Lock size={16} className="text-gray-400" />
+                    )}
+                    <span className="truncate">{channel.name}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showCreateChannel && (
+        <CreateChannelModal 
+          projectId={selectedProjectId}
+          projects={projects}
+          onClose={() => setShowCreateChannel(false)}
+          onSuccess={() => {
+            setShowCreateChannel(false);
+            fetchChannels(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function CreateChannelModal({ projectId, projects, onClose, onSuccess }) {
+  const { primaryColor } = useContext(ThemeContext);
+  const { addChannel } = useChannelStore();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId || "");
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      getProjectMembersAPI(selectedProjectId).then((data) => {
+        setProjectMembers(data || []);
+      }).catch(() => setProjectMembers([]));
+    } else {
+      setProjectMembers([]);
+      setSelectedMembers([]);
+    }
+  }, [selectedProjectId]);
+
+  const toggleMember = (userId) => {
+    setSelectedMembers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    
+    try {
+      setSaving(true);
+      const newChannel = await addChannel({
+        name: name.trim(),
+        description: description.trim(),
+        project_id: selectedProjectId || null,
+        is_public: isPublic,
+      });
+
+      if (newChannel && selectedMembers.length > 0) {
+        const { addChannelMember } = await import("@/services/channel.service");
+        for (const userId of selectedMembers) {
+          await addChannelMember(newChannel.channel_id, userId, "member");
+        }
+      }
+      onSuccess();
+    } catch (error) {
+      console.error("Failed to create channel:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[400px] p-6 shadow-2xl">
+        <h3 className="text-lg font-bold text-gray-900 mb-4">Create Channel</h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Channel Name
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">#</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="general"
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Description (optional)
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What is this channel about?"
+              className="w-full px-3 py-2 border border-gray-2... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\ChannelView.jsx ---
+import { useState, useEffect, useContext } from "react";
+import { ThemeContext } from "@/context/themeContext";
+import { useChannelStore } from "@/stores/chat/channelStore";
+import { channelPostAPI } from "@/services/channelPost.service";
+import { getChannelMembersAPI, getChannelAPI } from "@/services/channel.service";
+import { getProjectMembersAPI } from "@/services/project.service";
+import { getUsersAPI } from "@/services/auth.service";
+import { Send, Pin, MessageCircle, Trash2, X, ChevronDown, ChevronUp, ArrowLeft, Users } from "lucide-react";
+import { MentionInput } from "@/components/common/MentionInput";
+import { ChannelMembersModal } from "./ChannelMembersModal";
+import useChannelSocket from "@/hooks/useChannelSocket";
+
+export function ChannelView({ channelId, channelName, onBack }) {
+  const { primaryColor } = useContext(ThemeContext);
+  const storePosts = useChannelStore(state => state.posts);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [newPost, setNewPost] = useState("");
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [expandedReplies, setExpandedReplies] = useState({});
+  const [expandedRepliesData, setExpandedRepliesData] = useState({});
+  const [replyInputs, setReplyInputs] = useState({});
+  const [members, setMembers] = useState([]);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState([]);
+
+  const { setPosts } = useChannelStore();
+
+  useChannelSocket(channelId);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    setCurrentUser(user);
+  }, []);
+
+  useEffect(() => {
+    if (channelId) {
+      loadPosts();
+      getChannelMembersAPI(channelId).then((data) => {
+        setMembers(data || []);
+      }).catch(() => setMembers([]));
+    }
+  }, [channelId]);
+
+  const handleReplyInputChange = (postId, value) => {
+    setReplyInputs(prev => ({ ...prev, [postId]: value }));
+  };
+
+  const loadPosts = async () => {
+    try {
+      setLoading(true);
+      const data = await channelPostAPI.getPostsByChannel(channelId);
+      setPosts(data || []);
+    } catch (error) {
+      console.error("Error loading posts:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreatePost = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (!newPost.trim() || !channelId) return;
+
+    try {
+      const post = await channelPostAPI.createPost({
+        channel_id: channelId,
+        content: newPost.trim(),
+      });
+      setNewPost("");
+      useChannelStore.getState().addPost({ ...post, channel_id: channelId });
+    } catch (error) {
+      console.error("Error creating post:", error);
+    }
+  };
+
+  const handleCreateReply = async (postId) => {
+    const content = replyInputs[postId];
+    if (!content?.trim()) return;
+    try {
+      const reply = await channelPostAPI.createReply({
+        post_id: postId,
+        content: content.trim(),
+      });
+      setReplyInputs(prev => ({ ...prev, [postId]: "" }));
+      useChannelStore.getState().addReplyToPost(postId, { ...reply, channel_id: channelId });
+    } catch (error) {
+      console.error("Error creating reply:", error);
+    }
+  };
+
+  const loadRepliesForPost = async (postId) => {
+    try {
+      const data = await channelPostAPI.getReplies(postId);
+      useChannelStore.setState(state => ({
+        posts: state.posts.map(p =>
+          p.post_id === postId
+            ? {
+              ...p,
+              replies: data || [],
+              reply_count: data?.length || 0
+            }
+            : p
+        )
+      }));
+    } catch (error) {
+      console.error("Error loading replies:", error);
+    }
+  };
+
+  const handlePostClick = (post) => {
+    setSelectedPost(post);
+    if (!expandedRepliesData[post.post_id]) {
+      loadRepliesForPost(post.post_id, false);
+    }
+  };
+
+  const toggleRepliesExpand = (postId) => {
+    const isExpanded = !expandedReplies[postId];
+    setExpandedReplies(prev => ({
+      ...prev,
+      [postId]: isExpanded
+    }));
+    if (isExpanded) {
+      loadRepliesForPost(postId);
+    }
+  };
+
+  const handlePinPost = async (postId, isPinned) => {
+    try {
+      await channelPostAPI.togglePinPost(postId, !isPinned);
+      loadPosts();
+    } catch (error) {
+      console.error("Error pinning post:", error);
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!confirm("Delete this post?")) return;
+    try {
+      await channelPostAPI.deletePost(postId);
+      loadPosts();
+      setSelectedPost(null);
+    } catch (error) {
+      console.error("Error deleting post:", error);
+    }
+  };
+
+  const handleDeleteReply = async (replyId, postId) => {
+    if (!confirm("Delete this reply?")) return;
+    try {
+      await channelPostAPI.deleteReply(replyId);
+      loadRepliesForPost(postId);
+    } catch (error) {
+      console.error("Error deleting reply:", error);
+    }
+  };
+
+  const getPostReplies = (post) => {
+    const storePost = storePosts.find(p => p.post_id === post.post_id);
+    return storePost?.replies || [];
+  };
+
+  const handleOpenMembersModal = async () => {
+    try {
+      const channel = await getChannelAPI(channelId);
+      if (channel.project_id) {
+        const projMembers = await getProjectMembersAPI(channel.project_id);
+        const existingIds = members.map(m => m.user_id);
+        const available = (projMembers || []).filter(m => !existingIds.includes(m.user_id));
+        setAvailableUsers(available);
+      } else {
+        const allUsers = await getUsersAPI();
+        const existingIds = members.map(m => m.user_id);
+        const available = (allUsers || []).filter(u => !existingIds.includes(u.user_id));
+        setAvailableUsers(available);
+      }
+      setShowMembersModal(true);
+    } catch (error) {
+      console.error("Error loading add members:", error);
+    }
+  };
+
+  return (
+    <div key={refreshKey} className="flex h-full w-full overflow-y-auto">
+      <div className="flex-1 flex flex-col border-r border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded">
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <div>
+              <h2 className="text-lg font-black text-gray-900"># {channelName || "Channel"}</h2>
+              <p className="text-sm text-gray-500">Posts & Threads</p>
+            </div>
+          </div>
+          <button
+            onClick={handleOpenMembersModal}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <Users size={16} />
+            <span>{members.length} members</span>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[75vh]">
+          {loading ? (
+            <div className="text-center py-8 text-gray-400">Loading posts...</div>
+          ) : storePosts.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400">No posts yet. Be the first to post!</p>
+            </div>
+          ) : (
+            storePosts.map((post) => (
+              <div key={post.post_id}>
+                <div
+                  onClick={() => handlePostClick(post)}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPost?.post_id === post.post_id
+                    ? "border-gray-300 bg-gray-50"
+                    : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                    }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {post.is_pinned && <Pin size={14} className="text-amber-500 fill-amber-500" />}
+                      <span className="font-bold text-sm text-gray-900">{post.author_name}</span>
+                      <span className="text-xs text-gray-400">{new Date(post.created_at).toLocaleString()}</span>
+                    </div>
+                    {currentUser?.uid === post.author_id && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handlePinPost(post.post_id, post.is_pinned); }}
+                          className="text-gray-400 hover:text-amber-500 p-1"
+                        >
+                          <Pin size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeletePost(post.post_id); }}
+                          className="text-gray-400 hover:text-red-500 p-1"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{post.content}</p>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleRepliesExpand(post.post_id); }}
+                      className="flex items-center gap-1 hover:text-gray-600"
+                    >
+                      <MessageCircle size={14} />
+                      <span>{post.reply_count} replies</span>
+                      {expandedReplies[post.post_id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {expandedReplies[post.post_id] && (
+                  <div className="ml-4 mt-2 space-y-2">
+                    {(getPostReplies(post) || []).map((reply) => (
+      ... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\ChatPanel.jsx ---
+import React, { useContext, useMemo, useEffect, useState } from "react";
+import { MessageInput, MessageList, TypingIndicator } from "./index";
+import { useChatStore } from "@/stores/chat/chatStore";
+import { useOnlineStore } from "@/stores/chat/useOnlineStore";
+import { ThemeContext } from "@/context/themeContext";
+import { AuthContext } from "@/context/authContext";
+import { Settings, UserPlus, Info, Pin } from "lucide-react";
+import { PinnedMessagesDialog } from "./PinnedMessagesDialog";
+
+export const ChatPanel = () => {
+  const { primaryColor } = useContext(ThemeContext);
+  const [showPinned, setShowPinned] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+  const rooms = useChatStore((s) => s.rooms);
+  const selectedRoom = useChatStore((s) =>
+    s.rooms.find((r) => r.room_id === s.currentRoomId)
+  );
+  const selectFirstRoom = useChatStore((s) => s.selectFirstRoom);
+
+  useEffect(() => {
+    if (rooms.length > 0 && !selectedRoom) {
+      selectFirstRoom();
+    }
+  }, [rooms, selectedRoom]);
+
+  const roomRole = selectedRoom?.role || 'member';
+  console.log("Selected Room:", selectedRoom);
+
+  const { auth } = useContext(AuthContext);
+  const currentUserId = String(auth?.user?.uid);
+
+  const onlineUsers = useOnlineStore((s) => s.onlineUsers);
+  const is_group = selectedRoom?.is_group || false;
+  const partner_id = selectedRoom?.partner_id;
+  const members = selectedRoom?.members || [];
+
+  const { isOnline, onlineCount, othersOnline } = useMemo(() => {
+    if (!is_group) {
+      const status =
+        partner_id && onlineUsers instanceof Set
+          ? onlineUsers.has(String(partner_id))
+          : false;
+      return { isOnline: status, onlineCount: 0, othersOnline: status };
+    }
+
+    // In group, count online users excluding current user
+    const others = members.filter(m => String(m.user_id) !== currentUserId);
+    const count = others.reduce(
+      (acc, m) => acc + (onlineUsers.has(String(m.user_id)) ? 1 : 0),
+      0
+    );
+
+    return { isOnline: false, onlineCount: count, othersOnline: count > 0 };
+  }, [selectedRoom, onlineUsers, currentUserId]);
+
+  const displayName =
+    selectedRoom?.name ||
+    "Unknown";
+
+  if (!selectedRoom) {
+    return (
+      <div className="flex-1 h-full flex flex-col items-center justify-center bg-[#f8f9fa] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-80">
+        <div className="flex flex-col items-center gap-6 text-center animate-in zoom-in duration-700">
+          <div
+            className="w-24 h-24 rounded-[32px] flex items-center justify-center text-white shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500"
+            style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)` }}
+          >
+            <Settings size={48} className="animate-pulse" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-gray-800 mb-2 tracking-tight">Select a conversation</h2>
+            <p className="text-gray-500 max-w-xs mx-auto leading-relaxed">
+              Choose a room from the sidebar or search for a new person to start chatting.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 h-full flex flex-col bg-[#f8f9fa] relative">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
+
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200/60 flex items-center justify-between bg-white/80 backdrop-blur-md z-10 sticky top-0">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            {selectedRoom?.avatar_url ? (
+              <img
+                src={selectedRoom.avatar_url}
+                alt={displayName}
+                className="w-11 h-11 rounded-2xl object-cover shadow-sm border border-gray-100"
+              />
+            ) : (
+              <div
+                className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-bold text-white shadow-md"
+                style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)` }}
+              >
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            {!is_group && isOnline && (
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm" />
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-[15px] font-black text-gray-900 tracking-tight leading-none mb-1.5">
+              {displayName}
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className={`w-1.5 h-1.5 rounded-full ${othersOnline ? "bg-green-500" : "bg-gray-300"}`} />
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                {!is_group
+                  ? isOnline
+                    ? "Active Now"
+                    : "Offline"
+                  : `${onlineCount} others online`}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPinned(true)}
+            className="p-2.5 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-gray-900 transition-all active:scale-95 group"
+            title="Pinned Messages"
+          >
+            <Pin size={20} className="group-hover:rotate-12 transition-transform" />
+          </button>
+          <button className="p-2.5 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-gray-900 transition-all active:scale-95">
+            <Info size={20} />
+          </button>
+          <button className="p-2.5 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-gray-900 transition-all active:scale-95">
+            <Settings size={20} />
+          </button>
+        </div>
+      </div>
+
+      <MessageList
+        roomId={selectedRoom.room_id}
+        highlightedMessageId={highlightedMessageId}
+        onClearHighlight={() => setHighlightedMessageId(null)}
+      />
+      <TypingIndicator />
+      <MessageInput room={selectedRoom} />
+
+      {showPinned && (
+        <PinnedMessagesDialog
+          roomId={selectedRoom.room_id}
+          isOpen={showPinned}
+          onClose={() => setShowPinned(false)}
+          onJump={(msgId) => {
+            setHighlightedMessageId(msgId);
+            setShowPinned(false);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\EmptyRoom.jsx ---
+import React from 'react';
+
+export default function EmptyRoom({ onCreateRoom }) {
+  return (
+    <div className="flex-1 flex items-center justify-center bg-gray-50">
+      <div className="text-center max-w-sm">
+        <div className="text-5xl mb-4">💬</div>
+        <h2 className="text-lg font-semibold mb-2">
+          Chưa có phòng chat nào
+        </h2>
+        <p className="text-sm text-gray-500 mb-5">
+          Tạo phòng mới để bắt đầu trò chuyện với đồng đội của bạn
+        </p>
+
+        <button
+          onClick={onCreateRoom}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg text-sm"
+        >
+          ➕ Tạo phòng chat
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\index.js ---
+export { MessageInput } from "./MessageInput";
+export { MessageItem } from "./MessageItem";
+export { MessageList } from "./MessageList";
+export { RoomList } from "./RoomList";
+export { TypingIndicator } from "./TypingIndicator";
+export { ChatPanel } from "./ChatPanel";
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\MessageInput.jsx ---
+import React, { useContext, useState, useRef, useEffect } from "react";
+import { emitTyping, emitSendMessage } from "@/socket/socketEmit";
+import { useMessageStore } from "@/stores/chat/messageStore";
+import { useChatUIStore } from "@/stores/chat/chatUIStore";
+import { ThemeContext } from "@/context/themeContext";
+import { Image as ImageIcon, Paperclip, Send, Smile, X, Reply, File, Upload } from "lucide-react";
+import { uploadFileAPI } from "@/services/file.service";
+import { MentionInput } from "@/components/common/MentionInput";
+import { getProjectMembersAPI } from "@/services/project.service";
+import { getUsersAPI } from "@/services/auth.service";
+
+export const MessageInput = ({ room }) => {
+  const { primaryColor } = useContext(ThemeContext);
+  const [message, setMessage] = useState("");
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    setCurrentUser(user);
+  }, []);
+  const [members, setMembers] = useState([]);
+  const typingRef = useRef(null);
+  const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+
+  const store = useMessageStore();
+  const { replyingToMessage, clearReply } = useChatUIStore();
+
+  useEffect(() => {
+    if (room?.members && room.members.length > 0) {
+      const otherMembers = room.members.filter(m => m.user_id !== currentUser?.uid);
+      setMembers(otherMembers);
+    } else if (room?.project_id) {
+      getProjectMembersAPI(room.project_id).then((data) => {
+        setMembers(data || []);
+      }).catch(() => setMembers([]));
+    } else if (currentUser) {
+      getUsersAPI().then((data) => {
+        const otherUsers = (data || []).filter(u => u.user_id !== currentUser.uid);
+        setMembers(otherUsers);
+      }).catch(() => setMembers([]));
+    }
+  }, [room?.members, room?.project_id, currentUser]);
+
+  const handleSendMessage = async () => {
+    if (!message.trim() && attachments.length === 0) return;
+
+    try {
+      // Upload attachments first if any
+      let uploadedAttachments = [];
+      if (attachments.length > 0) {
+        setUploading(true);
+        for (const file of attachments) {
+          if (file.url) {
+            uploadedAttachments.push({
+              attachmentUrl: file.url,
+              fileType: file.type,
+              fileName: file.name
+            });
+          } else {
+            const res = await uploadFileAPI(file);
+            uploadedAttachments.push({
+              attachmentUrl: res.data?.file_url || res.file_url,
+              fileType: file.type.startsWith('image/') ? 'image' : 'file',
+              fileName: file.name
+            });
+          }
+        }
+        setUploading(false);
+      }
+
+      const messageType = uploadedAttachments.some(a => a.fileType === 'image') ? 'image' : 'text';
+      
+      const savedMessage = await emitSendMessage(
+        room.room_id, 
+        message.trim(), 
+        replyingToMessage?.message_id || null,
+        uploadedAttachments,
+        messageType
+      );
+      store.addMessage(room.room_id, savedMessage);
+      setMessage("");
+      setAttachments([]);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      clearReply();
+    } catch (err) {
+      setUploading(false);
+      console.error("Send message failed:", err.message);
+    }
+  };
+
+  const handleFileSelect = async (e, isImage = false) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // For images, create preview URLs
+    const newAttachments = files.map(file => ({
+      file,
+      name: file.name,
+      type: file.type.startsWith('image/') ? 'image' : 'file',
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    }));
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+    e.target.value = ''; // Reset input
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  return (
+    <div className="p-4 bg-transparent relative z-10">
+      {/* Floating Container */}
+      <div className="bg-white rounded-3xl shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1),0_10px_20px_-5px_rgba(0,0,0,0.05)] border border-gray-200/50 overflow-hidden transition-all duration-300 focus-within:shadow-xl focus-within:border-gray-300/50">
+
+        {/* Reply Preview Bar */}
+        {replyingToMessage && (
+          <div className="px-5 py-3 bg-gray-50/80 backdrop-blur-sm border-b border-gray-100 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center gap-3 border-l-4 pl-4 py-1" style={{ borderColor: primaryColor }}>
+              <Reply size={16} style={{ color: primaryColor }} />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: primaryColor }}>Replying to</span>
+                <p className="text-xs text-gray-500 line-clamp-1 italic font-medium">{replyingToMessage.content}</p>
+              </div>
+            </div>
+            <button onClick={clearReply} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400 transition-all active:scale-90">
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        <div className="px-4 py-2 flex items-end gap-2 min-h-[56px]">
+          {/* Action Buttons */}
+          <div className="flex items-center pb-1">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              multiple
+              onChange={(e) => handleFileSelect(e, false)}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+            />
+            <input 
+              type="file" 
+              ref={imageInputRef} 
+              className="hidden" 
+              multiple
+              onChange={(e) => handleFileSelect(e, true)}
+              accept="image/*"
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
+              title="Attach file"
+            >
+              <Paperclip size={20} />
+            </button>
+            <button 
+              onClick={() => imageInputRef.current?.click()}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
+              title="Send image"
+            >
+              <ImageIcon size={20} />
+            </button>
+          </div>
+
+          {/* Attachment Previews */}
+          {attachments.length > 0 && (
+            <div className="px-4 py-2 flex gap-2 flex-wrap border-t border-gray-100">
+              {attachments.map((file, idx) => (
+                <div key={idx} className="relative group">
+                  {file.preview ? (
+                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                      <img src={file.preview} alt={file.name} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center">
+                      <File size={20} className="text-gray-500" />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => removeAttachment(idx)}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={12} />
+                  </button>
+                  <span className="absolute -bottom-4 left-0 text-[10px] text-gray-500 truncate max-w-[60px]">
+                    {file.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <MentionInput
+            value={message}
+            onChange={(val) => {
+              setMessage(val);
+              if (!room?.room_id) return;
+              if (typingRef.current) return;
+              emitTyping(room.room_id);
+              typingRef.current = setTimeout(() => {
+                typingRef.current = null;
+              }, 500);
+            }}
+            onSend={handleSendMessage}
+            placeholder="Type a message... (@ to mention)"
+            members={members}
+          />
+
+          <div className="flex items-center gap-1 pb-1">
+            <button className="p-2 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 rounded-xl transition-all">
+              <Smile size={22} />
+            </button>
+            <button
+              onClick={handleSendMessage}
+              disabled={(!message.trim() && attachments.length === 0) || uploading}
+              className={`p-2.5 rounded-2xl transition-all duration-300 shadow-md transform active:scale-90 ${(!message.trim() && attachments.length === 0) || uploading ? "bg-gray-100 text-gray-300 shadow-none" : "text-white hover:brightness-110 shadow-lg"
+                }`}
+              style={(message.trim() || attachments.length > 0) && !uploading ? {
+                backgroundColor: primaryColor,
+                boxShadow: `0 4px 12px -4px ${primaryColor}aa`
+              } : {}}
+            >
+              {uploading ? (
+                <Upload size={18} className="animate-spin" />
+              ) : (
+                <Send size={18} fill={(message.trim() || attachments.length > 0) ? "currentColor" : "none"} className={(message.trim() || attachments.length > 0) ? "translate-x-0.5 -translate-y-0.5 rotate-[-10deg]" : ""} />
+   ... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\MessageItem.jsx ---
+import { useContext, useState, useRef, useEffect } from "react";
+import { ThemeContext } from "@/context/themeContext";
+import { AuthContext } from "@/context/authContext";
+import { Pin, Reply, Smile, MoreHorizontal, Edit2, Trash2, X, Check } from "lucide-react";
+import { useChatUIStore } from "@/stores/chat/chatUIStore";
+import { confirm } from "@/components/common/ConfirmModal";
+import {
+  emitToggleReaction,
+  emitTogglePinMessage,
+  emitEditMessage,
+  emitDeleteMessage
+} from "@/socket/socketEmit";
+
+const REACTION_OPTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+
+export const MessageItem = ({ message, roomRole, isFirstInGroup, isLastInGroup }) => {
+  const { primaryColor } = useContext(ThemeContext);
+  const { auth } = useContext(AuthContext);
+  const setReplyingToMessage = useChatUIStore((s) => s.setReplyingToMessage);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message?.content || "");
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const editInputRef = useRef(null);
+
+  const currentUserId = auth?.user?.uid;
+  const senderId = message?.sender_id ?? message?.senderId ?? message?.user_id;
+  const senderName = message?.sender_name || message?.full_name || "Unknown";
+  const avatarUrl = message?.sender_avatar || message?.avatar_url;
+  const isMe = String(senderId) === String(currentUserId);
+  const content = message?.content || "";
+  const reactions = message?.reactions || [];
+  const isPinned = message?.is_pinned || false;
+  const isDeleted = message?.is_deleted || false;
+  const parentMessage = message?.parent_message;
+  const isSystem = message?.message_type === 'system';
+
+  useEffect(() => {
+    if (isEditing && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [isEditing]);
+
+  if (isSystem) {
+    return (
+      <div className="flex justify-center my-6">
+        <span className="px-4 py-1 bg-white/40 backdrop-blur-sm text-gray-500 text-[10px] rounded-full uppercase tracking-widest font-bold border border-white/50 shadow-sm">
+          {content}
+        </span>
+      </div>
+    );
+  }
+
+  const handleToggleReaction = (emoji) => {
+    emitToggleReaction({
+      messageId: message.message_id,
+      roomId: message.room_id,
+      reactionType: emoji
+    });
+    setShowReactionPicker(false);
+  };
+
+  const handleTogglePin = () => {
+    emitTogglePinMessage({
+      messageId: message.message_id,
+      roomId: message.room_id,
+      isPinned: !isPinned
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editContent.trim() || editContent === content) {
+      setIsEditing(false);
+      return;
+    }
+    emitEditMessage({
+      messageId: message.message_id,
+      roomId: message.room_id,
+      newContent: editContent
+    });
+    setIsEditing(false);
+  };
+
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: "Delete Message",
+      message: "Delete this message?",
+      confirmText: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    emitDeleteMessage({
+      messageId: message.message_id,
+      roomId: message.room_id
+    });
+  };
+
+  if (isDeleted) {
+    return (
+      <div className={`flex w-full ${isMe ? "justify-end" : "justify-start"} mb-1`}>
+        <div className={`px-4 py-2 rounded-2xl text-[11px] italic text-gray-400 border border-gray-100 bg-gray-50/50`}>
+          Message deleted
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`flex w-full ${isMe ? "justify-end" : "justify-start"} ${isLastInGroup ? "mb-4" : "mb-1"} group animate-in fade-in slide-in-from-bottom-1 duration-300`}
+    >
+      <div className={`flex items-end gap-2 max-w-[85%] ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+
+        {/* Avatar for Others */}
+        {!isMe && (
+          <div className="w-8 flex-shrink-0">
+            {isLastInGroup ? (
+              <img
+                src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`}
+                alt={senderName}
+                className="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover"
+              />
+            ) : (
+              <div className="w-8" />
+            )}
+          </div>
+        )}
+
+        <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+
+          {/* Sender Name in Group */}
+          {!isMe && isFirstInGroup && (
+            <span className="text-[11px] font-bold text-gray-500 mb-1 ml-2 uppercase tracking-tight">
+              {senderName}
+            </span>
+          )}
+
+          {/* Reply Preview */}
+          {parentMessage && (
+            <div className={`text-[11px] text-gray-400 mb-1 flex items-center gap-1.5 px-2 ${isMe ? "flex-row-reverse" : ""}`}>
+              <Reply size={12} className="opacity-50" />
+              <div className="flex items-center gap-1 bg-black/5 px-2 py-0.5 rounded-full border border-black/5 max-w-[200px]">
+                <span className="font-bold text-gray-500 truncate">{parentMessage.sender_name}:</span>
+                <span className="truncate opacity-80">{parentMessage.content}</span>
+              </div>
+            </div>
+          )}
+
+          <div className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+            <div className="relative group/bubble">
+              {/* Reaction Picker Overlay */}
+              {showReactionPicker && (
+                <div className={`absolute -top-12 ${isMe ? "right-0" : "left-0"} z-50 bg-white/95 backdrop-blur-md shadow-2xl border border-gray-100 rounded-full p-1 flex gap-0.5 animate-in zoom-in-95 duration-200 ring-4 ring-black/5`}>
+                  {REACTION_OPTIONS.map(emoji => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleToggleReaction(emoji)}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 rounded-full transition-transform hover:scale-150 active:scale-95"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div
+                className={`relative px-4 py-2.5 rounded-2xl text-[14px] transition-all duration-300 ${isMe
+                    ? `text-white ${isLastInGroup ? "rounded-br-none" : ""}`
+                    : `bg-white text-gray-800 ${isLastInGroup ? "rounded-bl-none" : ""} border border-gray-200/50 shadow-sm`
+                  } ${isPinned ? "ring-2 ring-yellow-400 ring-offset-2" : ""}`}
+                style={
+                  isMe
+                    ? {
+                      background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}ee)`,
+                      boxShadow: `0 4px 15px -5px ${primaryColor}66`
+                    }
+                    : {}
+                }
+              >
+                {/* Bubble Tail */}
+                {isLastInGroup && (
+                  <div className={`absolute bottom-0 w-3 h-3 ${isMe ? "-right-1 bg-[#222]" : "-left-1 bg-white border-l border-b border-gray-200/50"} transform rotate-45 z-0`}
+                    style={isMe ? { background: primaryColor } : {}} />
+                )}
+
+                {isPinned && (
+                  <div className="absolute -top-2.5 -right-1.5 bg-yellow-400 text-white p-1 rounded-full shadow-md border-2 border-white z-20">
+                    <Pin size={10} fill="currentColor" />
+                  </div>
+                )}
+
+                {isEditing ? (
+                  <div className="flex flex-col gap-2 min-w-[200px] relative z-10">
+                    <textarea
+                      ref={editInputRef}
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="bg-transparent border-none focus:ring-0 p-0 text-[14px] resize-none w-full text-inherit placeholder:text-inherit/50 font-medium"
+                      rows={Math.max(1, editContent.split('\n').length)}
+                    />
+                    <div className="flex justify-end gap-1 border-t border-white/20 pt-2">
+                      <button onClick={() => setIsEditing(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                        <X size={14} />
+                      </button>
+                      <button onClick={handleSaveEdit} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                        <Check size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative z-10 flex flex-col">
+                    <p className="break-words whitespace-pre-wrap leading-relaxed font-medium">
+                      {content}
+                    </p>
+                    <div className={`flex items-center gap-1 mt-1 self-end ${isMe ? "text-white/70" : "text-gray-400"}`}>
+                      <span className="text-[9px]">
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      </span>
+                      {isMe && <Check size={10} className="opacity-70" />}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reactions summary */}
+                {reactions.length > 0 && (
+                  <div className={`absolute -bottom-3 ${isMe ? "right-2" : "left-2"} flex gap-1 bg-white/95 backdrop-blur-sm border border-gray-100 rounded-full px-2 py-0.5 shadow-md scale-100 transition-transform cursor-pointer overflow-hidden z-20 ring-2 ring-black/5`}>
+                    <div className="flex -space-x-1">
+                      {Array.from(new Set(reactions.map(r => r.reaction_type))).slice(0, 3).map((emoji, idx) => (
+                        <span key={idx} className="text-xs drop-shadow-sm">{emoji}</span>
+                      ))}
+                    </div>
+                    <span class... (truncated)
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\MessageList.jsx ---
+import { useContext, useEffect, useRef, useState } from "react";
+import { MessageItem } from "./MessageItem";
+import { useMessageStore } from "@/stores/chat/messageStore";
+import { useChatStore } from "@/stores/chat/chatStore";
+import { AuthContext } from "@/context/authContext";
+import { formatDateLabel } from "@/utils/formatDateLabel";
+import { loadMessagesAPI } from "@/services/message.service";
+import { Loader2 } from "lucide-react";
+
+export const MessageList = ({ roomId, highlightedMessageId, onClearHighlight }) => {
+  const { auth } = useContext(AuthContext);
+  const currentUserId = auth?.user?.uid;
+  const bottomRef = useRef(null);
+  const containerRef = useRef(null);
+  const messageRefs = useRef({});
+  const previousRoomRef = useRef(roomId);
+  const previousLastMessageIdRef = useRef(null);
+  const wasNearBottomRef = useRef(true);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const prependMessages = useMessageStore((s) => s.prependMessages);
+
+  const messages = useMessageStore(
+    (state) => state.messagesByRoom[roomId] || []
+  );
+
+  const roomRole = useChatStore((s) =>
+    s.rooms.find((r) => r.room_id === roomId)?.role || 'member'
+  );
+
+  const messagesRef = useRef(messages);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  const hasMoreRef = useRef(hasMore);
+
+  const isNearBottom = () => {
+    const container = containerRef.current;
+    if (!container) return true;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    return distanceFromBottom < 120;
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = async () => {
+      const near = isNearBottom();
+      wasNearBottomRef.current = near;
+      setShowScrollBtn(!near);
+
+      // Infinite scroll logic - use refs to avoid dependency issues
+      const isLoading = isLoadingMoreRef.current;
+      const canLoad = hasMoreRef.current;
+      if (container.scrollTop < 50 && !isLoading && canLoad) {
+        handleLoadMore();
+      }
+    };
+
+    const handleLoadMore = async () => {
+      if (isLoadingMoreRef.current || !hasMoreRef.current || messagesRef.current.length === 0) return;
+
+      isLoadingMoreRef.current = true;
+      const firstMsg = messagesRef.current[0];
+      const scrollHeightBefore = container.scrollHeight;
+
+      try {
+        const res = await loadMessagesAPI({
+          roomId,
+          cursorMessageId: firstMsg.message_id,
+          cursorCreatedAt: firstMsg.created_at
+        });
+
+        if (res.messages && res.messages.length > 0) {
+          prependMessages(roomId, res.messages);
+          messagesRef.current = [...res.messages, ...messagesRef.current];
+          if (res.messages.length < 30) {
+            hasMoreRef.current = false;
+            setHasMore(false);
+          }
+
+          requestAnimationFrame(() => {
+            if (container) {
+              container.scrollTop = container.scrollHeight - scrollHeightBefore;
+            }
+          });
+        } else {
+          hasMoreRef.current = false;
+          setHasMore(false);
+        }
+      } catch (error) {
+        console.error("Error loading more messages:", error);
+      } finally {
+        isLoadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      }
+    };
+
+    messagesRef.current = messages;
+    isLoadingMoreRef.current = isLoadingMore;
+    hasMoreRef.current = hasMore;
+
+    handleScroll();
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [roomId]);
+
+
+  useEffect(() => {
+    const roomChanged = previousRoomRef.current !== roomId;
+    const lastMessage = messages[messages.length - 1];
+    const currentLastId = lastMessage?.message_id ?? null;
+    const lastChanged = previousLastMessageIdRef.current !== currentLastId;
+    const senderId =
+      lastMessage?.sender_id ?? lastMessage?.senderId ?? lastMessage?.user_id;
+    const isOwnLastMessage =
+      senderId != null && currentUserId != null
+        ? String(senderId) === String(currentUserId)
+        : false;
+
+    if (roomChanged) {
+      previousRoomRef.current = roomId;
+      previousLastMessageIdRef.current = currentLastId;
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+      });
+      return;
+    }
+
+    if (!lastChanged) return;
+    previousLastMessageIdRef.current = currentLastId;
+
+    const shouldScroll = isNearBottom() || isOwnLastMessage;
+    if (shouldScroll) {
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      });
+    }
+  }, [messages, roomId, currentUserId]);
+
+  useEffect(() => {
+    if (highlightedMessageId && messageRefs.current[highlightedMessageId]) {
+      const element = messageRefs.current[highlightedMessageId];
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Add a visual pulse or highlight effect
+      element.classList.add("ring-4", "ring-indigo-500/30", "rounded-2xl");
+
+      const timer = setTimeout(() => {
+        element.classList.remove("ring-4", "ring-indigo-500/30", "rounded-2xl");
+        onClearHighlight();
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedMessageId, messages]);
+
+  return (
+    <div className="flex-1 relative flex flex-col min-h-0">
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-y-auto px-4 py-4 scroll-smooth max-h-[75vh]"
+        style={{
+          backgroundColor: "#efeae2",
+          backgroundImage:
+            "radial-gradient(circle at 25px 25px, rgba(255,255,255,0.35) 2px, transparent 0)",
+          backgroundSize: "36px 36px",
+        }}
+      >
+        {isLoadingMore && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+          </div>
+        )}
+        {!hasMore && messages.length > 0 && (
+          <div className="text-center py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            End of message history
+          </div>
+        )}
+        {messages.length === 0 && (
+          <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+            No messages yet
+          </div>
+        )}
+
+        <div className="flex flex-col">
+          {messages.map((msg, index) => {
+            const prevMsg = messages[index - 1];
+            const nextMsg = messages[index + 1];
+
+            const msgDate = new Date(msg.created_at).toDateString();
+            const prevMsgDate = prevMsg ? new Date(prevMsg.created_at).toDateString() : null;
+            const showDateSeparator = msgDate !== prevMsgDate;
+
+            const isFirstInGroup = !prevMsg || showDateSeparator ||
+              (prevMsg.sender_id !== msg.sender_id) ||
+              (new Date(msg.created_at) - new Date(prevMsg.created_at) > 300000); // 5 min gap
+
+            const isLastInGroup = !nextMsg ||
+              (new Date(nextMsg.created_at).toDateString() !== msgDate) ||
+              (nextMsg.sender_id !== msg.sender_id);
+
+            return (
+              <div
+                key={msg.message_id || index}
+                ref={el => messageRefs.current[msg.message_id] = el}
+                className="transition-all duration-1000"
+              >
+                {showDateSeparator && (
+                  <div className="flex justify-center my-6 sticky top-0 z-10">
+                    <span className="px-4 py-1.5 bg-gray-400/20 backdrop-blur-md text-gray-600 text-[11px] font-bold rounded-full shadow-sm border border-white/20">
+                      {formatDateLabel(msg.created_at)}
+                    </span>
+                  </div>
+                )}
+                <MessageItem
+                  message={msg}
+                  roomRole={roomRole}
+                  isFirstInGroup={isFirstInGroup}
+                  isLastInGroup={isLastInGroup}
+                />
+              </div>
+            );
+          })}
+          <div ref={bottomRef} className="h-4" />
+        </div>
+      </div>
+
+      {/* New Message / Scroll to bottom button */}
+      {showScrollBtn && (
+        <button
+          onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
+          className="absolute bottom-6 right-6 bg-white text-gray-600 p-3 rounded-full shadow-xl border border-gray-100 hover:bg-gray-50 transition-all active:scale-95 animate-in slide-in-from-bottom-4 duration-300 z-20 flex items-center gap-2 group"
+        >
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+          <span className="text-xs font-bold mr-1">New Messages</span>
+          <svg className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+};
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\PinnedMessagesDialog.jsx ---
+import React, { useEffect, useState } from "react";
+import { getPinnedMessagesAPI } from "@/services/chat-room.service";
+import { Pin, X } from "lucide-react";
+
+export const PinnedMessagesDialog = ({ roomId, isOpen, onClose, onJump, primaryColor }) => {
+  const [pinnedMessages, setPinnedMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && roomId) {
+      fetchPinned();
+    }
+  }, [isOpen, roomId]);
+
+  const fetchPinned = async () => {
+    setLoading(true);
+    try {
+      const res = await getPinnedMessagesAPI(roomId);
+      setPinnedMessages(res.messages || []);
+    } catch (err) {
+      console.error("Failed to fetch pinned messages:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="bg-white rounded-[32px] w-full max-w-md shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+        
+        {/* Header */}
+        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-yellow-50 flex items-center justify-center text-yellow-500 shadow-sm border border-yellow-100">
+              <Pin size={20} fill="currentColor" className="rotate-12" />
+            </div>
+            <div>
+              <h3 className="font-black text-gray-900 tracking-tight leading-none">Pinned Messages</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Important updates</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-2xl text-gray-400 transition-all active:scale-90">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50 custom-scrollbar">
+          {loading ? (
+            <div className="py-20 text-center">
+               <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+               <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">Searching records...</p>
+            </div>
+          ) : pinnedMessages.length === 0 ? (
+            <div className="py-20 text-center px-10">
+              <div className="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-4 text-gray-300">
+                 <Pin size={32} />
+              </div>
+              <p className="text-sm text-gray-400 font-medium italic">No pinned messages found in this conversation.</p>
+            </div>
+          ) : (
+            pinnedMessages.map((msg) => (
+              <div key={msg.message_id} className="bg-white p-5 rounded-3xl border border-gray-200/50 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-500 uppercase">
+                      {msg.sender_name?.charAt(0) || 'U'}
+                    </div>
+                    <span className="text-[11px] font-black text-gray-800 uppercase tracking-tight">
+                      {msg.sender_name || 'User'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-bold">
+                    {new Date(msg.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 line-clamp-4 leading-relaxed font-medium">{msg.content}</p>
+                <div className="mt-4 pt-3 border-t border-gray-50 flex justify-end">
+                    <button 
+                      className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
+                      onClick={() => onJump(msg.message_id)}
+                    >
+                      Jump to message
+                    </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\RoomItem.jsx ---
+import { useContext } from "react";
+import { ThemeContext } from "@/context/themeContext";
+import { useOnlineStore } from "@/stores/chat/useOnlineStore";
+import { Pin } from "lucide-react";
+
+export default function RoomItem({ room, active, onClick }) {
+  const { primaryColor } = useContext(ThemeContext);
+  const isOnline = useOnlineStore((s) => s.onlineUsers.has(String(room.partner_id)));
+  
+  const isUser = room.type === "user"; // From search
+  const isGroup = room.is_group;
+  // Use display_name from backend, fallback to partner_name for DMs, then name
+  const displayName = room.display_name || room.partner_name || (isUser ? room.full_name : room.name);
+
+  const avatarUrl = isUser ? room.avatar_url : (room.avatar_url || room.partner_avatar);
+  const lastMessage = room.last_message_content;
+  const lastTime = room.last_message_at;
+  const senderName = room.last_message_sender_name;
+  const isPinned = room.is_pinned;
+
+  const formatTime = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      className={`relative px-4 py-3 cursor-pointer rounded-2xl transition-all duration-300 group select-none overflow-hidden ${
+        active 
+          ? "bg-gray-50 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.05)]" 
+          : "hover:bg-gray-50/60"
+      }`}
+    >
+      {/* Active Indicator Bar */}
+      {active && (
+        <div 
+          className="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full animate-in slide-in-from-left-1 duration-300"
+          style={{ backgroundColor: primaryColor }}
+        />
+      )}
+
+      {/* Pinned Indicator */}
+      {isPinned && (
+        <div className="absolute right-2 top-2">
+          <Pin size={12} className="text-amber-500 fill-amber-500" />
+        </div>
+      )}
+
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0">
+          {avatarUrl ? (
+            <img 
+              src={avatarUrl} 
+              alt={displayName} 
+              className="w-12 h-12 rounded-2xl object-cover shadow-sm group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div
+              className="w-12 h-12 rounded-2xl text-white text-lg font-black flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-500"
+              style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
+            >
+              {(displayName || "U").charAt(0).toUpperCase()}
+            </div>
+          )}
+          
+          {!isGroup && isOnline && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 border-[3px] border-white rounded-full shadow-sm ring-1 ring-black/5" title="Online" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex justify-between items-baseline mb-1">
+            <h4 className={`text-[14px] truncate tracking-tight transition-colors ${active ? "font-black text-gray-900" : "font-bold text-gray-700"}`}>
+              {displayName}
+            </h4>
+            <span className="text-[10px] text-gray-400 font-bold shrink-0 ml-2">
+              {formatTime(lastTime)}
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between gap-2">
+            <p className={`text-[12px] truncate leading-none transition-colors ${
+              room.unread_count > 0 
+                ? "text-gray-900 font-black" 
+                : "text-gray-400 font-medium"
+            }`}>
+              {isUser ? "Start a conversation" : (
+                <>
+                  {senderName && <span className="opacity-80">{senderName}: </span>}
+                  {lastMessage || "No messages yet"}
+                </>
+              )}
+            </p>
+            
+            {room.unread_count > 0 && (
+              <span
+                className="text-white text-[10px] min-w-[20px] h-[20px] px-1 rounded-full flex items-center justify-center font-black shadow-lg animate-in zoom-in duration-500 shrink-0 transform scale-90 group-hover:scale-100"
+                style={{ 
+                  backgroundColor: primaryColor,
+                  boxShadow: `0 4px 10px -2px ${primaryColor}88`
+                }}
+              >
+                {room.unread_count > 99 ? "99+" : room.unread_count}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\RoomList.jsx ---
+import React, { useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import RoomItem from "./RoomItem";
+import { UserItem } from "./userItem";
+import { useChatRooms } from "@/hooks/chat_hook/useChatRooms";
+import { useChatSearch } from "@/hooks/chat_hook/useChatSearch";
+import { usePrivateChat } from "@/hooks/chat_hook/usePrivateChat";
+import { useChatStore } from "@/stores/chat/chatStore";
+import { loadMessagesAPI } from "@/services/message.service";
+import { useMessageStore } from "@/stores/chat/messageStore";
+import { ThemeContext } from "@/context/themeContext";
+import { emitOpenRoom } from "@/socket/socketEmit";
+
+import { Plus, Search, MessageSquare } from "lucide-react";
+
+export const RoomList = () => {
+  const { primaryColor } = useContext(ThemeContext);
+  const navigate = useNavigate();
+  const { rooms, loading } = useChatRooms();
+  const { keyword, setKeyword, isSearchMode, roomsResult, usersResult } =
+    useChatSearch(rooms);
+  const { startPrivateChat, loading: privateChatLoading } = usePrivateChat();
+  const currentRoomId = useChatStore((s) => s.currentRoomId);
+  const setCurrentRoom = useChatStore((s) => s.setCurrentRoom);
+  const setMessages = useMessageStore((s) => s.setMessages);
+
+  const markRoomAsRead = useChatStore((s) => s.markRoomAsRead);
+
+  const handleClick = async (room) => {
+    setCurrentRoom(room.room_id);
+    markRoomAsRead(room.room_id);
+    emitOpenRoom(room.room_id);
+    const res = await loadMessagesAPI({ roomId: room.room_id });
+    setMessages(room.room_id, res.messages);
+    navigate(`/chat/rooms/${room.room_id}`);
+  };
+
+  React.useEffect(() => {
+    if (!loading && rooms.length > 0 && !currentRoomId && !isSearchMode) {
+      handleClick(rooms[0]);
+    }
+  }, [loading, rooms, currentRoomId, isSearchMode]);
+
+  return (
+    <div className="w-[320px] h-full border-r border-gray-200/60 bg-white flex flex-col z-20">
+      {/* Header */}
+      <div className="px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white" style={{ background: primaryColor }}>
+             <MessageSquare size={18} fill="currentColor" />
+          </div>
+          <h2 className="text-xl font-black text-gray-900 tracking-tight">Messages</h2>
+        </div>
+        <button 
+          className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all active:scale-95"
+          title="New Chat"
+        >
+          <Plus size={20} />
+        </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="px-4 pb-4">
+        <div className="relative group">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-600 transition-colors">
+            <Search size={16} />
+          </div>
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Search conversations..."
+            className="w-full rounded-2xl bg-gray-100/80 border-2 border-transparent px-10 py-2.5 text-sm outline-none transition-all focus:bg-white focus:ring-4 focus:ring-black/5"
+            style={{
+              "--tw-ring-color": primaryColor + "11",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* List Area */}
+      <div className="flex-1 overflow-y-auto px-2 space-y-0.5 custom-scrollbar">
+        {isSearchMode ? (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+            {roomsResult.length > 0 && (
+              <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Conversations</div>
+            )}
+            {roomsResult.map((room) => (
+              <RoomItem
+                key={room.room_id}
+                room={room}
+                active={currentRoomId === room.room_id}
+                onClick={() => {
+                  handleClick(room);
+                  setKeyword("");
+                }}
+              />
+            ))}
+
+            {usersResult.length > 0 && (
+              <div className="px-4 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">New People</div>
+            )}
+            {usersResult.map((user) => (
+              <UserItem
+                user={user}
+                key={user.user_id}
+                disabled={loading || privateChatLoading}
+                onClick={async () => {
+                  const room = await startPrivateChat({
+                    username: user.full_name,
+                    userId: user.user_id,
+                  });
+                  if (room) {
+                    handleClick(room);
+                  }
+                  setKeyword("");
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="animate-in fade-in duration-500">
+            {rooms.length === 0 && !loading && (
+              <div className="mt-10 text-center px-6">
+                <p className="text-sm text-gray-400 font-medium leading-relaxed">No active chats found. Try searching for someone!</p>
+              </div>
+            )}
+            {rooms.map((room) => (
+              <RoomItem
+                key={room.room_id}
+                room={room}
+                active={currentRoomId === room.room_id}
+                onClick={() => {
+                  handleClick(room);
+                  setKeyword("");
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+--- FILE: D:\ManageWork\my-fullstack-app\frontend\src\features\chat\TypingDots.jsx ---
+export const TypingDots = () => {
+  return (
+    <span className="flex ml-1">
+      <span className="dot">.</span>
+      <span className="dot">.</span>
+      <span className="dot">.</span>
+    </span>
+  );
+};
+
+
+Write your final JSON output to graphify-out/.graphify_chunk_7.json using write_to_file tool.

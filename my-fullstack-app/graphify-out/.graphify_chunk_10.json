@@ -1,0 +1,20 @@
+{
+  "nodes": [
+    {"id": "frontend_src_pages_home_home_jsx", "label": "Home.jsx", "file_type": "code", "source_file": "frontend/src/pages/home/Home.jsx"},
+    {"id": "frontend_src_pages_people_peopledirectory_jsx", "label": "PeopleDirectory.jsx", "file_type": "code", "source_file": "frontend/src/pages/people/PeopleDirectory.jsx"},
+    {"id": "frontend_src_pages_projects_projectdetail_jsx", "label": "ProjectDetail.jsx", "file_type": "code", "source_file": "frontend/src/pages/projects/ProjectDetail.jsx"},
+    {"id": "frontend_src_pages_projects_projects_jsx", "label": "Projects.jsx", "file_type": "code", "source_file": "frontend/src/pages/projects/Projects.jsx"},
+    {"id": "concept_dashboard_data_filtering", "label": "Dashboard Data Filtering Logic", "file_type": "rationale", "source_file": "frontend/src/pages/home/Home.jsx"},
+    {"id": "concept_project_view_orchestration", "label": "Project View Orchestration", "file_type": "rationale", "source_file": "frontend/src/pages/projects/ProjectDetail.jsx"},
+    {"id": "concept_team_directory_collaboration", "label": "Team Directory & Collaboration", "file_type": "rationale", "source_file": "frontend/src/pages/people/PeopleDirectory.jsx"}
+  ],
+  "edges": [
+    {"source": "frontend_src_pages_home_home_jsx", "target": "concept_dashboard_data_filtering", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/pages/home/Home.jsx"},
+    {"source": "frontend_src_pages_projects_projectdetail_jsx", "target": "concept_project_view_orchestration", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/pages/projects/ProjectDetail.jsx"},
+    {"source": "frontend_src_pages_people_peopledirectory_jsx", "target": "concept_team_directory_collaboration", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/pages/people/PeopleDirectory.jsx"},
+    {"source": "frontend_src_pages_projects_projects_jsx", "target": "frontend_src_pages_projects_projectdetail_jsx", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "frontend/src/pages/projects/Projects.jsx"}
+  ],
+  "hyperedges": [],
+  "input_tokens": 15500,
+  "output_tokens": 1250
+}
