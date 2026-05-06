@@ -131,16 +131,15 @@ function KanBanColumn({ id, label, color, taskIds, tasks, onTaskClick }) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[140px] sm:min-w-[160px] md:min-w-[180px] flex flex-col rounded-xl bg-slate-50 border ${
-        isOver ? "border-indigo-400 ring-2 ring-indigo-200" : "border-slate-200"
-      }`}
+      className={`flex-1 min-w-[140px] lg:min-w-[160px] xl:min-w-[180px] flex flex-col rounded-3xl bg-slate-100/40 border backdrop-blur-sm transition-all duration-300 ${isOver ? "border-indigo-400 ring-4 ring-indigo-500/10 bg-white/50" : "border-slate-200/50"
+        }`}
     >
-      <div className="flex items-center gap-2 p-3 border-b border-slate-200">
-        <div className={`w-2 h-2 rounded-full ${color}`} />
-        <span className="text-sm font-semibold text-slate-700">{label}</span>
-        <span className="text-xs text-slate-400 ml-auto">{taskIds.length}</span>
+      <div className="flex items-center gap-2 p-4 border-b border-slate-200/50">
+        <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${color}`} />
+        <span className="text-sm font-bold text-slate-800 tracking-tight uppercase">{label}</span>
+        <span className="text-[10px] font-black text-slate-400 ml-auto bg-white/50 px-2 py-0.5 rounded-full border border-slate-200/50">{taskIds.length}</span>
       </div>
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-280px)]">
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto custom-scrollbar">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {taskIds.map((taskId) => (
             <TaskCard key={taskId} task={tasks[taskId]} onClick={onTaskClick} />
@@ -174,21 +173,21 @@ export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelet
           status: data.status,
           updatedAt: data.updatedAt,
         };
-        
+
         if (data.orderIndex !== undefined) {
           updatedTask.order_index = data.orderIndex;
         }
-        
+
         let newTaskToColumn = prev.taskToColumn;
         let newColumns = prev.columns;
-        
+
         if (data.status && data.status !== prev.taskToColumn[data.taskId]) {
           const oldColumn = prev.taskToColumn[data.taskId];
           newTaskToColumn = {
             ...prev.taskToColumn,
             [data.taskId]: data.status,
           };
-          
+
           if (oldColumn && newColumns[oldColumn]) {
             newColumns = {
               ...newColumns,
@@ -197,7 +196,7 @@ export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelet
             };
           }
         }
-        
+
         return {
           ...prev,
           tasks: {
@@ -214,22 +213,22 @@ export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelet
 
   const handleRemoteTaskReordered = useCallback((data) => {
     if (!data || !data.tasks || !data.columnId) return;
-    
+
     setBoard(prev => {
       const newColumns = { ...prev.columns };
       const orderedTaskIds = data.tasks.map(t => t.taskId);
-      
+
       if (newColumns[data.columnId]) {
         newColumns[data.columnId] = orderedTaskIds;
       }
-      
+
       const newTasks = { ...prev.tasks };
       data.tasks.forEach(t => {
         if (newTasks[t.taskId]) {
           newTasks[t.taskId] = { ...newTasks[t.taskId], order_index: t.orderIndex };
         }
       });
-      
+
       return {
         ...prev,
         columns: newColumns,
@@ -295,7 +294,7 @@ export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelet
     const destCol = sourceColId === destColId ? sourceCol : [...board.columns[destColId]];
 
     const fromIndex = sourceCol.indexOf(active.id);
-    const overIndex = destColId === sourceColId 
+    const overIndex = destColId === sourceColId
       ? sourceCol.indexOf(over.id)
       : destCol.indexOf(over.id);
 
@@ -316,7 +315,7 @@ export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelet
 
     if (sourceColId === destColId) {
       const newTaskIds = arrayMove(sourceCol, fromIndex, toIndex);
-      
+
       const updatedTasks = { ...board.tasks };
       newTaskIds.forEach((taskId, idx) => {
         updatedTasks[taskId] = {
@@ -400,7 +399,7 @@ export const KanBanView = ({ tasks, onTaskClick, onTaskStatusChange, onTaskDelet
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-2 sm:gap-3 w-full min-h-[calc(100vh-280px)]">
+      <div className="flex gap-4 lg:gap-6 w-full min-h-[calc(100vh-300px)] overflow-x-auto pb-6 custom-scrollbar scroll-smooth">
         {KANBAN_COLUMNS.map((col) => (
           <KanBanColumn
             key={col.id}

@@ -143,7 +143,7 @@ export const Settings = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 px-4 py-6 sm:px-0">
       <div className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-100">
         <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
         <p className="text-slate-600 mt-2">Manage your profile and preferences</p>

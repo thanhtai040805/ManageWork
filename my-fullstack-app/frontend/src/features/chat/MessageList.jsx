@@ -29,6 +29,10 @@ export const MessageList = ({ roomId, highlightedMessageId, onClearHighlight }) 
     s.rooms.find((r) => r.room_id === roomId)?.role || 'member'
   );
 
+  const messagesRef = useRef(messages);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  const hasMoreRef = useRef(hasMore);
+
   const isNearBottom = () => {
     const container = containerRef.current;
     if (!container) return true;
@@ -46,17 +50,19 @@ export const MessageList = ({ roomId, highlightedMessageId, onClearHighlight }) 
       wasNearBottomRef.current = near;
       setShowScrollBtn(!near);
 
-      // Infinite scroll logic
-      if (container.scrollTop < 50 && !isLoadingMore && hasMore) {
+      // Infinite scroll logic - use refs to avoid dependency issues
+      const isLoading = isLoadingMoreRef.current;
+      const canLoad = hasMoreRef.current;
+      if (container.scrollTop < 50 && !isLoading && canLoad) {
         handleLoadMore();
       }
     };
 
     const handleLoadMore = async () => {
-      if (isLoadingMore || !hasMore || messages.length === 0) return;
+      if (isLoadingMoreRef.current || !hasMoreRef.current || messagesRef.current.length === 0) return;
 
-      setIsLoadingMore(true);
-      const firstMsg = messages[0];
+      isLoadingMoreRef.current = true;
+      const firstMsg = messagesRef.current[0];
       const scrollHeightBefore = container.scrollHeight;
 
       try {
@@ -68,28 +74,37 @@ export const MessageList = ({ roomId, highlightedMessageId, onClearHighlight }) 
 
         if (res.messages && res.messages.length > 0) {
           prependMessages(roomId, res.messages);
-          if (res.messages.length < 30) setHasMore(false);
+          messagesRef.current = [...res.messages, ...messagesRef.current];
+          if (res.messages.length < 30) {
+            hasMoreRef.current = false;
+            setHasMore(false);
+          }
 
-          // Preserve scroll position
           requestAnimationFrame(() => {
             if (container) {
               container.scrollTop = container.scrollHeight - scrollHeightBefore;
             }
           });
         } else {
+          hasMoreRef.current = false;
           setHasMore(false);
         }
       } catch (error) {
         console.error("Error loading more messages:", error);
       } finally {
+        isLoadingMoreRef.current = false;
         setIsLoadingMore(false);
       }
     };
 
+    messagesRef.current = messages;
+    isLoadingMoreRef.current = isLoadingMore;
+    hasMoreRef.current = hasMore;
+
     handleScroll();
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [roomId, messages, isLoadingMore, hasMore]);
+  }, [roomId]);
 
 
   useEffect(() => {

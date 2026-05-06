@@ -65,10 +65,10 @@ export const TaskDetail = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/50 px-2 py-4 backdrop-blur-sm overflow-y-auto">
-        <div className="relative w-full max-w-6xl bg-white rounded-lg shadow-2xl my-4 flex flex-col max-h-[calc(100vh-2rem)]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 sm:p-6 md:p-12 backdrop-blur-md overflow-hidden animate-in fade-in duration-300">
+        <div className="relative w-full max-w-6xl bg-white rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] flex flex-col max-h-[90vh] overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 md:px-6 py-3 bg-white sticky top-0 z-20">
+          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-white sticky top-0 z-20">
             <div className="flex-1 min-w-0">
               {isEditing.title ? (
                 <input
@@ -115,9 +115,9 @@ export const TaskDetail = ({
 
           {/* Main Content - Flex Layout */}
           <div className="flex-1 overflow-hidden">
-            <div className="flex flex-col lg:flex-row h-full max-h-[calc(100vh-8rem)]">
+            <div className="flex flex-col lg:flex-row h-full">
               {/* Left Side - Main Content */}
-              <div className="flex-1 p-3 md:p-4 lg:p-6 space-y-3 md:space-y-4 lg:space-y-6 overflow-y-auto min-h-0 custom-scrollbar">
+              <div className="flex-1 p-6 lg:p-8 space-y-8 overflow-y-auto min-h-0 custom-scrollbar">
                 {/* Description Section */}
                 <section className="space-y-2">
                   <div className="flex items-center gap-2">

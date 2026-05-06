@@ -46,8 +46,8 @@ export const PeopleDirectory = () => {
   }
 
   return (
-    <div className="h-full bg-slate-50/50 p-8 overflow-y-auto">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="h-full bg-slate-50/50 p-4 sm:p-8 overflow-y-auto custom-scrollbar">
+      <div className="max-w-[1400px] mx-auto space-y-6 sm:space-y-8">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-slate-900">People</h1>

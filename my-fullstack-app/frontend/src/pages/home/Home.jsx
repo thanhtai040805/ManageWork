@@ -113,8 +113,8 @@ const handleTaskAdded = (newTasks) => {
   const statusCounts = useMemo(() => getStatusCounts(todayTasks), [todayTasks]);
 
   return (
-    <>
-      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
+    <div className="max-w-7xl mx-auto space-y-8">
+      <div className="grid gap-6 lg:grid-cols-[1fr_350px] xl:grid-cols-[1fr_400px]">
         <section className="space-y-5 rounded-3xl bg-white p-8 shadow-lg shadow-slate-100">
           <header className="flex items-center justify-between border-b border-slate-100 pb-5">
             <div>
@@ -210,7 +210,7 @@ const handleTaskAdded = (newTasks) => {
           onAddSuccess={handleTaskAdded}
         />
       )}
-    </>
+    </div>
   );
 };
 

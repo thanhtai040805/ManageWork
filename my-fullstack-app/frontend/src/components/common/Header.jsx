@@ -136,23 +136,23 @@ export const Header = ({ onTaskSelect }) => {
   };
 
   return (
-    <header className="sticky top-0 w-full z-50 glass border-b border-slate-200/50 px-8 py-4 flex items-center justify-between">
+    <header className="sticky top-0 w-full z-50 glass border-b border-slate-200/50 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-4">
       {/* Logo */}
-      <Link to="/" className="flex items-center gap-2 group">
+      <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
         <div
-          className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110"
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110"
           style={{ backgroundColor: primaryColor }}
         >
-          <span className="text-xl font-black">M</span>
+          <span className="text-lg sm:text-xl font-black">M</span>
         </div>
-        <span className="text-2xl font-black tracking-tight text-slate-900">
+        <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 hidden xs:block">
           Manage<span style={{ color: primaryColor }}>Work</span>
         </span>
       </Link>
 
       {/* Search Bar */}
-      <div className="flex-1 max-w-2xl mx-12">
-        <div className="relative group">
+      <div className="flex-1 max-w-2xl mx-0 sm:mx-4 md:mx-12">
+        <div className="relative group w-full">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
             <Search size={20} />
           </div>
@@ -225,8 +225,8 @@ export const Header = ({ onTaskSelect }) => {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2 pr-6 border-r border-slate-200">
+      <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+        <div className="flex items-center gap-1 sm:gap-2 pr-2 sm:pr-6 border-r border-slate-200">
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
