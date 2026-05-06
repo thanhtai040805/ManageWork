@@ -62,6 +62,12 @@ const emitTaskReordered = (projectId, columnId, tasks) => {
   });
 };
 
+const emitNotification = (userId, notification) => {
+  if (io && userId) {
+    emitToUser(userId, 'notification:new', notification);
+  }
+};
+
 module.exports = {
   setIO,
   getIO,
@@ -69,4 +75,5 @@ module.exports = {
   emitToUser,
   emitTaskUpdated,
   emitTaskReordered,
+  emitNotification,
 };

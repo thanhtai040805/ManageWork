@@ -2,6 +2,8 @@ require("dotenv").config();
 const taskModel = require("./task.model");
 const recurringTaskModel = require("./models/recurringTask.model");
 const AutomationService = require("./automation.service");
+const Notification = require("../notifications/notification.model");
+const socketEmitter = require("../../shared/sockets/socketEmitter");
 
 const createTodoTaskService = async (
   title,
@@ -31,6 +33,16 @@ const createTodoTaskService = async (
       createdBy: assignedUserId,
       assignedTo: assignedToId,
     });
+
+    // Notify assigned user if it's not the creator
+    if (assignedToId && assignedToId !== assignedUserId) {
+      const notification = await Notification.createTaskNotification(
+        assignedToId,
+        `You have been assigned a new task: ${title}`
+      );
+      socketEmitter.emitNotification(assignedToId, notification);
+    }
+
     return task;
   } catch (error) {
     console.error("Error creating task:", error);
@@ -97,6 +109,16 @@ const updateTaskByIDService = async (taskId, updateData) => {
     });
     // Return full task data after update
     const fullTask = await taskModel.findById(taskId);
+
+    // Notify new assignee if changed
+    if (updateData.assignedUserId && updateData.assignedUserId !== fullTask.created_by) {
+       const notification = await Notification.createTaskNotification(
+        updateData.assignedUserId,
+        `Task "${fullTask.title}" has been assigned to you`
+      );
+      socketEmitter.emitNotification(updateData.assignedUserId, notification);
+    }
+
     return fullTask;
   } catch (error) {
     console.error("Error updating task:", error);
@@ -109,6 +131,19 @@ const updateTaskStatusService = async (taskId, status) => {
     const task = await taskModel.updateStatus(taskId, status);
     // Get full task data after status update
     const fullTask = await taskModel.findById(taskId);
+
+    // Notify task creator or assigned user about status change
+    const actorId = fullTask.updated_by || fullTask.assigned_to; // Simple logic for now
+    const notifyId = fullTask.created_by === actorId ? fullTask.assigned_to : fullTask.created_by;
+    
+    if (notifyId && notifyId !== actorId) {
+       const notification = await Notification.createSystemNotification(
+        notifyId,
+        `Task "${fullTask.title}" status updated to ${status}`
+      );
+      socketEmitter.emitNotification(notifyId, notification);
+    }
+
     return fullTask;
   } catch (error) {
     console.error("Error updating task status:", error);

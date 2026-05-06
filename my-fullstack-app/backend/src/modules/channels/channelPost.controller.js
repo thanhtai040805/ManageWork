@@ -1,6 +1,8 @@
 const ChannelPost = require("./channelPost.model");
 const ChannelReply = require("./channelReply.model");
-const { getIO } = require("../../shared/sockets/socketEmitter");
+const { getIO, emitNotification } = require("../../shared/sockets/socketEmitter");
+const Notification = require("../notifications/notification.model");
+const { notifyMentions } = require("../../shared/utils/mentionUtils");
 
 const createPost = async (req, res, next) => {
   try {
@@ -13,9 +15,26 @@ const createPost = async (req, res, next) => {
       content,
     });
     
-    const io = getIO();
-    if (io) {
-      io.to(`channel:${channel_id}`).emit("channel:post:new", post);
+    // Handle mentions in post
+    await notifyMentions(
+      content, 
+      authorId, 
+      'chat', 
+      `New mention in channel: ${content.substring(0, 50)}...`
+    );
+
+    // Notify all channel members about new post
+    const channel = await require("./channel.model").getById(channel_id);
+    const members = await require("./channel.model").getMembers(channel_id);
+    
+    for (const member of members) {
+      if (String(member.user_id) === String(authorId)) continue;
+      
+      const notification = await Notification.createChatNotification(
+        member.user_id,
+        `#${channel.name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
+      );
+      socketEmitter.emitNotification(member.user_id, notification);
     }
     
     return res.status(201).json(post);
@@ -106,13 +125,23 @@ const createReply = async (req, res, next) => {
       content,
     });
     
+    // Notify post author
     const post = await ChannelPost.getById(post_id);
-    if (post && post.channel_id) {
-      const io = getIO();
-      if (io) {
-        io.to(`channel:${post.channel_id}`).emit("channel:reply:new", { ...reply, channel_id: post.channel_id });
-      }
+    if (post && String(post.author_id) !== String(authorId)) {
+      const notification = await Notification.createChatNotification(
+        post.author_id,
+        `New reply on your post: ${content.substring(0, 50)}...`
+      );
+      emitNotification(post.author_id, notification);
     }
+
+    // Handle mentions in reply
+    await notifyMentions(
+      content, 
+      authorId, 
+      'chat', 
+      `You were mentioned in a reply: ${content.substring(0, 50)}...`
+    );
     
     return res.status(201).json(reply);
   } catch (error) {

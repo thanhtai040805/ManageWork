@@ -1,4 +1,4 @@
-import { Bell, Calendar, Search, LogOut, Settings, ChevronRight, Globe } from "lucide-react";
+import { Bell, Calendar, Search, LogOut, Settings, ChevronRight, Globe, MessageSquare, CheckCircle, AlertCircle, Inbox } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useState, useEffect } from "react";
 import apiClient from "../../services/apiClient";
@@ -33,20 +33,41 @@ export const Header = ({ onTaskSelect }) => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const [notifsRes, countRes] = await Promise.all([
-          notificationService.getNotificationsAPI({ limit: 10 }),
-          notificationService.getUnreadCountAPI()
-        ]);
-        setNotifications(notifsRes?.data || []);
-        setUnreadCount(countRes?.data?.unreadCount || 0);
+        const notifsRes = await notificationService.getNotificationsAPI({ limit: 10 });
+        setNotifications(Array.isArray(notifsRes) ? notifsRes : []);
       } catch (error) {
         console.error("Error fetching notifications:", error);
       }
     };
 
+    const fetchUnreadCount = async () => {
+      try {
+        const countRes = await notificationService.getUnreadCountAPI();
+        setUnreadCount(countRes?.unreadCount || 0);
+      } catch (error) {
+        console.error("Error fetching unread count:", error);
+      }
+    };
+    
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
-    return () => clearInterval(interval);
+    fetchUnreadCount();
+
+    const handleRealtimeNotification = () => {
+      fetchNotifications();
+      fetchUnreadCount();
+    };
+    
+    window.addEventListener("notification:received", handleRealtimeNotification);
+
+    const intervalId = setInterval(() => {
+      fetchNotifications();
+      fetchUnreadCount();
+    }, 30000);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("notification:received", handleRealtimeNotification);
+    };
   }, []);
 
   const handleMarkAllRead = async () => {
@@ -110,7 +131,7 @@ export const Header = ({ onTaskSelect }) => {
         notificationService.error("Failed to load task details");
       }
     } else if (result.type === 'user') {
-      notificationService.info("User profile coming soon");
+      navigate(`/people?search=${result.username || result.full_name}`);
     }
   };
 
@@ -209,11 +230,14 @@ export const Header = ({ onTaskSelect }) => {
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative active:scale-90"
+              className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative active:scale-90 group"
             >
-              <Bell size={20} />
+              <Bell size={20} className={unreadCount > 0 ? "animate-pulse" : ""} />
               {unreadCount > 0 && (
-                <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+                <span 
+                  className="absolute top-2 right-2.5 w-2 h-2 rounded-full border-2 border-white"
+                  style={{ backgroundColor: primaryColor }}
+                ></span>
               )}
             </button>
 
@@ -225,7 +249,8 @@ export const Header = ({ onTaskSelect }) => {
                     <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Notifications</h3>
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-[10px] font-bold text-indigo-600 hover:underline uppercase tracking-tight"
+                      className="text-[10px] font-bold hover:underline uppercase tracking-tight transition-colors"
+                      style={{ color: primaryColor }}
                     >
                       Mark all read
                     </button>
@@ -233,33 +258,57 @@ export const Header = ({ onTaskSelect }) => {
 
                   <div className="max-h-96 overflow-y-auto custom-scrollbar p-2">
                     {notifications.length > 0 ? (
-                      notifications.map(n => (
-                        <div
-                          key={n.notification_id}
-                          onClick={() => !n.is_read && handleMarkRead(n.notification_id)}
-                          className={`p-4 rounded-2xl mb-1 transition-colors cursor-pointer ${n.is_read ? 'hover:bg-slate-50/50' : 'bg-indigo-50/50 hover:bg-indigo-50'}`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${n.is_read ? 'bg-slate-200' : 'bg-indigo-600'}`} />
-                            <div>
-                              <p className={`text-xs ${n.is_read ? 'text-slate-600' : 'text-slate-900 font-bold'}`}>{n.message}</p>
-                              <p className="text-[10px] text-slate-400 mt-1 font-medium">{new Date(n.created_at).toLocaleDateString()}</p>
+                      notifications.map(n => {
+                        const isTask = n.type === 'task';
+                        const isChat = n.type === 'chat';
+                        const isSystem = n.type === 'system';
+                        
+                        return (
+                          <div
+                            key={n.notification_id}
+                            onClick={() => !n.is_read && handleMarkRead(n.notification_id)}
+                            className={`p-3 rounded-2xl mb-1 transition-all duration-300 border border-transparent ${n.is_read ? 'hover:bg-slate-50/80 hover:border-slate-100' : 'bg-slate-50/50 border-slate-100/50 hover:bg-slate-50'}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${n.is_read ? 'bg-slate-100 text-slate-400' : 'bg-white shadow-sm'}`}
+                                   style={!n.is_read ? { color: primaryColor } : {}}>
+                                {isTask && <CheckCircle size={14} />}
+                                {isChat && <MessageSquare size={14} />}
+                                {isSystem && <AlertCircle size={14} />}
+                                {!isTask && !isChat && !isSystem && <Inbox size={14} />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-[11px] leading-normal ${n.is_read ? 'text-slate-500' : 'text-slate-900 font-semibold'}`}>{n.message}</p>
+                                <p className="text-[9px] text-slate-400 mt-1 font-medium flex items-center gap-1">
+                                  <Globe size={8} />
+                                  {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              {!n.is_read && (
+                                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-2" style={{ backgroundColor: primaryColor }} />
+                              )}
                             </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
-                      <div className="py-12 text-center">
-                        <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-300">
-                          <Bell size={24} />
+                      <div className="py-12 text-center animate-in fade-in zoom-in-95 duration-500">
+                        <div className="w-16 h-16 bg-slate-50/50 rounded-[24px] flex items-center justify-center mx-auto mb-4 text-slate-200 border border-slate-100/50">
+                          <Inbox size={32} />
                         </div>
-                        <p className="text-xs text-slate-500 font-medium italic px-8">You're all caught up! No new notifications.</p>
+                        <h4 className="text-xs font-bold text-slate-900 mb-1">All Caught Up!</h4>
+                        <p className="text-[10px] text-slate-400 font-medium italic px-8 leading-relaxed">
+                          Your inbox is clear. We'll notify you when something important happens.
+                        </p>
                       </div>
                     )}
                   </div>
 
-                  <div className="p-2 border-t border-slate-100/50">
-                    <button className="w-full py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-[0.2em] transition-colors">
+                  <div className="p-2 border-t border-slate-100/50 bg-slate-50/30">
+                    <button 
+                      onClick={() => { setShowNotifications(false); navigate("/activity"); }}
+                      className="w-full py-3 text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-[0.2em] transition-colors"
+                    >
                       View All Activity
                     </button>
                   </div>

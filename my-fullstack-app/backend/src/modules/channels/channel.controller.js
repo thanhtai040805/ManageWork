@@ -161,6 +161,18 @@ const addChannelMember = async (req, res, next) => {
     const { user_id, role } = req.body;
 
     const member = await Channel.addMember(channelId, user_id, role || 'member');
+    
+    // Notify user
+    const channel = await Channel.getById(channelId);
+    const Notification = require("../notifications/notification.model");
+    const socketEmitter = require("../../shared/sockets/socketEmitter");
+    
+    const notification = await Notification.createSystemNotification(
+      user_id,
+      `You have been added to channel #${channel.name}`
+    );
+    socketEmitter.emitNotification(user_id, notification);
+
     res.json(member);
   } catch (error) {
     next(error);

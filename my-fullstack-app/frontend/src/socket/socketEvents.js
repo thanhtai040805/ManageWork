@@ -56,6 +56,7 @@ export const registerSocketEvents = (handlers = {}) => {
     onDisconnect,
     onChannelPostNew,
     onChannelReplyNew,
+    onNotification,
   } = handlers;
 
   const wrap = (name, fn) => (payload) => {
@@ -76,6 +77,7 @@ export const registerSocketEvents = (handlers = {}) => {
     "users:online:list": wrap("users:online:list", onOnlineList),
     "channel:post:new": wrap("channel:post:new", onChannelPostNew),
     "channel:reply:new": wrap("channel:reply:new", onChannelReplyNew),
+    "notification:new": wrap("notification:new", onNotification),
 
     connect: () => {
       log("connect");

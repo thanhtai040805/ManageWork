@@ -8,7 +8,8 @@ const {
 } = require("./task.service");
 const taskModel = require("./task.model");
 const ActivityLog = require("../../shared/models/activityLog.model");
-const { emitTaskUpdated, emitTaskReordered } = require("../../shared/sockets/socketEmitter");
+const Notification = require("../notifications/notification.model");
+const { emitTaskUpdated, emitTaskReordered, emitNotification } = require("../../shared/sockets/socketEmitter");
 const TaskOrderService = require("../../shared/services/taskOrder.service");
 const TaskCacheService = require("../../shared/services/taskCache.service");
 const pool = require("../../shared/config/database");
@@ -33,22 +34,28 @@ const createTask = async (req, res, next) => {
     
     // Permission check: User must be project member (owner, admin, member)
     if (projectId) {
-      const result = await pool.query(
-        `SELECT pm.role, p.owner_id FROM project_members pm
-         JOIN projects p ON pm.project_id = p.project_id
-         WHERE pm.project_id = $1 AND pm.user_id = $2`,
-        [projectId, userId]
+      const ownerCheck = await pool.query(
+        `SELECT owner_id FROM projects WHERE project_id = $1`,
+        [projectId]
       );
 
-      if (result.rows.length === 0) {
-        return res.status(403).json({ error: "Not a project member" });
-      }
+      const isOwner = ownerCheck.rows.length > 0 && ownerCheck.rows[0].owner_id === userId;
 
-      const { role, owner_id } = result.rows[0];
-      const effectiveRole = owner_id === userId ? 'owner' : role;
+      if (!isOwner) {
+        const result = await pool.query(
+          `SELECT role FROM project_members
+           WHERE project_id = $1 AND user_id = $2`,
+          [projectId, userId]
+        );
 
-      if (!['owner', 'admin', 'member'].includes(effectiveRole)) {
-        return res.status(403).json({ error: "Insufficient permissions to create tasks in this project" });
+        if (result.rows.length === 0) {
+          return res.status(403).json({ error: "Not a project member" });
+        }
+
+        const role = result.rows[0].role;
+        if (!['admin', 'member'].includes(role)) {
+          return res.status(403).json({ error: "Insufficient permissions to create tasks in this project" });
+        }
       }
 
       // If assignee is provided, verify they are also a member of the project
@@ -161,22 +168,28 @@ const updateTaskByID = async (req, res, next) => {
 
     // Permission check: User must be project member (owner, admin, member)
     if (currentTask.project_id) {
-      const result = await pool.query(
-        `SELECT pm.role, p.owner_id FROM project_members pm
-         JOIN projects p ON pm.project_id = p.project_id
-         WHERE pm.project_id = $1 AND pm.user_id = $2`,
-        [currentTask.project_id, userId]
+      const ownerCheck = await pool.query(
+        `SELECT owner_id FROM projects WHERE project_id = $1`,
+        [currentTask.project_id]
       );
 
-      if (result.rows.length === 0) {
-        return res.status(403).json({ error: "Not a project member" });
-      }
+      const isOwner = ownerCheck.rows.length > 0 && ownerCheck.rows[0].owner_id === userId;
 
-      const { role, owner_id } = result.rows[0];
-      const effectiveRole = owner_id === userId ? 'owner' : role;
+      if (!isOwner) {
+        const result = await pool.query(
+          `SELECT role FROM project_members
+           WHERE project_id = $1 AND user_id = $2`,
+          [currentTask.project_id, userId]
+        );
 
-      if (!['owner', 'admin', 'member'].includes(effectiveRole)) {
-        return res.status(403).json({ error: "Insufficient permissions to edit tasks in this project" });
+        if (result.rows.length === 0) {
+          return res.status(403).json({ error: "Not a project member" });
+        }
+
+        const role = result.rows[0].role;
+        if (!['admin', 'member'].includes(role)) {
+          return res.status(403).json({ error: "Insufficient permissions to edit tasks in this project" });
+        }
       }
     } else if (currentTask.created_by !== userId) {
       // Personal task: only creator can edit
@@ -204,13 +217,26 @@ const updateTaskByID = async (req, res, next) => {
         }
       }
 
-      await ActivityLog.logTaskUpdated(userId, taskId, updatedTask.title);
+      // Invalidate project cache
       if (updatedTask.project_id) {
         await TaskCacheService.invalidateProject(updatedTask.project_id);
       }
+      
+      // Invalidate new assignee's cache
       if (updatedTask.assigned_to) {
         await TaskCacheService.invalidateUserTaskCache(updatedTask.assigned_to);
       }
+      
+      // Invalidate old assignee's cache if changed
+      if (currentTask.assigned_to && currentTask.assigned_to !== updatedTask.assigned_to) {
+        await TaskCacheService.invalidateUserTaskCache(currentTask.assigned_to);
+      }
+      
+      // Invalidate creator's cache
+      if (currentTask.created_by) {
+        await TaskCacheService.invalidateUserTaskCache(currentTask.created_by);
+      }
+      
       emitTaskUpdated(updatedTask, null);
     }
     
@@ -233,22 +259,28 @@ const updateTaskStatus = async (req, res, next) => {
 
     // Permission check: User must be project member (owner, admin, member)
     if (currentTask.project_id) {
-      const result = await pool.query(
-        `SELECT pm.role, p.owner_id FROM project_members pm
-         JOIN projects p ON pm.project_id = p.project_id
-         WHERE pm.project_id = $1 AND pm.user_id = $2`,
-        [currentTask.project_id, userId]
+      const ownerCheck = await pool.query(
+        `SELECT owner_id FROM projects WHERE project_id = $1`,
+        [currentTask.project_id]
       );
 
-      if (result.rows.length === 0) {
-        return res.status(403).json({ error: "Not a project member" });
-      }
+      const isOwner = ownerCheck.rows.length > 0 && ownerCheck.rows[0].owner_id === userId;
 
-      const { role, owner_id } = result.rows[0];
-      const effectiveRole = owner_id === userId ? 'owner' : role;
+      if (!isOwner) {
+        const result = await pool.query(
+          `SELECT role FROM project_members
+           WHERE project_id = $1 AND user_id = $2`,
+          [currentTask.project_id, userId]
+        );
 
-      if (!['owner', 'admin', 'member'].includes(effectiveRole)) {
-        return res.status(403).json({ error: "Insufficient permissions to update tasks in this project" });
+        if (result.rows.length === 0) {
+          return res.status(403).json({ error: "Not a project member" });
+        }
+
+        const role = result.rows[0].role;
+        if (!['admin', 'member'].includes(role)) {
+          return res.status(403).json({ error: "Insufficient permissions to update tasks in this project" });
+        }
       }
     } else if (currentTask.created_by !== userId && currentTask.assigned_to !== userId) {
       // Personal task: only creator or assignee can update status
@@ -264,6 +296,23 @@ const updateTaskStatus = async (req, res, next) => {
         await ActivityLog.logTaskUpdated(userId, taskId, updatedTask.title, `Status changed from ${previousStatus} to ${status}`);
       }
       
+      // Notify task creator if status changed and not done by the creator
+      if (previousStatus && previousStatus !== status && currentTask.created_by && currentTask.created_by !== userId) {
+        const statusMessages = {
+          'todo': 'moved task back to To Do',
+          'in_progress': 'started working on task',
+          'done': 'completed task'
+        };
+        const message = statusMessages[status] || `changed task status to ${status}`;
+        const notification = await Notification.createTaskNotification(
+          currentTask.created_by,
+          `${message}: ${updatedTask.title}`
+        );
+        if (notification) {
+          emitNotification(currentTask.created_by, notification);
+        }
+      }
+      
       if (updatedTask.project_id) {
         const newOrder = await TaskOrderService.getNextOrder(updatedTask.project_id, status);
         await TaskOrderService.setTaskOrder(updatedTask.project_id, status, taskId, newOrder);
@@ -272,8 +321,16 @@ const updateTaskStatus = async (req, res, next) => {
         }
         await TaskCacheService.invalidateProject(updatedTask.project_id);
       }
+      
+      // Invalidate caches for assigned_to, old assigned_to, and creator
       if (updatedTask.assigned_to) {
         await TaskCacheService.invalidateUserTaskCache(updatedTask.assigned_to);
+      }
+      if (currentTask.assigned_to && currentTask.assigned_to !== updatedTask.assigned_to) {
+        await TaskCacheService.invalidateUserTaskCache(currentTask.assigned_to);
+      }
+      if (currentTask.created_by) {
+        await TaskCacheService.invalidateUserTaskCache(currentTask.created_by);
       }
       
       emitTaskUpdated(updatedTask, previousStatus);

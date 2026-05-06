@@ -1,5 +1,9 @@
 const Comment = require("./models/comment.model");
 const logger = require("../../shared/utils/logger");
+const Notification = require("../notifications/notification.model");
+const Task = require("./task.model");
+const socketEmitter = require("../../shared/sockets/socketEmitter");
+const { notifyMentions } = require("../../shared/utils/mentionUtils");
 
 const createComment = async (req, res, next) => {
   try {
@@ -11,6 +15,24 @@ const createComment = async (req, res, next) => {
     const fullComment = await Comment.findById(comment.comment_id);
     
     logger.info(`Comment created: ${comment.comment_id} by user ${userId}`);
+    // Notify task assignee if it's not the commenter
+    const task = await Task.findById(taskId);
+    if (task && task.assigned_to && task.assigned_to !== userId) {
+      const notification = await Notification.createTaskNotification(
+        task.assigned_to,
+        `New comment on task "${task.title}": ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
+      );
+      socketEmitter.emitNotification(task.assigned_to, notification);
+    }
+
+    // Handle mentions in comment
+    await notifyMentions(
+      content,
+      userId,
+      'task',
+      `You were mentioned in a comment on task "${task?.title || 'Unknown'}": ${content.substring(0, 50)}...`
+    );
+
     res.status(201).json({
       status: "success",
       data: fullComment

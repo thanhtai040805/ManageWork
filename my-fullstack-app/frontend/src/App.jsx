@@ -17,6 +17,7 @@ import { Layout } from "./layouts/Layout";
 import { Chat } from "./pages/chat/Chat";
 import { Dashboard } from "./pages/dashboard/Dashboard";
 import { ActivityLog } from "./pages/activity/ActivityLog";
+import { PeopleDirectory } from "./pages/people/PeopleDirectory";
 import useSocket from "./hooks/useSocket";
 import useSocketRegister from "./hooks/useSocketRegister";
 
@@ -107,6 +108,7 @@ function App() {
             </Route>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/activity" element={<ActivityLog />} />
+            <Route path="/people" element={<PeopleDirectory />} />
           </Route>
 
           <Route path="/register" element={<SignUp />} />

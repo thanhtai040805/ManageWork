@@ -1,5 +1,7 @@
 const projectModel = require("./project.model");
 const taskModel = require("../tasks/task.model");
+const Notification = require("../notifications/notification.model");
+const socketEmitter = require("../../shared/sockets/socketEmitter");
 
 const createProject = async (req, res) => {
   try {
@@ -196,6 +198,14 @@ const addProjectMember = async (req, res) => {
     }
 
     const member = await projectModel.addMember(projectId, user_id, role || "viewer");
+
+    // Notify the added member
+    const notification = await Notification.createEventNotification(
+      user_id,
+      `You have been added to project: ${project.name}`
+    );
+    socketEmitter.emitNotification(user_id, notification);
+
     return res.status(201).json({
       message: "Member added successfully",
       data: member,

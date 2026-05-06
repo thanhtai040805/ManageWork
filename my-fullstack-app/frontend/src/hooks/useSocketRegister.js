@@ -8,6 +8,10 @@ import { useChatStore } from "../stores/chat/chatStore";
 const useSocketRegister = () => {
   useEffect(() => {
     const cleanup = registerSocketEvents({
+      onNotification: (notification) => {
+        // Trigger a custom event or use a store to update Header
+        window.dispatchEvent(new CustomEvent("notification:received", { detail: notification }));
+      },
       onNewMessage: ({ roomId, message }) => {
         useMessageStore.getState().addMessage(roomId, message);
         useChatStore.getState().updateRoomLastMessage(roomId, message);

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Settings, Plus, LayoutGrid, Calendar } from "lucide-react";
+import { ArrowLeft, Settings, Plus, LayoutGrid, Calendar, Activity } from "lucide-react";
 import { getProjectAPI } from "../../services/project.service";
 import { AddTask, TaskDetail } from "../../features/tasks";
 import { WeekView, MonthView, KanBanView } from "../../features/calendar";
 import { searchTasksAPI } from "../../services/task.service";
+import { ProjectActivity } from "../../features/projects/ProjectActivity";
 import { notificationService } from "../../services/notification.service";
 import { ProjectTaskFilters, applyProjectFilters } from "../../features/tasks/ProjectTaskFilters";
 import { AuthContext } from "../../context/authContext";
@@ -267,6 +268,13 @@ export const ProjectDetail = () => {
             >
               <Calendar size={16} />
             </button>
+            <button
+              onClick={() => setViewType("activity")}
+              className={`p-2 rounded-lg transition ${viewType === "activity" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              title="Activity History"
+            >
+              <Activity size={16} />
+            </button>
           </div>
         </div>
 
@@ -281,8 +289,12 @@ export const ProjectDetail = () => {
           />
         ) : viewType === "week" ? (
           <WeekView currentDate={currentDate} tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskDelete={handleTaskDeleted} onTaskStatusChange={handleTaskStatusChange} />
-        ) : (
+        ) : viewType === "month" ? (
           <MonthView currentDate={currentDate} tasks={filteredTasks} onTaskClick={handleTaskClick} onTaskDelete={handleTaskDeleted} onTaskStatusChange={handleTaskStatusChange} />
+        ) : (
+          <div className="max-w-3xl mx-auto">
+            <ProjectActivity projectId={projectId} />
+          </div>
         )}
 
         {showAddTask && (

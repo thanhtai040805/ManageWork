@@ -18,7 +18,8 @@ import { TaskComments } from "./TaskComments";
 import { TagManager } from "./TagManager";
 import { AttachmentManager } from "./AttachmentManager";
 import { DependencyManager } from "./DependencyManager";
-import { TimeTracker } from "./TimeTracker";
+import { TaskActivity } from "./TaskActivity";
+import { TimeLog } from "./TimeLog";
 import { useTaskDetail } from "./hooks/useTaskDetail";
 import { TaskApplyToModal } from "./components/TaskApplyToModal";
 import {
@@ -178,6 +179,11 @@ export const TaskDetail = ({
                 <section className="pt-4 md:pt-6 border-t border-slate-100">
                   <TaskComments taskId={task?.task_id} />
                 </section>
+
+                {/* Activity History Section */}
+                <section className="pt-4 md:pt-6 border-t border-slate-100">
+                  <TaskActivity taskId={task?.task_id} />
+                </section>
               </div>
 
               {/* Right Sidebar - Details */}
@@ -284,8 +290,8 @@ export const TaskDetail = ({
 
                   <div className="border-t border-slate-200"></div>
 
-                  {/* Time Tracker */}
-                  <TimeTracker taskId={task?.task_id} />
+                  {/* Time Tracking */}
+                  <TimeLog taskId={task?.task_id} />
 
                   <div className="border-t border-slate-200"></div>
 
@@ -315,7 +321,9 @@ export const TaskDetail = ({
                           onClick={(e) => e.stopPropagation()}
                           className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
                           autoFocus
-                        >
+                        ><option value={currentUser.uid}>
+                            {currentUser?.full_name || currentUser?.username}
+                          </option>
                           {currentUser && !isAssignedToMe && (
                             <option value={currentUser.uid}>
                               Assign to me
@@ -489,8 +497,8 @@ export const TaskDetail = ({
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
 
       <TaskApplyToModal
         show={showApplyToModal && isRecurringTask}

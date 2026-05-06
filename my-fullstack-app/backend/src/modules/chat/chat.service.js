@@ -4,6 +4,8 @@ const messageModel = require("./models/message.model");
 const messageAttachmentModel = require("./models/messageAttachment.model");
 const messageReactionModel = require("./models/messageReaction.model");
 const pool = require("../../shared/config/database");
+const Notification = require("../notifications/notification.model");
+const socketEmitter = require("../../shared/sockets/socketEmitter");
 
 const sendSystemMessage = async ({ roomId, content, senderId = null, client = pool }) => {
     // For system messages, we need to allow NULL sender_id or use a valid system user
@@ -41,6 +43,18 @@ const createChatRoom = async ({ name, isGroup, createdBy, members = [], avatarUr
         senderId: createdBy,
         client 
     });
+
+    // Notify other members that they have been added to a new chat room
+    if (Array.isArray(members)) {
+      for (const memberId of members) {
+        if (memberId === createdBy) continue;
+        const notification = await Notification.createSystemNotification(
+          memberId,
+          `You have been added to a new chat room: ${name || 'New Room'}`
+        );
+        socketEmitter.emitNotification(memberId, notification);
+      }
+    }
 
     await client.query('COMMIT');
     return chatRoom;
@@ -85,6 +99,13 @@ const addMemberToChatRoom = async ({ roomId, memberId, role, requesterRole, adde
                 senderId: addedBy || memberId,
                 client 
             });
+
+            // Notify the added member
+            const notification = await Notification.createSystemNotification(
+              memberId,
+              `You have been added to a chat room`
+            );
+            socketEmitter.emitNotification(memberId, notification);
         }
         await client.query('COMMIT');
         return member;
@@ -113,8 +134,22 @@ const sendMessage = async ({roomId, senderId, content , messageType, attachments
         
         await client.query('COMMIT');
         
-        // Fetch full message with sender info and parent info for immediate UI update
-        return await messageModel.getFullMessage(message.message_id);
+        // Fetch full message with sender info
+        const fullMessage = await messageModel.getFullMessage(message.message_id);
+
+        // Notify other members about the new message
+        const members = await chatRoomMemberModel.getMembersByRoom(roomId);
+        for (const member of members) {
+          if (member.user_id === senderId) continue;
+          
+          const notification = await Notification.createChatNotification(
+            member.user_id,
+            `New message from ${fullMessage.sender_name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`
+          );
+          socketEmitter.emitNotification(member.user_id, notification);
+        }
+
+        return fullMessage;
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
